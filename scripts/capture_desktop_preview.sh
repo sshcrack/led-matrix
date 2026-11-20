@@ -153,7 +153,7 @@ cleanup_preset() {
     fi
     # Restore original preset if we captured it
     if [[ -n "$ORIGINAL_PRESET" ]]; then
-        api_get "/set_active?id=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$ORIGINAL_PRESET'))")" &>/dev/null || true
+        api_post "/set_active" "$(python3 -c 'import json, sys; print(json.dumps({"id": sys.argv[1]}))' "$ORIGINAL_PRESET")" &>/dev/null || true
     fi
 }
 trap cleanup_preset EXIT
@@ -209,7 +209,7 @@ print(json.dumps(preset))
         echo "WARNING: Could not create preset for '$SCENE_NAME'. Skipping." >&2
         continue
     fi
-    if ! api_get "/set_active?id=$TEMP_PRESET_ID" &>/dev/null; then
+    if ! api_post "/set_active" "{\"id\": \"$TEMP_PRESET_ID\"}" &>/dev/null; then
         echo "WARNING: Could not activate preset for '$SCENE_NAME'. Skipping." >&2
         continue
     fi

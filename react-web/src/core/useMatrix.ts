@@ -38,18 +38,18 @@ export function useMatrixState() {
 
   const activate = useCallback(async (id: string) => {
     setStatus(s => s && { ...s, current: id, operation_mode: 'manual', automatic_active: false })
-    try { await call(`/set_active?id=${encodeURIComponent(id)}`) } catch { toast.error('Could not activate preset'); void refreshStatus() }
+    try { await call('/set_active', json({ id })) } catch { toast.error('Could not activate preset'); void refreshStatus() }
   }, [call, setStatus, refreshStatus])
 
   const actions = useMemo(() => ({
     activate,
     async setPower(on: boolean) {
       setStatus(s => s && { ...s, turned_off: !on })
-      try { await call(`/set_enabled?enabled=${on}`) } catch { toast.error('Could not change power'); void refreshStatus() }
+      try { await call('/set_enabled', json({ enabled: on })) } catch { toast.error('Could not change power'); void refreshStatus() }
     },
     async setMode(mode: 'automatic' | 'manual') {
       setStatus(s => s && { ...s, operation_mode: mode, automatic_active: mode === 'automatic' })
-      try { await call(`/operation_mode?mode=${mode}`) } catch { toast.error('Could not change mode'); void refreshStatus() }
+      try { await call('/operation_mode', json({ mode })) } catch { toast.error('Could not change mode'); void refreshStatus() }
     },
     async setDirectorMode(mode: DirectorMode) {
       setStatus(s => s && { ...s, director_mode: mode })

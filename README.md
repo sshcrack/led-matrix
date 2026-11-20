@@ -566,13 +566,15 @@ Still stuck? [Open an issue](https://github.com/sshcrack/led-matrix/issues) with
 
 Everything the web UI does goes through a REST API on port 8080. Examples assume no token. If you set one, add `-H "Authorization: Bearer $TOKEN"`.
 
+**GET only reads.** Anything that changes the matrix is a `POST` (or `DELETE` to remove something). Parameters can go in the query string or in a JSON body. The old GET forms of `/set_active`, `/set_enabled`, `/toggle`, `/skip`, `/operation_mode?mode=` and `/video/search` answer `405 Method Not Allowed` with `Allow: POST` and change nothing. Paths keep their names: the `/api/` prefix is only used by the groups that already have it (updates, custom assets, recovery). New routes are grouped by feature (`/halo`, `/environment`, …).
+
 ```bash
-curl localhost:8080/status                           # power, mode, active preset
-curl localhost:8080/list_presets                     # all presets
-curl "localhost:8080/set_active?id=<preset-id>"      # play a preset
-curl "localhost:8080/operation_mode?mode=automatic"  # or: manual
-curl "localhost:8080/set_enabled?enabled=false"      # turn the display off
-curl localhost:8080/skip                             # next scene
+curl localhost:8080/status                                    # power, mode, active preset
+curl localhost:8080/list_presets                              # all presets
+curl -X POST "localhost:8080/set_active?id=<preset-id>"       # play a preset
+curl -X POST "localhost:8080/operation_mode?mode=automatic"   # or: manual
+curl -X POST "localhost:8080/set_enabled?enabled=false"       # turn the display off
+curl -X POST localhost:8080/skip                              # next scene
 curl -X POST "localhost:8080/post_processing/flash?duration=0.3&intensity=1.0"
 ```
 
@@ -585,11 +587,11 @@ curl -X POST "localhost:8080/post_processing/flash?duration=0.3&intensity=1.0"
 |:--|:--|:--|:--|
 | **State** | GET | `/status` | Power, operation mode, active preset |
 | | GET | `/get_curr` | Scenes of the active preset with their properties |
-| | GET | `/toggle`, `/set_enabled?enabled=<bool>` | Toggle or set display power |
-| | GET | `/operation_mode?mode=automatic\|manual` | Switch between the Director and presets |
-| | GET | `/skip` | Skip to the next scene |
+| | POST | `/toggle`, `/set_enabled?enabled=<bool>` | Toggle or set display power |
+| | GET / POST | `/operation_mode`, `/operation_mode?mode=automatic\|manual` | Read / switch between the Director and presets |
+| | POST | `/skip` | Skip to the next scene |
 | **Presets** | GET | `/list_presets`, `/presets[?id=]` | List presets / fetch one |
-| | GET | `/set_active?id=` | Play a preset |
+| | POST | `/set_active?id=` | Play a preset |
 | | POST | `/add_preset[?id=]` | Create a preset (JSON body) |
 | | POST | `/preset?id=` | Replace a preset |
 | | POST | `/preset_display_name?id=` | Rename a preset |

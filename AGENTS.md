@@ -279,6 +279,10 @@ Brightness follows the library's refresh rate (bit-plane lit time is hardware-ti
 
 The web UI's Panel hardware card changes the `--led-*` panel options: `POST /hardware` (`src_matrix/server/hardware_routes.cpp`, validation in `src_matrix/hardware/panel_options.cpp`) queues `hardware/request.json`; `led-matrix-hardware.path` runs `scripts/apply_hardware.sh` as root, which validates again (keep both whitelists in sync), rewrites `MATRIX_OPTS`, restarts and restores the old flags when the daemon does not come back. The `panel_test` scene (plugin `PanelSetup`) is the test pattern. Details: `docs/PANEL_HARDWARE.md`.
 
+## REST route convention
+
+GET only reads; changes are POST (DELETE removes). Read parameters with `Server::request_param()` (query, JSON body or form body). A route that used to change state on GET keeps a GET handler that returns `Server::reply_use_post()` (405, `Allow: POST`). Keep existing paths; new routes are feature-grouped nouns (`/halo`, `/environment`). `tests/route_methods_test.py` checks the migrated routes against the installed daemon.
+
 ## API security
 
 `src_matrix/server/request_guard.{h,cpp}` wraps the REST router (unit-tested by `tests/request_guard_smoke.cpp`):

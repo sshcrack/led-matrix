@@ -2,9 +2,12 @@
 #ifdef _WIN32
 #include "shared/common/win_compat.h"
 #endif
-#include "restinio/all.hpp"
-#include "nlohmann/json.hpp"
+#include <optional>
 #include <string>
+#include <string_view>
+
+#include "nlohmann/json.hpp"
+#include "restinio/all.hpp"
 
 namespace Server {
     using json = nlohmann::json;
@@ -28,6 +31,16 @@ namespace Server {
                                                restinio::http_status_line_t status = restinio::status_bad_request());
 
     restinio::request_handling_status_t reply_success(const restinio::request_handle_t &req);
+
+    /// Answer to GET on a route that changes state (docs/API.md): 405 with
+    /// `Allow: POST`, so old clients learn the new method instead of changing
+    /// anything.
+    restinio::request_handling_status_t reply_use_post(const restinio::request_handle_t& req);
+
+    /// A request parameter from the query string, a JSON object body
+    /// ({"name": "value"} or {"name": true}) or a form body (name=value), in
+    /// that order. Booleans become "true"/"false".
+    std::optional<std::string> request_param(const restinio::request_handle_t& req, std::string_view name);
 
     // Handle CORS preflight requests
     restinio::request_handling_status_t handle_cors_preflight(const restinio::request_handle_t &req);
