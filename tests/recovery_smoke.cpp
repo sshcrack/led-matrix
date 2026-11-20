@@ -8,12 +8,12 @@
 using namespace Recovery;
 
 static int failures = 0;
-#define CHECK(condition)                                                     \
-    do {                                                                     \
-        if (!(condition)) {                                                  \
+#define CHECK(condition)                                                                \
+    do {                                                                                \
+        if (!(condition)) {                                                             \
             std::fprintf(stderr, "%s:%d: CHECK(%s)\n", __FILE__, __LINE__, #condition); \
-            ++failures;                                                      \
-        }                                                                    \
+            ++failures;                                                                 \
+        }                                                                               \
     } while (0)
 
 int main()
@@ -38,8 +38,7 @@ int main()
     // 64 px: 9 characters.
     const auto split = address_lines("192.168.178.65", 8080, 9);
     CHECK((split == std::vector<std::string>{"192.168.", "178.", "65:8080"}));
-    for (const auto &line : split)
-        CHECK(line.size() <= 9);
+    for (const auto& line : split) CHECK(line.size() <= 9);
 
     auto screen = screen_for(Reason::Storage, "10.0.0.2", 8080, std::nullopt, 18);
     CHECK(screen.word == "DATA" && screen.icon == Icon::Disk && screen.lines.size() == 1 && screen.progress < 0);

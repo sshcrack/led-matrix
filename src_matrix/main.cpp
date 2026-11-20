@@ -1,8 +1,9 @@
-#include "daemon.h"
-#include "recovery/recovery.h"
+#include <shared/common/crash_reporter.h>
 
 #include <filesystem>
-#include <shared/common/crash_reporter.h>
+
+#include "daemon.h"
+#include "recovery/recovery.h"
 #include "spdlog/spdlog.h"
 
 int main(int argc, char *argv[])

@@ -3,7 +3,7 @@
 // The recovery web page (served at / in recovery mode). Self-contained: the
 // normal web UI lives on the data partition's version or may be missing.
 namespace Recovery {
-    inline constexpr const char *page_html = R"HTML(<!doctype html>
+inline constexpr const char* page_html = R"HTML(<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
