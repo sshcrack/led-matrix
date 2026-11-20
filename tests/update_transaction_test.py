@@ -352,6 +352,18 @@ class LauncherTests(Fixture):
         self.assertEqual(self.state()['args'], ['--recovery=storage', '--led-test'])
         self.assertTrue((self.root / 'run/recovery').is_dir())
 
+    def test_recovery_forgets_finished_actions_but_keeps_a_running_one(self):
+        state = self.root / 'run/recovery/state.json'
+        for content, kept in (('{"action": "repair", "state": "done"}', False),
+                              ('{"action": "reset", "state": "running"}', True)):
+            with self.subTest(content=content):
+                state.parent.mkdir(parents=True, exist_ok=True)
+                state.write_text(content)
+                self.start(SCENARIO='overlay-data')
+                self.assertEqual(self.state()['args'], ['--recovery=storage', '--led-test'])
+                self.assertEqual(state.exists(), kept)
+                self.stop()
+
     def test_data_on_the_ram_overlay_starts_recovery(self):
         self.start(SCENARIO='overlay-data')
         self.assertEqual(self.state()['args'], ['--recovery=storage', '--led-test'])

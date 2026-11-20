@@ -172,6 +172,10 @@ recovery() { # <reason> [args...]
     local reason=$1
     shift
     install -d -m 700 -o "$DAEMON_USER" -g "$DAEMON_USER" "$RECOVERY_DIR" 2>/dev/null || mkdir -p "$RECOVERY_DIR"
+    # A finished action from an earlier recovery is not news for this one.
+    if [[ -f $RECOVERY_DIR/state.json ]] && ! grep -q '"state": *"running"' "$RECOVERY_DIR/state.json"; then
+        rm -f "$RECOVERY_DIR/state.json"
+    fi
     say "Starting recovery mode: $reason"
     exec "$FACTORY" --recovery="$reason" "$@"
 }
