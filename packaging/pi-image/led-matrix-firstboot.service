@@ -1,0 +1,21 @@
+[Unit]
+Description=Finish the LED matrix panel card after Raspberry Pi Imager's customisation
+# cloud-init applies Imager's user, Wi-Fi and SSH keys first. cloud-final is
+# ordered after multi-user.target, so this unit must not be part of that
+# target's ordering (DefaultDependencies=no), or the order would be a cycle.
+DefaultDependencies=no
+After=basic.target network-online.target cloud-final.service
+Wants=network-online.target
+Conflicts=shutdown.target
+Before=shutdown.target
+RequiresMountsFor=/srv/led-matrix
+ConditionPathIsReadWrite=/
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/led-matrix-image/firstboot.sh
+TimeoutStartSec=15min
+StandardOutput=journal+console
+
+[Install]
+WantedBy=multi-user.target

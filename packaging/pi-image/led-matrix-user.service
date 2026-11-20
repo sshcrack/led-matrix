@@ -1,0 +1,15 @@
+[Unit]
+Description=Create the LED matrix daemon user (pi) unless Raspberry Pi Imager did
+# cloud-init turns the image's pi account into Imager's user (it renames the
+# uid 1000 account). When that user has another name, pi is created again here.
+After=local-fs.target cloud-init-network.service cloud-init.service
+Before=led-matrix.service
+RequiresMountsFor=/var/lib/led-matrix
+ConditionPathIsReadWrite=/
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/led-matrix-image/ensure_daemon_user.sh
+
+[Install]
+WantedBy=multi-user.target
