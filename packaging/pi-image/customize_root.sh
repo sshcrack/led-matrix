@@ -70,6 +70,11 @@ fi
 
 systemctl disable apt-daily.timer apt-daily-upgrade.timer 2>/dev/null || true
 systemctl disable unattended-upgrades.service 2>/dev/null || true
+# The system partition has a fixed size (the first boot grows the data partition).
+# Raspberry Pi OS's rpi-resize pulls in systemd-growfs-root, which fails on every
+# boot once / is the read-only overlay.
+systemctl disable rpi-resize.service 2>/dev/null || true
+systemctl mask systemd-growfs-root.service
 
 install -m 755 "$here/led-matrix-system-mode" /usr/local/sbin/led-matrix-system-mode
 mkdir -p /etc/systemd/system/systemd-remount-fs.service.d
