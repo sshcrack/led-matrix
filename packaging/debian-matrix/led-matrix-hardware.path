@@ -1,0 +1,10 @@
+[Unit]
+Description=Apply panel hardware settings from the web UI
+
+[Path]
+# The unprivileged daemon writes this (POST /hardware). No MakeDirectory: the
+# directory must stay the daemon's, which creates it on demand.
+PathExists=/var/lib/led-matrix/hardware/request.json
+
+[Install]
+WantedBy=multi-user.target

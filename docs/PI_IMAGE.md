@@ -76,6 +76,11 @@ user, Wi-Fi, SSH key, hostname. cloud-init applies these on the first boot. Then
 
 Its log is `/srv/led-matrix/firstboot.log`.
 
+**Panel layout.** The image starts with one 64×64 panel. Until someone has checked it,
+the web UI (`http://led-matrix.local:8080`) shows "Set up your panel"; the **Panel
+hardware** card on the Integrations page shows a test pattern and changes the layout,
+wiring and advanced `--led-*` options (see [Panel hardware](PANEL_HARDWARE.md)).
+
 **The `pi` account.** The daemon drops its privileges to `pi`. The image keeps Raspberry
 Pi OS's locked `pi` account (uid 1000): Raspberry Pi OS's cloud-init sets up Imager's user
 by renaming that account, so without it no login user and no SSH key would be created.

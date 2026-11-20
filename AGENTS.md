@@ -275,6 +275,10 @@ Optional WS2812B strip behind the display, driven by a Pro Micro (`firmware/halo
 
 Brightness follows the library's refresh rate (bit-plane lit time is hardware-timed), so a slow refresh dims the panel and a single long one flickers. `/diagnostics` → `refresh` (`src_matrix/matrix_control/refresh_monitor.*`, library `GetRefreshTiming()`) has 10 s/60 s windows of refresh rate, median/p99/max, late refreshes and per-CPU interrupts; the Diagnostics page shows them. On the Pi 3 uploads dim the panel through memory/bus contention, and interrupts cannot be kept off CPU 3 (the BCM2836 driver rotates GPU IRQs over all cores). Opt-in `steady_brightness` (`GET/POST /steady_brightness`) calibrates a refresh limit 20 % below the fastest refresh and pads every refresh to it. Measurements: `docs/REFRESH_FLICKER.md`.
 
+## Panel hardware settings
+
+The web UI's Panel hardware card changes the `--led-*` panel options: `POST /hardware` (`src_matrix/server/hardware_routes.cpp`, validation in `src_matrix/hardware/panel_options.cpp`) queues `hardware/request.json`; `led-matrix-hardware.path` runs `scripts/apply_hardware.sh` as root, which validates again (keep both whitelists in sync), rewrites `MATRIX_OPTS`, restarts and restores the old flags when the daemon does not come back. The `panel_test` scene (plugin `PanelSetup`) is the test pattern. Details: `docs/PANEL_HARDWARE.md`.
+
 ## REST route convention
 
 GET only reads; changes are POST (DELETE removes). Read parameters with `Server::request_param()` (query, JSON body or form body). A route that used to change state on GET keeps a GET handler that returns `Server::reply_use_post()` (405, `Allow: POST`). Keep existing paths; new routes are feature-grouped nouns (`/halo`, `/environment`). `tests/route_methods_test.py` checks the migrated routes against the installed daemon.

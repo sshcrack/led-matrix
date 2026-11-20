@@ -1,0 +1,9 @@
+[Unit]
+Description=Apply LED panel hardware settings
+# Not part of led-matrix.service, so restarting it cannot kill this helper.
+
+[Service]
+Type=oneshot
+# LED_MATRIX_API_TOKEN and PORT for the health check.
+EnvironmentFile=-/etc/default/led-matrix
+ExecStart=/usr/lib/led-matrix/apply_hardware.sh

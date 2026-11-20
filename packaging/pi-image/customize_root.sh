@@ -45,6 +45,9 @@ ln -sfn "$DATA/etc/led-matrix.env" /etc/default/led-matrix
 apt-get update
 apt-get install -y --no-install-recommends overlayroot nftables systemd-coredump avahi-daemon jq cloud-guest-utils
 apt-get install -y "$deb"
+# The web UI asks to check the panel layout until someone has (#233).
+install -d -m 755 /var/lib/led-matrix/hardware
+touch /var/lib/led-matrix/hardware/setup-needed
 chown -R pi:pi /var/lib/led-matrix
 chmod 600 "$DATA/etc/led-matrix.env"
 

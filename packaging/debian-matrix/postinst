@@ -158,6 +158,8 @@ if command -v systemctl >/dev/null 2>&1; then
     systemctl start led-matrix-update.path || true
     systemctl enable led-matrix-recovery.path || true
     systemctl start led-matrix-recovery.path || true
+    systemctl enable led-matrix-hardware.path || true
+    systemctl start led-matrix-hardware.path || true
     systemctl restart led-matrix.service || true
 fi
 
