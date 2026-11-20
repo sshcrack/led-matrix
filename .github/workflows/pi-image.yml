@@ -18,6 +18,11 @@ on:
       tag:
         type: string
         required: true
+      package-run-id:
+        description: "Run whose led-matrix-build artifact holds the .deb (create-release: the release is still a draft then)"
+        type: string
+        required: false
+        default: ""
     outputs:
       artifact:
         description: "Name of the uploaded image artifact"
@@ -25,6 +30,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   image:
@@ -43,6 +49,18 @@ jobs:
           sudo apt-get install -y --no-install-recommends qemu-user-static binfmt-support xz-utils fdisk e2fsprogs
           test -e /proc/sys/fs/binfmt_misc/qemu-aarch64
 
+      # create-release keeps the release a draft until the image is attached, and a
+      # read-only token cannot see drafts: it passes the build run, whose artifact
+      # is the same .deb it uploads to the release.
+      - name: Package from the release build
+        if: inputs.package-run-id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: led-matrix-build
+          path: deb-build
+          run-id: ${{ inputs.package-run-id }}
+          github-token: ${{ github.token }}
+
       - name: Release package
         id: meta
         run: |
@@ -50,7 +68,11 @@ jobs:
           [ -n "$tag" ] || tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)
           version=${tag#v}
           mkdir -p deb
-          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "led-matrix-${version}_arm64.deb" --dir deb
+          if [ -n "${{ inputs.package-run-id }}" ]; then
+            cp "deb-build/led-matrix-${version}_arm64.deb" deb/
+          else
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "led-matrix-${version}_arm64.deb" --dir deb
+          fi
           echo "version=$version" >>"$GITHUB_OUTPUT"
           echo "artifact=led-matrix-${version}-arm64-image" >>"$GITHUB_OUTPUT"
 

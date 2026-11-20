@@ -190,6 +190,7 @@ jobs:
     uses: ./.github/workflows/pi-image.yml
     with:
       tag: v${{ needs.prepare.outputs.version }}
+      package-run-id: ${{ needs.prepare.outputs.reuse_run_id || github.run_id }}
 
   publish-image:
     runs-on: ubuntu-latest
