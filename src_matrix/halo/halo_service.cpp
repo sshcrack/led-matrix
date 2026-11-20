@@ -61,17 +61,26 @@ Service& Service::instance()
 void Service::preopen(const std::string& config_file)
 {
     std::string device = Settings{}.device;
+    bool enabled = false;
     try {
         std::ifstream in(config_file);
         if (in) {
             const auto j = nlohmann::json::parse(in, nullptr, false);
-            if (j.is_object() && j.contains("halo") && j["halo"].is_object() && j["halo"].contains("device") &&
-                j["halo"]["device"].is_string())
-                device = j["halo"]["device"].get<std::string>();
+            if (j.is_object() && j.contains("halo") && j["halo"].is_object()) {
+                const auto& halo = j["halo"];
+                if (halo.contains("device") && halo["device"].is_string())
+                    device = halo["device"].get<std::string>();
+                enabled = halo.contains("enabled") && halo["enabled"].is_boolean() && halo["enabled"].get<bool>();
+            }
         }
     }
     catch (...) {
     }
+    // An open UART costs CPU even when nothing is sent: on a 64-row panel GPIO15
+    // (the UART's RX) is the E address line, so the receiver sees a break every
+    // character (~12k interrupts/s on a Pi 3B). Only hold it while the halo is on.
+    if (!enabled)
+        return;
     int error = 0;
     const int fd = open_uart(device, error);
     if (fd < 0) {
@@ -310,6 +319,11 @@ void Service::tick()
             --off_frames_left_;
             ensure_open(s.device);
             send(0, s.led_count, Zones{});
+        }
+        else if (fd_ >= 0) {
+            close_fd();  // see preopen(): an open UART is not free
+            next_open_try_ = {};
+            spdlog::info("Halo: released {}", fd_device_);
         }
         return;
     }

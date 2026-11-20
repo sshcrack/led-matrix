@@ -20,6 +20,9 @@ ExecStart=/usr/lib/led-matrix/launcher run $MATRIX_OPTS
 SyslogIdentifier=led-matrix
 WorkingDirectory=-/var/lib/led-matrix
 Restart=on-failure
+# Kept after the library's privilege drop (it changes uid/gid only), so the
+# daemon can open the halo UART when the halo is switched on while running.
+SupplementaryGroups=dialout
 # Slow enough that a crashing update reaches the launcher's switch-back
 # (3 starts) before systemd's start limit (5 starts in 10 s) gives up.
 RestartSec=3
