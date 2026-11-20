@@ -50,6 +50,10 @@ Repair and reset only exist on the [panel card](PI_IMAGE.md) (`LABEL=LEDDATA` in
   which runs `/usr/lib/led-matrix/recovery_action.sh`. That script accepts
   only those three names and reports progress in `state.json` next to the
   request.
+- Starting the panel again also starts `led-matrix-update.path` and
+  `led-matrix-hardware.path`. They watch directories on the data partition, so
+  systemd fails them at boot when the partition is missing, and nothing else
+  would start them before the next reboot.
 - Install reuses `UpdateManager`: the package is downloaded to the data
   partition and handed to `led-matrix-update.path` when the daemon exits.
 

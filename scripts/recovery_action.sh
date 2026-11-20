@@ -20,6 +20,7 @@ FSTAB=${FSTAB:-/etc/fstab}
 FALLBACK_ENV=${FALLBACK_ENV:-/etc/led-matrix/fallback.env}
 DAEMON_USER=${DAEMON_USER:-pi}
 SERVICE=led-matrix.service
+PATH_UNITS=(led-matrix-update.path led-matrix-hardware.path)
 # Uploads bigger than this stay behind on a reset (they are copied to RAM).
 RESCUE_UPLOADS_MIB=${RESCUE_UPLOADS_MIB:-100}
 LABEL=LEDDATA
@@ -147,6 +148,9 @@ retry() {
     rm -f "$COUNTER"
     systemctl reset-failed "$SERVICE" 2>/dev/null || true
     systemctl restart --no-block "$SERVICE"
+    # These watch directories on the data partition, so they fail at boot when it is
+    # missing and nothing starts them again: updates and panel settings would stay dead.
+    systemctl start --no-block "${PATH_UNITS[@]}" 2>/dev/null || true
 }
 
 main() {
