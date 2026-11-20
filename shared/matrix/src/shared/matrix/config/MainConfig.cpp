@@ -158,6 +158,23 @@ namespace Config {
         this->mark_dirty();
     }
 
+    bool MainConfig::get_steady_brightness()
+    {
+        std::shared_lock lock(this->data_mutex);
+        return this->data.steady_brightness;
+    }
+
+    void MainConfig::set_steady_brightness(bool enabled)
+    {
+        {
+            std::unique_lock lock(this->data_mutex);
+            if (this->data.steady_brightness == enabled)
+                return;
+            this->data.steady_brightness = enabled;
+        }
+        this->mark_dirty();
+    }
+
     std::map<string, string> MainConfig::get_automatic_preferences() {
         std::shared_lock lock(this->data_mutex);
         return this->data.automatic_preferences;

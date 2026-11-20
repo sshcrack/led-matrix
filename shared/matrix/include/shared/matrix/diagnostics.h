@@ -67,6 +67,8 @@ public:
     void cancel_transition_timeline();
     void set_render_placement(nlohmann::json state);
     void set_hardware_state(nlohmann::json state);
+    /// Refresh-thread timing and interrupts per CPU (src_matrix RefreshMonitor).
+    void set_refresh_state(nlohmann::json state);
     [[nodiscard]] std::optional<double> scene_render_p95(const std::string &scene) const;
     [[nodiscard]] std::uint64_t scene_error_count(const std::string &scene) const;
 
@@ -151,6 +153,7 @@ private:
     [[nodiscard]] nlohmann::json frame_streams_json() const;
     nlohmann::json render_placement_state_ = nlohmann::json::object();
     nlohmann::json hardware_state_ = nlohmann::json::object();
+    nlohmann::json refresh_state_ = nlohmann::json::object();
 };
 
 } // namespace Diagnostics

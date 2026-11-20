@@ -12,6 +12,9 @@
 #include "shared/matrix/server/common.h"
 
 namespace rgb_matrix { class RGBMatrixBase; }
+namespace RefreshMonitor {
+class Monitor;
+}
 class PostProcessor;
 class TransitionManager;
 namespace Config { class MainConfig; }
@@ -42,6 +45,8 @@ private:
     uint16_t port_ = 8080;
 
     std::unique_ptr<rgb_matrix::RGBMatrixBase> matrix_;
+    // Declared after matrix_: it reads the matrix, so it is destroyed first.
+    std::unique_ptr<RefreshMonitor::Monitor> refresh_monitor_;
 
     std::unique_ptr<PostProcessor> post_processor_;
     std::unique_ptr<TransitionManager> transition_manager_;

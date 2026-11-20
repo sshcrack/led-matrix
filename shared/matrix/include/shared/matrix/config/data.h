@@ -118,6 +118,9 @@ namespace ConfigData
         UpdateSettings update_settings;
         Environment::Settings environment;
         Halo::Settings halo;
+        /// Pace the LED refresh to a fixed period so the brightness does not
+        /// dip when other work (uploads, SD writes) slows the refresh down.
+        bool steady_brightness = false;
 
         // Custom move assignment operator to handle atomic<bool>
         Root &operator=(Root &&other) noexcept
@@ -140,6 +143,7 @@ namespace ConfigData
                 update_settings = std::move(other.update_settings);
                 environment = std::move(other.environment);
                 halo = std::move(other.halo);
+                steady_brightness = other.steady_brightness;
             }
             return *this;
         }
@@ -161,7 +165,8 @@ namespace ConfigData
               curr(std::move(other.curr)),
               update_settings(std::move(other.update_settings)),
               environment(std::move(other.environment)),
-              halo(std::move(other.halo))
+              halo(std::move(other.halo)),
+              steady_brightness(other.steady_brightness)
         {
         }
 

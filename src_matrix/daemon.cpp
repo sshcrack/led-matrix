@@ -9,6 +9,7 @@
 #include "matrix-factory.h"
 #include "matrix_control/SceneLabRuntime.h"
 #include "matrix_control/hardware.h"
+#include "matrix_control/refresh_monitor.h"
 #include "server/live_frame_ws.h"
 #include "server/request_guard.h"
 #include "server/server.h"
@@ -100,6 +101,40 @@ namespace {
         if (!refresh_cpu_isolated && cpus > refresh_cpu)
             warn("CPU {} is not isolated. Add 'isolcpus={}' to /boot/firmware/cmdline.txt to stop other "
                  "processes from disturbing the LED refresh (visible as flicker)", refresh_cpu, refresh_cpu);
+
+        // Hardware interrupts ignore isolcpus. Where the interrupt controller can
+        // route them (GIC on a Pi 4/5), irqaffinity= keeps them off the refresh
+        // CPU. The Pi 3's BCM2836 controller cannot: it moves the GPU interrupts
+        // to the next core after every interrupt and rejects smp_affinity
+        // writes, so there they keep landing on the refresh CPU.
+        string default_affinity;
+        if (ifstream file("/proc/irq/default_smp_affinity"); file)
+            getline(file, default_affinity);
+        bool irqs_reach_refresh_cpu = false;
+        try {
+            irqs_reach_refresh_cpu = !default_affinity.empty() && (stoul(default_affinity, nullptr, 16) >> refresh_cpu & 1);
+        }
+        catch (...) {
+        }
+        bool rotating_controller = false;
+        if (ifstream file("/proc/interrupts"); file)
+            for (string line; getline(file, line);)
+                if (line.find("ARMCTRL-level") != string::npos) {
+                    rotating_controller = true;
+                    break;
+                }
+        state["irqs_reach_refresh_cpu"] = irqs_reach_refresh_cpu;
+        state["irq_affinity_supported"] = !rotating_controller;
+        if (irqs_reach_refresh_cpu && rotating_controller)
+            info(
+                "Hardware interrupts also run on CPU {}; this interrupt controller (BCM2836) cannot keep them off it. "
+                "Turn on steady brightness if uploads dim the panel",
+                refresh_cpu);
+        else if (irqs_reach_refresh_cpu && cpus > refresh_cpu)
+            warn(
+                "Hardware interrupts can run on the LED refresh CPU {}. Add 'irqaffinity=0-{}' to "
+                "/boot/firmware/cmdline.txt to keep them off it",
+                refresh_cpu, refresh_cpu - 1);
 
         const bool onboard_sound = filesystem::exists("/sys/module/snd_bcm2835");
         state["onboard_sound_loaded"] = onboard_sound;
@@ -240,6 +275,8 @@ Daemon::Daemon(int argc, char* argv[])
         throw runtime_error("Failed to create matrix");
     if (!options.use_emulator)
         protect_refresh_core();
+    // Created after protect_refresh_core(), so its thread stays off the refresh CPU.
+    refresh_monitor_ = make_unique<RefreshMonitor::Monitor>(matrix_.get(), refresh_cpu, options.led_options.limit_refresh_rate_hz);
 
     // -------------------------------------------------------------------
     // 5. Ensure root data directory exists
@@ -270,6 +307,7 @@ Daemon::Daemon(int argc, char* argv[])
     config_ = make_unique<Config::MainConfig>(string(LED_MATRIX_DATA_DIR) + "/config.json", Config::MainConfig::LoadMode::Recover);
     // config_ is destroyed with the Daemon, after shutdown() unloads plugins.
     PluginManager::instance()->attach_host_config(config_.get());
+    refresh_monitor_->attach_config(config_.get());
 
     // -------------------------------------------------------------------
     // 9. Update manager
@@ -442,6 +480,7 @@ void Daemon::shutdown(bool persist_config) noexcept
     }
 
     // UdpServer owns a worker thread; resetting it joins that worker first.
+    refresh_monitor_.reset();
     try { udp_server_.reset(); }
     catch (...) { error("UDP shutdown failed"); }
 

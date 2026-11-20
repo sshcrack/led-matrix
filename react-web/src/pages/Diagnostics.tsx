@@ -5,6 +5,7 @@ import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { toast } from 'sonner'
+import { PanelRefresh, type RefreshState } from '~/components/diagnostics/PanelRefresh'
 
 interface DiagnosticsData {
   uptime_seconds: number
@@ -136,6 +137,7 @@ interface DiagnosticsData {
     reason?: string
   }
   scene_lab?: { active: boolean; scene: string; variant: string; fps: number; missing_inputs: string[] }
+  refresh?: RefreshState
 }
 
 function number(value: number | undefined, digits = 1) {
@@ -254,6 +256,8 @@ export default function Diagnostics() {
         <Metric label="UDP" value={`${number(data.udp.datagrams_per_second)} pkt/s`} detail={`${bytes(data.udp.bytes_per_second)} · ${data.udp.malformed} malformed`} />
         <Metric label="Desktop" value={`${data.desktop_connections} client${data.desktop_connections === 1 ? '' : 's'}`} detail={`${number(data.uptime_seconds / 60, 1)} min uptime`} />
       </section>
+
+      {apiUrl && <PanelRefresh apiUrl={apiUrl} refresh={data.refresh} />}
 
       <section className="grid gap-4 xl:grid-cols-[1.35fr_.65fr]">
         <div className="glass-panel rounded-2xl p-5">

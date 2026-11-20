@@ -104,13 +104,36 @@ constant break: one interrupt per character time, about 12,000 per second at 115
 `CREAD` or setting `IGNBRK` does not stop them, because the driver keeps receive interrupts on while
 the port is open. Measured on ledmat (Pi 3B, 2026-11-20, `digitalrain`): with the port open, the
 daemon used about 105 % CPU instead of 87 %, and about 12 % of frames were late instead of 0.14 %.
-That's why the daemon closes the port while the halo is off. While the halo is on, the cost
-remains.
+That's why the daemon closes the port while the halo is off.
+
+**The receiver is switched off.** The halo only transmits, so at start (still root, before the
+library drops privileges) the daemon clears the receiver-enable bit (bit 0 of `AUX_MU_CNTL_REG`,
+found from `/sys/class/tty/ttyS0/iomem_base`) of the mini UART behind `halo.device`
+(`src_matrix/halo/mini_uart.cpp`). The 8250 driver only rewrites that register in RS485 mode, so
+the receiver stays off until reboot, across closes and reopens, and the transmitter keeps working.
+The daemon leaves PL011 UARTs and kernel consoles alone. Measured on ledmat (2026-11-20,
+`digitalrain`, refresh timing from `/diagnostics` → `refresh`, 60 s windows):
+
+| Halo on | ttyS0 interrupts/s | Refresh rate idle | Median refresh | During a 1 GiB scp |
+|---|---:|---:|---:|---:|
+| Receiver on | 11,968 | 66.7 Hz | 14.99 ms | 57.6 Hz |
+| Receiver off | 60 | 94.7 Hz | 10.57 ms | 83.7 Hz |
+| Halo off (reference) | 0 | 94.8 Hz | 10.56 ms | 84.2 Hz |
+
+With the receiver on, the panel was about 30 % dimmer while the halo was on (brightness follows
+the refresh rate). The TX rate was unchanged (496 vs 480 bytes/s).
+
+Other options checked: the `uart1` overlay cannot move RX off GPIO15 (`rxd1_pin=41` fails because
+GPIO41 belongs to the firmware mailbox, and GPIO33 is the Bluetooth UART's RX), and
+`smp_affinity` cannot keep the interrupt off the refresh core on a Pi 3 (see
+[REFRESH_FLICKER.md](REFRESH_FLICKER.md)). The hardware fix would be to wire the halo to a UART
+whose RX is not a panel line, e.g. a USB serial adapter (`/dev/ttyUSB0`/`ttyACM0`, the Pro Micro's
+own USB port), but with the receiver off there is nothing left to fix.
 
 ## Not verified on hardware
 
 Everything above the wire is unit/integration tested (`ctest -R halo`: protocol, parser
 resync/fuzz, sampling, smoothing, settings, the real sender service writing into a pty). Not yet
 run on the Pi or the Pro Micro: UART electrical levels through the BSS138 converter, the strip
-output timing, current cap against a meter, flicker/timing impact on the matrix refresh, the zone
+output timing, current cap against a meter, the zone
 rotation/direction for the real strip start.

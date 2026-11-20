@@ -10,12 +10,15 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include "halo/halo_service.h"
+#include "halo/mini_uart.h"
 #include "shared/matrix/config/data.h"
 #include "shared/matrix/halo/protocol.h"
 #include "shared/matrix/halo/sampler.h"
@@ -425,6 +428,35 @@ void service_over_pty()
         unlink(path);
     }
 }
+
+// Finding the mini UART's control register from a fake sysfs tty directory.
+void mini_uart()
+{
+    namespace fs = std::filesystem;
+    const fs::path dir = fs::temp_directory_path() / ("halo_mini_uart_" + std::to_string(getpid()));
+    fs::create_directories(dir / "device" / "of_node");
+    auto put = [&](const fs::path& file, const std::string& text) { std::ofstream(dir / file, std::ios::binary) << text; };
+    put("iomem_base", "0x3F215040\n");
+    put("iomem_reg_shift", "2\n");
+    put("console", "N\n");
+    put("device/of_node/compatible", std::string("brcm,bcm2835-aux-uart\0", 22));
+    const auto reg = mini_uart_control_register(dir);
+    check(reg && *reg == 0x3F215060, "mini UART: AUX_MU_CNTL_REG = base + (8 << shift)");
+
+    put("console", "Y\n");
+    check(!mini_uart_control_register(dir), "mini UART: a console keeps its receiver");
+    put("console", "N\n");
+
+    put("device/of_node/compatible", std::string("arm,pl011\0arm,primecell\0", 25));
+    check(!mini_uart_control_register(dir), "mini UART: a PL011 is left alone");
+
+    put("device/of_node/compatible", std::string("brcm,bcm2835-aux-uart\0", 22));
+    put("iomem_base", "garbage\n");
+    check(!mini_uart_control_register(dir), "mini UART: unreadable base");
+
+    check(disable_mini_uart_receiver("/dev/null").empty(), "mini UART: not a ttyS device");
+    fs::remove_all(dir);
+}
 }  // namespace
 
 int main()
@@ -432,6 +464,7 @@ int main()
     protocol();
     sampling();
     settings();
+    mini_uart();
     service_over_pty();
     if (failures) {
         std::cerr << failures << " halo check(s) failed\n";

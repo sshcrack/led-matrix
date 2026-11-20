@@ -338,6 +338,21 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         }
     });
 
+    // Steady brightness: the refresh monitor follows this setting within a
+    // second and reports its state in /diagnostics -> refresh.steady_brightness.
+    router->http_get("/steady_brightness",
+                     [cfg](auto req, auto) { return reply_with_json(req, {{"enabled", cfg->get_steady_brightness()}}); });
+
+    router->http_post("/steady_brightness", [cfg](auto req, auto) {
+        const auto body = json::parse(req->body(), nullptr, false);
+        if (!body.is_object() || !body.contains("enabled") || !body["enabled"].is_boolean())
+            return reply_with_error(req, "Expected {\"enabled\": true|false}");
+        cfg->set_steady_brightness(body["enabled"].template get<bool>());
+        if (!cfg->save())
+            return reply_with_error(req, "Could not persist the steady brightness setting", restinio::status_internal_server_error());
+        return reply_with_json(req, {{"enabled", cfg->get_steady_brightness()}});
+    });
+
     router->http_get("/automatic_director/preferences",
                      [cfg](auto req, auto) { return reply_with_json(req, json(cfg->get_automatic_preferences())); });
 

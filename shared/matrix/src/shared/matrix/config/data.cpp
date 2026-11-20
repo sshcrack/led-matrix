@@ -96,6 +96,7 @@ namespace ConfigData {
                  {"update_settings", p.update_settings},
                  {"environment", p.environment},
                  {"halo", p.halo},
+                 {"steady_brightness", p.steady_brightness},
                  {"turned_off", p.turned_off.load()}};
     }
 
@@ -143,6 +144,8 @@ namespace ConfigData {
             ? j.at("environment").get<Environment::Settings>()
             : Environment::Settings{};
         p.halo = j.contains("halo") ? j.at("halo").get<Halo::Settings>() : Halo::Settings{};
+        p.steady_brightness =
+            j.contains("steady_brightness") && j.at("steady_brightness").is_boolean() && j.at("steady_brightness").get<bool>();
         // First start with the shared environment: a weather_ambience preset
         // with its own (pre-environment) location becomes the manual location.
         if (!j.contains("environment") && j.contains("presets")) {
