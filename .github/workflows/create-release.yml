@@ -156,7 +156,10 @@ jobs:
             exit 1
           fi
 
+          # A draft until publish-release: the updaters, the desktop apps and
+          # releases/latest/download/... only see the release once every asset is there.
           gh release create "$TAG" \
+            --draft \
             --target "$GITHUB_SHA" \
             --title "$TAG" \
             --notes "$CHANGELOG"
@@ -212,3 +215,22 @@ jobs:
           gh release upload "$TAG" "out/$IMG" "out/$IMG.sha256" out/led-matrix-imager.json
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Publishes the draft once the packages and the image are attached. It also
+  # publishes when the image failed, so a broken image never holds back an app
+  # update; the job then fails so the missing image is visible.
+  publish-release:
+    if: always() && needs.create-release.result == 'success'
+    runs-on: ubuntu-latest
+    needs: [prepare, create-release, publish-image]
+    steps:
+      - name: Publish the release
+        run: gh release edit "v${{ needs.prepare.outputs.version }}" --repo "$GITHUB_REPOSITORY" --draft=false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fail when the image is missing
+        if: needs.publish-image.result != 'success'
+        run: |
+          echo "::error::The release is published without the panel image (publish-image: ${{ needs.publish-image.result }}). Rebuild it with pi-image.yml and upload it."
+          exit 1

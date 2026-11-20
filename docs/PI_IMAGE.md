@@ -88,9 +88,10 @@ by renaming that account, so without it no login user and no SSH key would be cr
 When Imager's user has another name, `led-matrix-user.service` creates `pi` again as a
 locked account before the panel service starts. It then hands the panel data to `pi`.
 
-**Releases.** `create-release.yml` builds the image from the release `.deb` (through
-`pi-image.yml`) and uploads `led-matrix-<version>-arm64.img.xz`, its `.sha256` and
-`led-matrix-imager.json`. That last one is a Raspberry Pi Imager repository file written by
+**Releases.** `create-release.yml` creates the release as a draft, builds the image from its
+`.deb` (through `pi-image.yml`), uploads `led-matrix-<version>-arm64.img.xz`, its `.sha256`
+and `led-matrix-imager.json`, and only then publishes the release (`publish-release`; it
+also publishes when the image failed and then fails itself). That last one is a Raspberry Pi Imager repository file written by
 `imager_repo.py`. Its fixed name makes
 `https://github.com/sshcrack/led-matrix/releases/latest/download/led-matrix-imager.json`
 always list the newest image. It sets `init_format: cloudinit-rpi`, so Imager writes
