@@ -76,11 +76,11 @@ user, Wi-Fi, SSH key, hostname. cloud-init applies these on the first boot. Then
 
 Its log is `/srv/led-matrix/firstboot.log`.
 
-**The `pi` account.** The daemon drops its privileges to `pi`. The image ships without
-that account, because cloud-init skips users that already exist, and an Imager user named
-`pi` would then lose its password. Before the panel service starts,
-`led-matrix-user.service` creates `pi` as a locked account if Imager didn't create it. It
-then hands the panel data to `pi`.
+**The `pi` account.** The daemon drops its privileges to `pi`. The image keeps Raspberry
+Pi OS's locked `pi` account (uid 1000): Raspberry Pi OS's cloud-init sets up Imager's user
+by renaming that account, so without it no login user and no SSH key would be created.
+When Imager's user has another name, `led-matrix-user.service` creates `pi` again as a
+locked account before the panel service starts. It then hands the panel data to `pi`.
 
 **Secrets check.** `check_image_secrets.sh` fails when the image contains any of:
 - SSH host or user keys, or other private keys

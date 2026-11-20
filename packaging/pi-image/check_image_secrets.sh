@@ -77,6 +77,8 @@ for f in user-data network-config; do
         fail "credentials in boot/$f"
     fi
 done
+awk -F: '$3 == 1000 { found = 1 } END { exit !found }' "$root/etc/passwd" ||
+    fail "no uid 1000 account (Raspberry Pi OS's cloud-init renames it to Imager's user)"
 [[ -e $root/etc/cloud/cloud-init.disabled ]] && fail "cloud-init is disabled (Imager's settings would be ignored)"
 [[ -d $root/var/lib/cloud/instances ]] && [[ -n $(ls -A "$root/var/lib/cloud/instances") ]] && fail "cloud-init instance data present"
 
