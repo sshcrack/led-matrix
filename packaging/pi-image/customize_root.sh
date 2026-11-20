@@ -22,9 +22,10 @@ chmod 755 /usr/sbin/policy-rc.d
 trap 'rm -f /usr/sbin/policy-rc.d' EXIT
 
 # --- Daemon user (build time only) ---------------------------------------------
-# The package's postinst hands the data to pi. pi is removed again at the end:
-# an existing pi would make cloud-init skip an Imager user of that name (and its
-# password). led-matrix-user.service creates pi on the first boot if needed.
+# The package's postinst hands the data to pi. Raspberry Pi OS ships pi (uid 1000,
+# locked) as a placeholder: its cloud-init renames that account to Imager's user
+# and sets the password and keys, so it must stay. If Imager's user has another
+# name, led-matrix-user.service creates pi again on the first boot.
 if ! id pi >/dev/null 2>&1; then
     useradd --uid 1000 --user-group --no-create-home --home-dir /var/lib/led-matrix --shell /usr/sbin/nologin pi
 fi
@@ -94,7 +95,6 @@ install -m 644 "$here/led-matrix-user.service" /etc/systemd/system/led-matrix-us
 systemctl enable led-matrix-firstboot.service led-matrix-user.service
 
 # --- Nothing machine- or build-specific on the image -------------------------------------
-userdel pi
 apt-get clean
 rm -rf /var/lib/apt/lists/* /var/cache/debconf/*-old /var/lib/dpkg/*-old
 rm -f /etc/ssh/ssh_host_* /var/lib/systemd/random-seed /root/.bash_history

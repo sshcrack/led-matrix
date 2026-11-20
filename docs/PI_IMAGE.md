@@ -81,11 +81,11 @@ the web UI (`http://led-matrix.local:8080`) shows "Set up your panel"; the **Pan
 hardware** card on the Integrations page shows a test pattern and changes the layout,
 wiring and advanced `--led-*` options (see [Panel hardware](PANEL_HARDWARE.md)).
 
-**The `pi` account.** The daemon drops its privileges to `pi`. The image ships without
-that account, because cloud-init skips users that already exist, and an Imager user named
-`pi` would then lose its password. Before the panel service starts,
-`led-matrix-user.service` creates `pi` as a locked account if Imager didn't create it. It
-then hands the panel data to `pi`.
+**The `pi` account.** The daemon drops its privileges to `pi`. The image keeps Raspberry
+Pi OS's locked `pi` account (uid 1000): Raspberry Pi OS's cloud-init sets up Imager's user
+by renaming that account, so without it no login user and no SSH key would be created.
+When Imager's user has another name, `led-matrix-user.service` creates `pi` again as a
+locked account before the panel service starts. It then hands the panel data to `pi`.
 
 **Releases.** `create-release.yml` builds the image from the release `.deb` (through
 `pi-image.yml`) and uploads `led-matrix-<version>-arm64.img.xz`, its `.sha256` and
