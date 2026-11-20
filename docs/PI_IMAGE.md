@@ -87,6 +87,14 @@ that account, because cloud-init skips users that already exist, and an Imager u
 `led-matrix-user.service` creates `pi` as a locked account if Imager didn't create it. It
 then hands the panel data to `pi`.
 
+**Releases.** `create-release.yml` builds the image from the release `.deb` (through
+`pi-image.yml`) and uploads `led-matrix-<version>-arm64.img.xz`, its `.sha256` and
+`led-matrix-imager.json`. That last one is a Raspberry Pi Imager repository file written by
+`imager_repo.py`. Its fixed name makes
+`https://github.com/sshcrack/led-matrix/releases/latest/download/led-matrix-imager.json`
+always list the newest image. It sets `init_format: cloudinit-rpi`, so Imager writes
+its customisation as cloud-init files.
+
 **Secrets check.** `check_image_secrets.sh` fails when the image contains any of:
 - SSH host or user keys, or other private keys
 - password hashes
