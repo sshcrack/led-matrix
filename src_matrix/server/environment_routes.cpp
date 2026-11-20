@@ -56,9 +56,9 @@ std::unique_ptr<Server::router_t> Server::add_environment_routes(std::unique_ptr
         if (sets_coordinate && !settings.has_manual_location())
             return reply_with_error(req, "latitude/longitude must both be valid numbers");
 
-        cfg->set_environment(settings);
+        const bool saved = cfg->set_environment(settings);
         Environment::Service::instance().update_settings(cfg->get_environment());
-        if (!cfg->save())
+        if (!saved)
             return reply_with_error(req, "Could not save the real-world settings", restinio::status_internal_server_error());
         return reply_with_json(req, Environment::Service::instance().status());
     });

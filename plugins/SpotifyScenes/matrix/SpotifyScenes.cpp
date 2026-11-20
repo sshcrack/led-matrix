@@ -66,9 +66,6 @@ std::optional<string> SpotifyScenes::after_server_init() {
     if (!SceneExecution::is_headless_fixture_host())
         spotify->initialize();
     PluginRegistry::set("spotify", spotify);
-
-    if (!SceneExecution::is_headless_fixture_host())
-        host_config()->save();
     return std::nullopt;
 }
 

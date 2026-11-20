@@ -31,8 +31,12 @@ int main()
 
         std::atomic<bool> done{false};
         std::thread saver([&] {
-            for (int i = 0; i < 400; ++i) writer.save();
+            for (int i = 0; i < 400; ++i) writer.flush();
             done = true;
+        });
+        // Setters save too (#203), from other threads at the same time.
+        std::thread setter([&] {
+            for (int i = 0; i < 200; ++i) (void)writer.set_steady_brightness(i % 2 == 0);
         });
 
         int reads = 0, bad_reads = 0;
@@ -50,6 +54,14 @@ int main()
             ++reads;
         }
         saver.join();
+        setter.join();
+        // Saves are serialized and each writes the data as of its turn, so the
+        // file ends with the last change (199 is odd: off).
+        (void)writer.set_automatic_director_mode("chill");
+        if (Config::MainConfig after(path); after.get_steady_brightness() || after.get_automatic_director_mode() != "chill") {
+            std::cerr << "the file does not hold the last change\n";
+            ++failures;
+        }
         if (bad_reads) {
             std::cerr << bad_reads << " of " << reads << " reads saw a partial config\n";
             ++failures;

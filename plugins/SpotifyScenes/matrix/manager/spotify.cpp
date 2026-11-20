@@ -129,8 +129,7 @@ bool Spotify::save_resp_to_config(const std::string &json_resp) {
     spotify_struct.refresh_token = refresh_token;
     spotify_struct.expires_at = expires_in;
 
-    config->set_spotify(spotify_struct);
-    return config->save();
+    return config->set_spotify(spotify_struct);
 }
 
 Spotify::Spotify(Config::MainConfig& host_config, const bool /*allow_missing_credentials*/) : config(&host_config) {}
@@ -166,10 +165,10 @@ bool Spotify::store_login(const std::string& response, const bool pkce) {
     if (!save_resp_to_config(response)) return false;
     auto data = config->get_spotify();
     data.pkce = pkce;
-    if (pkce) data.client_secret.clear(); // no longer needed, don't keep it around
-    config->set_spotify(data);
+    if (pkce)
+        data.client_secret.clear();  // no longer needed, don't keep it around
     needs_reconnect = false;
-    return config->save();
+    return config->set_spotify(data);
 }
 
 bool Spotify::configure(const std::string& id) {
@@ -182,9 +181,8 @@ bool Spotify::configure(const std::string& id) {
         data.refresh_token.reset();
         data.expires_at = 0;
     }
-    config->set_spotify(data);
     needs_reconnect = false;
-    return config->save();
+    return config->set_spotify(data);
 }
 
 Spotify::~Spotify() {

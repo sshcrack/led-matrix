@@ -326,7 +326,6 @@ Daemon::Daemon(int argc, char* argv[])
         // settings since the worker took its copy.
         if (s.detected_latitude && s.detected_longitude)
             cfg->set_environment_detected(*s.detected_latitude, *s.detected_longitude, s.detected_label);
-        cfg->save();
     });
 
     // -------------------------------------------------------------------
@@ -504,7 +503,9 @@ void Daemon::shutdown(bool persist_config) noexcept
     }
 
     if (persist_config && config_) {
-        try { config_->save(); }
+        try {
+            config_->flush();
+        }
         catch (const std::exception &e) { error("Saving config during shutdown failed: {}", e.what()); }
         catch (...) { error("Saving config during shutdown failed"); }
     }

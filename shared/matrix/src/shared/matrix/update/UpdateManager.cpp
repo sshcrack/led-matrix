@@ -266,7 +266,6 @@ namespace Update
 
             auto latest_info = latest_info_opt.value();
             config_->set_last_check_time(GetTimeInMillis());
-            config_->save();
 
             set_latest_version(latest_info.version);
             if (latest_info.version <= Common::Version::getCurrentVersion())
@@ -283,7 +282,6 @@ namespace Update
             }
 
             set_last_check_time(GetTimeInMillis());
-            config_->save();
         }
     }
 
@@ -539,14 +537,14 @@ namespace Update
         pre_restart_callback_ = callback;
     }
 
-    void UpdateManager::set_auto_update_enabled(bool enabled)
+    bool UpdateManager::set_auto_update_enabled(bool enabled)
     {
-        config_->set_auto_update_enabled(enabled);
+        return config_->set_auto_update_enabled(enabled);
     }
 
-    void UpdateManager::set_check_interval_hours(int hours)
+    bool UpdateManager::set_check_interval_hours(int hours)
     {
-        config_->set_update_check_interval_hours(hours);
+        return config_->set_update_check_interval_hours(hours);
     }
 
     bool UpdateManager::is_auto_update_enabled() const

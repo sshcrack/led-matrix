@@ -59,9 +59,10 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
         const std::string mode{qp["mode"]};
         if (mode != "automatic" && mode != "manual")
             return reply_with_error(req, "Mode must be automatic or manual");
-        cfg->set_operation_mode(mode);
-        cfg->save();
+        const bool saved = cfg->set_operation_mode(mode);
         PlaybackControl::restart("operation_mode");
+        if (!saved)
+            return reply_with_error(req, "Could not save the mode", restinio::status_internal_server_error());
         return reply_with_json(req, {{"operation_mode", cfg->get_operation_mode()}});
     });
 
