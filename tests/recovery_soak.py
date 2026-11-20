@@ -679,10 +679,10 @@ class Soak:
         return self.api.request(f"/add_preset?id={name}", body)[1]["id"]
 
     def activate(self, preset_id):
-        self.api.get(f"/set_active?id={preset_id}")
+        self.api.request("/set_active", {"id": preset_id})
 
     def skip(self):
-        self.api.get("/skip")
+        self.api.request("/skip", {})
 
     def active_scene(self):
         return self.api.diag()["renderer"]["active_scene"]

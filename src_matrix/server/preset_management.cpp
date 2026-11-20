@@ -10,13 +10,15 @@ using json = nlohmann::json;
 
 std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<router_t> router, Config::MainConfig* cfg)
 {
-    router->http_get("/set_active", [cfg](auto req, auto) {
-        const auto qp = restinio::parse_query(req->header().query());
-        if (!qp.has("id")) {
+    router->http_get("/set_active", [](auto req, auto) { return reply_use_post(req); });
+    // id: query or JSON body.
+    router->http_post("/set_active", [cfg](auto req, auto) {
+        const auto param = request_param(req, "id");
+        if (!param || param->empty()) {
             return reply_with_error(req, "No Id given");
         }
 
-        const string id{qp["id"]};
+        const string id = *param;
         const auto presets = cfg->get_presets();
         if (presets.find(id) == presets.end()) {
             return reply_with_error(req, "Invalid id");

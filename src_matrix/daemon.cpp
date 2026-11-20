@@ -394,8 +394,7 @@ Daemon::Daemon(int argc, char* argv[])
             auto router = Server::server_handler(Server::registry,
                                                  {post_processor_.get(), transition_manager_.get(), config_.get(), update_manager_});
             if (is_debugging_)
-                router->http_get("/exit_debug", [](auto req, auto)
-                {
+                router->http_post("/exit_debug", [](auto req, auto) {
                     interrupt_received = true;
                     PlaybackControl::restart("debug_exit");
                     return req->create_response().set_body("Sent interrupt.").done();
