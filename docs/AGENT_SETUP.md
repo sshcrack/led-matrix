@@ -21,12 +21,17 @@ Most often you run on the human's **own computer** (their work or desktop PC), t
 - If you run **on the Pi** instead, do everything there, and give the human the desktop app steps to run on their PC.
 - The desktop app exists for **Windows x64 and Linux x86_64** only. On macOS or another architecture, skip it and say so.
 
+There are two ways onto the Pi:
+
+- **The panel image** (recommended for a new card): Raspberry Pi OS Lite with led-matrix preinstalled and a read-only system, so the panel survives being unplugged. The human flashes it with Raspberry Pi Imager; there is nothing to install. Panel settings are changed through the API afterwards.
+- **The package** on a Raspberry Pi OS the human already runs and wants to keep.
+
 | # | Phase | You | The human |
 |:-:|:--|:--|:--|
 | 0 | Starting point | Find out what exists; guide wiring and flashing if needed | Does the physical steps |
 | 1 | Interview | Ask a few questions | Answers |
 | 2 | Preflight | Inspect the Pi | – |
-| 3 | Install | Run commands | Approves `sudo` if needed |
+| 3 | Install | Image: check it finished its first boot. Package: run commands | Approves `sudo` if needed |
 | 4 | Verify and tune | Check service, API, tune flags | **Looks at the physical panels** |
 | 5 | Desktop app and integrations (optional) | Install and connect the desktop app on this machine; configure what they asked for | Looks at the app window; browser steps (Spotify login) |
 | 6 | Starter content | Create presets and schedules | – |
@@ -45,7 +50,7 @@ Most often you run on the human's **own computer** (their work or desktop PC), t
    - Don't write secrets into files in a git repository.
 5. **Confirm before anything destructive or hard to reverse:** `apt purge`, deleting `/var/lib/led-matrix`, changing SSH or network config, rebooting a machine you're connected to. State what you're about to do and wait.
 6. **One change at a time** when tuning. Change a flag, reconfigure, ask what they see, repeat.
-7. **Don't edit `/etc/default/led-matrix` by hand.** It is regenerated from debconf on every upgrade and reconfigure, so your edit will vanish. Use `debconf-set-selections` plus `dpkg-reconfigure` ([how](#changing-settings-later)).
+7. **Don't edit `/etc/default/led-matrix` by hand.** It is regenerated from debconf on every upgrade and reconfigure, so your edit will vanish. Change the panel flags with `POST /hardware`; it validates them, restarts and rolls back by itself if the daemon doesn't come up. Everything else goes through `debconf-set-selections` plus `dpkg-reconfigure` ([how](#changing-settings-later)).
 8. **Never** run the emulator build on the Pi, build from source on the Pi, or open port 8080 to the internet.
 9. Report honestly. If a step failed or was skipped, say so with the error output.
 
@@ -59,7 +64,8 @@ Before the interview, find out how far along the person is. Ask one question: **
 |:--|:--|
 | **Yes, all of it** | Continue with Phase 1. |
 | **Pi has an OS but panels aren't wired yet** | Walk them through wiring (checklist below), wait for them to confirm, then continue. |
-| **I have the parts but nothing is set up** | Walk them through the checklist below (wiring, flashing, first SSH login). They do the physical and imaging steps, you guide and verify. |
+| **I have the parts but nothing is set up** | Walk them through the checklist below (wiring, flashing the panel image, first SSH login). They do the physical and imaging steps, you guide and verify. |
+| **I flashed the LED Matrix image** | Continue with Phase 1, and use the image notes in Phases 2 and 3. |
 | **I have nothing yet** | Help them choose parts (README [shopping list](../README.md#shopping-list)). Offer the **emulator** so they can see the project first: `git clone --recurse-submodules https://github.com/sshcrack/led-matrix.git`, then follow the README's [Development](../README.md#development) steps and run `./scripts/run_web_emulator.sh`. Stop there until the hardware arrives. |
 | **No Pi planned, just curious** | The emulator is the whole setup. Don't try to install the `.deb` anywhere that isn't an arm64 Pi. |
 
@@ -68,10 +74,15 @@ Before the interview, find out how far along the person is. Ask one question: **
 You cannot touch the hardware, so give them these in small batches and wait for a confirmation after each:
 
 1. **Wire it** (everything powered off): adapter or HAT on the Pi header; HUB75 ribbon from the adapter to panel 1's *input*; panel 1's *output* to panel 2's *input* for chained panels; a second adapter output for a parallel chain; the 5 V supply to **every** panel's power connector; the Pi on its own supply. Details: README [Assemble and wire](../README.md#assemble-and-wire) and the upstream [wiring guide](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/wiring.md).
-2. **Flash the SD card** with Raspberry Pi Imager: *Raspberry Pi OS Lite (64-bit)*; customisation: username **`pi`**, a password, Wi-Fi (if no Ethernet), **SSH enabled**, optional hostname.
-3. **First boot**: they insert the card and power on, then wait about two minutes.
-4. **Find the Pi**: try `ssh pi@<hostname>.local`; otherwise they look up the IP in their router's device list. If they can't reach it, ask what the Pi's activity LED does and whether Wi-Fi credentials were entered correctly. Don't change their network settings.
-5. **First login**: have them run `ssh pi@<host>` (they enter the password, you never see it), then continue with Phase 1. If you operate over SSH yourself, ask them to set up key-based login (`ssh-copy-id pi@<host>`), or ask them to run the privileged commands.
+2. **Flash the panel image** (microSD card of 8 GB or more; it is erased) with [Raspberry Pi Imager](https://www.raspberrypi.com/software/) 2 or newer:
+   - **App Options → Content Repository → Use custom URL**: `https://github.com/sshcrack/led-matrix/releases/latest/download/led-matrix-imager.json` (or start it with `rpi-imager --repo <that URL>`).
+   - Choose the Pi model, then **LED Matrix** as the operating system, then the card.
+   - Customisation: hostname **`led-matrix`**, username **`pi`** (another name works too; the image keeps its own `pi` account for the daemon), a password, Wi-Fi (if no Ethernet), and **SSH**. For SSH with public-key authentication, give them your machine's public key (`~/.ssh/id_ed25519.pub` or similar) to paste, so you can log in without their password.
+3. **First boot**: they insert the card and power on. It takes a few minutes: the first boot grows the data partition, removes Imager's settings (including the Wi-Fi password) from the boot partition and restarts once into the read-only system.
+4. **Find the Pi**: try `ssh pi@led-matrix.local`; otherwise they look up the IP in their router's device list. If they can't reach it, ask what the Pi's activity LED does and whether Wi-Fi credentials were entered correctly. Don't change their network settings.
+5. **First login**: `ssh pi@led-matrix.local true`. If they set a password instead of a key, have them run `ssh-copy-id pi@led-matrix.local` themselves (they enter the password, you never see it), then continue with Phase 1.
+
+If they want to keep an existing Raspberry Pi OS instead, it must be **Raspberry Pi OS Lite (64-bit)** with a user called `pi`; then use the package (Phase 3).
 
 Don't skip ahead: the display can't be verified until the wiring and power are right, and an undetected wiring fault looks like a software bug.
 
@@ -85,7 +96,7 @@ Ask these as **one short batch** (or two) rather than one question per message. 
 
 | # | Question | Notes and mapping |
 |:-:|:--|:--|
-| A1 | **How do I reach the Pi over SSH?** Hostname or IP, user (normally `pi`) and port. | Assume you SSH in from this machine (see [Where you are running](#where-you-are-running-the-usual-setup)); only if you're already on the Pi, skip this. You need `sudo` there. The installer expects a user called **`pi`** to exist. Test with `ssh -o BatchMode=yes pi@<host> true`; if that fails, ask them to run `ssh-copy-id pi@<host>`. |
+| A1 | **How do I reach the Pi over SSH?** Hostname or IP (the image's is `led-matrix.local`), user (normally `pi`) and port. | Assume you SSH in from this machine (see [Where you are running](#where-you-are-running-the-usual-setup)); only if you're already on the Pi, skip this. The package needs `sudo`; the image needs it only for OS changes. The installer expects a user called **`pi`** to exist. Test with `ssh -o BatchMode=yes pi@<host> true`; if that fails, ask them to run `ssh-copy-id pi@<host>`. |
 | A2 | **Which panels do you have?** Size of each (e.g. 64×64, 64×32, 32×32) and how many? | → `rows` × `cols` of one panel. Ask for the product name or a photo/link if unsure. |
 | A3 | **How are they arranged?** Rows and columns of panels, and how they're cabled | → `chain` (panels in series on one cable) and `parallel` (separate cables from the adapter). See the [layout table](#layout-cheat-sheet). |
 | A4 | **Which adapter or HAT** connects the Pi to the panels? | Plain adapter (e.g. Electrodragon Active-3, hzeller's adapters) → default GPIO mapping. **Adafruit HAT/Bonnet** → `--led-gpio-mapping=adafruit-hat`. |
@@ -101,6 +112,8 @@ Ask these as **one short batch** (or two) rather than one question per message. 
 | B4 | Should I install the **desktop app on this computer**? (Music reactivity from what this PC plays, GPU shader scenes, music videos, and taking over heavy scenes from the Pi. It runs in the tray and updates itself.) Recommend **yes** when this is a Windows or Linux PC that is often on. Follow-ups if yes: start it with the computer? Video scenes too (needs `yt-dlp` and `ffmpeg`)? | See [Desktop app](#desktop-app-on-this-machine). On another machine, give them the steps instead. |
 | B5 | Any **schedule** in mind (e.g. calm scenes in the evening, dim at night)? | See [Phase 6](#phase-6-starter-content). |
 | B6 | If this is a **re-install or upgrade**: keep the existing presets and settings? | Default: yes. Don't purge. |
+
+With the panel image you can skip A5 and the B questions about Spotify, the token and updates until Phase 5: the image starts with automatic updates on, no token and no Spotify.
 
 ### Layout cheat sheet
 
@@ -128,7 +141,18 @@ If the person isn't sure which panels are on which chain, start with `chain` = t
 
 ## Phase 2: Preflight
 
-Run these on the Pi (via SSH) and check each result.
+**Panel image:** run only these, then go to [Phase 3 with the image](#phase-3-install):
+
+```bash
+tr -d '\0' < /proc/device-tree/model; echo     # Pi model (Pi 3 or 4; the Pi 5 is untested)
+/usr/local/sbin/led-matrix-system-mode status  # now: read-only; data: /dev/mmcblk0p3 rw
+systemctl is-active led-matrix                 # active
+curl -fsS localhost:8080/hardware | jq '{supported, setup_needed, running}'
+```
+
+`sudo` asks for the password set in Imager (unlike a stock Pi, there is no passwordless `sudo`). Most of the setup needs no root: panel settings, presets, schedules and Spotify all go through the API. If you need root, have the human run the command or use your private-secret mechanism for the password.
+
+**Package on an existing OS:** run these on the Pi (via SSH) and check each result.
 
 ```bash
 uname -m                                   # must be aarch64 (arm64). If armv7l/armhf: STOP, a 64-bit OS is required.
@@ -160,7 +184,18 @@ A reboot is needed for this to take effect. Tell the human, and do it at the end
 
 ## Phase 3: Install
 
-Use the package directly with pre-seeded answers. This is fully non-interactive and doesn't need a terminal.
+**Panel image: nothing to install.** Check that the first boot finished: `cat /srv/led-matrix/firstboot.log` ends with `first boot finished`, and `led-matrix-system-mode status` says `read-only`. The sound and audio settings below are already done. The image's notes:
+
+| Thing | Where |
+|:--|:--|
+| Starting panel flags | Package defaults: `rows=64 cols=64 chain=2 parallel=2`, GPIO slowdown 3 (four 64×64 panels in a 2×2 grid on a Pi 3). Fix them in Phase 4. |
+| Settings, presets, uploads | `/var/lib/led-matrix` on the writable data partition (`/srv/led-matrix`); everything else is read-only and resets on reboot |
+| App updates | Built-in updater, as with the package (automatic, every 24 h) |
+| OS changes (`apt`, `dpkg-reconfigure`, editing `/etc`) | Only after `sudo led-matrix-system-mode writable` (reboots); then `sudo led-matrix-system-mode readonly` (reboots back). Ask the human before either reboot. |
+
+Then continue with [Phase 4](#phase-4-verify-and-tune).
+
+**Package:** use it directly with pre-seeded answers. This is fully non-interactive and doesn't need a terminal.
 
 ### 3.1 Pre-seed the configuration
 
@@ -239,7 +274,18 @@ If the service is not active, read the full log (`journalctl -u led-matrix -n 20
 
 ### 4.2 Visual check (the human looks)
 
-Create a test preset with the `clock` scene. Digits make mirroring, rotation and panel order obvious.
+Show the **test pattern** (scene `panel_test`, the same as the web UI's *Show test pattern* switch on Integrations → Panel hardware). It runs as a Scene Lab session for 45 seconds after the last heartbeat:
+
+```bash
+SID=$(curl -fsS -X POST localhost:8080/scene_lab/start -H 'Content-Type: application/json' -d '{"scene":"panel_test","fps":10}' | jq .session_id)
+# keep it on while the human looks (repeat every ~15 s), then stop it:
+curl -fsS -X POST localhost:8080/scene_lab/heartbeat -H 'Content-Type: application/json' -d "{\"session_id\":$SID}"
+curl -fsS -X POST localhost:8080/scene_lab/stop -H 'Content-Type: application/json' -d "{\"session_id\":$SID}"
+```
+
+Ask: **"Is the red corner top left, green top right, blue bottom left and yellow bottom right? Does the white arrow point up, and does a white frame run round the whole picture? Is the magenta diagonal straight, and does the cyan line sweep from left to right across all panels?"** Use the answers in the tree below ([what each part means](PANEL_HARDWARE.md#test-pattern)). The human can also do this check alone in the web UI, which has a **Looks right** button.
+
+Older installs without the `panel_test` scene (Scene Lab answers with an error) use a test preset with the `clock` scene instead. Digits make mirroring, rotation and panel order obvious:
 
 ```bash
 curl -fsS -X POST "localhost:8080/add_preset?id=setup-test" -H 'Content-Type: application/json' -d '{
@@ -254,23 +300,37 @@ Then ask: **"What do you see on the panels? Is the clock readable, upright, comp
 
 ### 4.3 Tuning decision tree
 
-Apply **one** change, [reconfigure](#changing-settings-later), and ask again.
+Apply **one** change with [`POST /hardware`](#changing-settings-later) (the option name is first, the flag it writes in brackets), and ask again.
 
 | What they see | Likely cause | Change |
 |:--|:--|:--|
-| Everything dark, service healthy | Panel init or power | Check 5 V power and ribbon cable direction. Then add `--led-panel-type=FM6126A` to `extra-opts`. |
-| Flicker, noise or shimmering | GPIO timing | Raise `led-slowdown-gpio` by 1 (up to 4). Confirm the sound-disable step. |
-| Colours swapped (red↔green etc.) | RGB order | `--led-rgb-sequence=RBG` (then `BGR`, `GRB`, `GBR`, `BRG`). |
-| Scrambled, striped or half the rows | Multiplexing | `--led-multiplexing=N` (try 1–8, up to 24), then `--led-row-addr-type=N` (1–5). |
-| Clock split or in pieces, wrong order | `chain` and `parallel` wrong, or panels cabled differently | Re-check A3. Swap `chain` and `parallel`, or try `--led-pixel-mapper="U-mapper"`. |
-| Upside down or rotated | Mounting | `--led-pixel-mapper="Rotate:180"` (or `90`, `270`). |
-| Only part of the display used | Wrong `rows`, `cols`, `chain` or `parallel` | Recompute from the [cheat sheet](#layout-cheat-sheet). |
-| Too bright or hot | Power | `--led-brightness=50`. |
-| Looks right but flickers on camera | PWM refresh | `--led-pwm-bits=9` or `--led-limit-refresh=120`. |
+| Everything dark, service healthy | Panel init or power | Check 5 V power and ribbon cable direction. Then `panel_type` `FM6126A` (`--led-panel-type`), then `FM6127`. |
+| Flicker, noise or shimmering | GPIO timing | Raise `slowdown` by 1 (`--led-slowdown-gpio`, up to 4). On a package install, confirm the sound-disable step. |
+| Colours swapped (red↔green etc.) | RGB order | `rgb_sequence` `RBG` (then `BGR`, `GRB`, `GBR`, `BRG`). |
+| Scrambled, striped, broken diagonal or half the rows | Multiplexing | `multiplexing` N (try 1–8, up to 24), then `row_addr_type` N (1–5). |
+| Picture split or in pieces, cyan line jumps between panels | `chain` and `parallel` wrong, or panels cabled differently | Re-check A3. Swap `chain` and `parallel`, or `pixel_mapper` `U-mapper`. |
+| Upside down or rotated | Mounting | `pixel_mapper` `Rotate:180` (or `Rotate:90`, `Rotate:270`). |
+| Mirrored (red top right) | Mounting or cabling | `pixel_mapper` `Mirror:H` (or `Mirror:V`). |
+| Frame cut off, only part of the display used | Wrong `rows`, `cols`, `chain` or `parallel` | Recompute from the [cheat sheet](#layout-cheat-sheet). |
+| Adafruit HAT or Bonnet, garbled | Wiring | `gpio_mapping` `adafruit-hat` (`adafruit-hat-pwm` with the PWM mod). |
+| Too bright or hot | Power | A [brightness schedule](#phase-6-starter-content) with a lower `day_brightness` (Schedules page or `POST /brightness_schedule`). |
+| Looks right but flickers on camera | PWM refresh | `pwm_bits` 9. |
 
 Flags are the upstream [rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) options. Consult its README for anything exotic.
 
 ### Changing settings later
+
+**Panel flags** (both install routes): `POST /hardware` with every option. Read the running ones, change one, send them back:
+
+```bash
+NEW=$(curl -fsS localhost:8080/hardware | jq -c '{options: (.running | .slowdown = 4)}')
+curl -fsS -X POST localhost:8080/hardware -H 'Content-Type: application/json' -d "$NEW"   # {"restart":true,...}
+sleep 10; curl -fsS localhost:8080/hardware | jq '{pending, result, running}'               # repeat until pending is false
+```
+
+The options are `rows`, `cols`, `chain`, `parallel`, `slowdown`, `gpio_mapping`, `pixel_mapper`, `multiplexing`, `row_addr_type`, `panel_type`, `pwm_bits`, `pwm_lsb_nanoseconds`, `pwm_dither_bits` and `rgb_sequence`. An invalid value answers `400` with the reason. The daemon restarts with the new flags; `result.state` is `applied`, or `failed` when it did not come up again and the old flags were put back by themselves. Sending the options it already runs with restarts nothing and confirms the layout (it clears `setup_needed` and the web UI's "Set up your panel" banner): do that once the human says the picture is right. If `supported` is `false`, `unsupported_reason` says why (the emulator, or a package that only ever got app updates; installing the current `.deb` once fixes that).
+
+**Other flags, Spotify credentials, the token, updates** (package installs; on the panel image only in writable mode, see [Phase 3](#phase-3-install)):
 
 ```bash
 # 1. Update the stored answers (examples)
@@ -445,6 +505,7 @@ Display:        128×128 (4 × 64×64 panels, rows=64 cols=64 chain=2 parallel=2
 Flags:          --led-slowdown-gpio=3 (+ any extras)
 Web UI:         http://<pi-ip>:8080/   (token: set / not set)
 Mode:           Automatic (Director picks scenes)
+Install:        panel image (read-only system) / package on Raspberry Pi OS
 Service:        led-matrix.service, enabled at boot
 Updates:        automatic every 24 h, with rollback
 Desktop app:    <installed on this PC & connected, starts with the computer: yes/no / skipped>
@@ -453,8 +514,10 @@ Presets/schedules created: <list>
 
 Useful commands:
   journalctl -u led-matrix -f
-  sudo dpkg-reconfigure led-matrix      # change panel layout, Spotify, token, updates
-  sudo apt remove led-matrix            # uninstall (keeps your data)
+  Panel settings: Integrations → Panel hardware (or POST /hardware)
+  sudo dpkg-reconfigure led-matrix      # package: Spotify, token, updates
+  sudo apt remove led-matrix            # package: uninstall (keeps your data)
+  sudo led-matrix-system-mode writable  # image: before OS changes (reboots; `readonly` afterwards)
 
 Not verified by me: anything you must see with your own eyes. Tell me if colours/orientation look off.
 ```
@@ -498,10 +561,12 @@ cat /var/log/led-matrix-update.log          # updater log
 
 ### API quick reference
 
-`GET /status` · `GET /list_presets` · `POST /set_active?id=` · `POST /operation_mode?mode=automatic|manual` · `POST /set_enabled?enabled=true|false` · `POST /skip` · `GET /list_scenes` · `POST /add_preset[?id=]` · `POST /ambiance_packs?id=` · `POST /schedule` · `POST /scheduling_status` · `POST /brightness_schedule` · `GET /diagnostics`.
+`GET /status` · `GET/POST /hardware` · `POST /scene_lab/start|heartbeat|stop` · `GET /list_presets` · `POST /set_active?id=` · `POST /operation_mode?mode=automatic|manual` · `POST /set_enabled?enabled=true|false` · `POST /skip` · `GET /list_scenes` · `POST /add_preset[?id=]` · `POST /ambiance_packs?id=` · `POST /schedule` · `POST /scheduling_status` · `POST /brightness_schedule` · `GET /diagnostics`.
 The full table is in the [README](../README.md#rest-api).
 
 ### Upgrade, rollback, uninstall
+
+On the **panel image**, app updates come through the built-in updater only, and reflashing the card is the way back to a clean state (it erases the settings and presets; confirm with the human first). The commands below are for package installs.
 
 ```bash
 # Upgrade (keeps config): repeat 3.2 with the new release. Presets and settings are preserved.

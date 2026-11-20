@@ -61,9 +61,9 @@ The image and its checksum are also on the [Releases](https://github.com/sshcrac
 
 Open **`http://led-matrix.local:8080/`** on a phone or computer on the same network (or `http://<pi-ip-address>:8080/`; your router shows the address). On a phone, use *Add to Home Screen* to install it like an app.
 
-The page asks you to **set up your panel**: the image starts with settings for one 64×64 panel. On the **Panel hardware** card:
-1. Switch on **Show test pattern**.
-2. Choose your layout under **Change panel settings**. Four 64×64 panels in a 2×2 grid are *Four panels, 2 chains of 2*. Use GPIO slowdown `3` for a Pi 3 and `2` for a Pi 4.
+The page asks you to **set up your panel**. The image starts with settings for four 64×64 panels in a 2×2 grid (two chains of two, 128×128 pixels) on a Pi 3. On the **Panel hardware** card:
+1. Switch on **Show test pattern**. If the picture is already right, press **Looks right** and you are done.
+2. Otherwise choose your layout under **Change panel settings**. Use GPIO slowdown `3` for a Pi 3 and `2` for a Pi 4.
 3. Apply. The panel restarts with the new settings, and goes back to the old ones by itself if it does not come up.
 
 The settings are right when the red corner is top left, the arrow points up and the white frame runs round the whole picture. Other layouts are in [Working out the numbers](#working-out-the-numbers).
@@ -126,7 +126,7 @@ Then open **`http://<pi-ip-address>:8080/`** (the installer prints the address) 
 
 ### Set up with an AI agent
 
-Coding agents (Claude Code, Codex, Cursor, …) can do the whole setup for you, including the interview about your panels. Run the agent on the computer where you want the [desktop app](#desktop-app) (Windows or Linux) and make sure you can `ssh` into the Pi from it. The agent sets up the Pi over SSH, then installs the desktop app on that computer and connects it to the Pi. Paste:
+Coding agents (Claude Code, Codex, Cursor, …) can do the whole setup for you, including the interview about your panels. Run the agent on the computer where you want the [desktop app](#desktop-app) (Windows or Linux). If the card isn't flashed yet, it walks you through flashing the panel image with SSH enabled; otherwise make sure you can `ssh` into the Pi from that computer. The agent sets up the Pi over SSH, then installs the desktop app on that computer and connects it to the Pi. Paste:
 
 ```text
 Set up my LED matrix. Read and follow

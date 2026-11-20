@@ -76,7 +76,8 @@ user, Wi-Fi, SSH key, hostname. cloud-init applies these on the first boot. Then
 
 Its log is `/srv/led-matrix/firstboot.log`.
 
-**Panel layout.** The image starts with one 64×64 panel. Until someone has checked it,
+**Panel layout.** The image starts with the package defaults: four 64×64 panels in a 2×2
+grid (`--led-chain=2 --led-parallel=2`) and GPIO slowdown 3. Until someone has checked it,
 the web UI (`http://led-matrix.local:8080`) shows "Set up your panel"; the **Panel
 hardware** card on the Integrations page shows a test pattern and changes the layout,
 wiring and advanced `--led-*` options (see [Panel hardware](PANEL_HARDWARE.md)).
