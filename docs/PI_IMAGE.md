@@ -131,6 +131,8 @@ with `apt-get download mtools && dpkg -x mtools_*.deb ~/.local/opt/mtools` and
 pass `MTOOLS_DIR=~/.local/opt/mtools`. Use a high-endurance card (e.g. SanDisk
 High Endurance, Samsung PRO Endurance): cheap cards are the usual cause of
 corruption after power cuts.
+Power-cut test results (simulated cuts during playback, saves, uploads, updates
+and boot): `docs/POWER_CUT_TEST.md`.
 
 First boot takes about 5–10 minutes: cloud-init creates the `pi` user, joins
 Wi-Fi and runs `provision.sh`, which installs the package, moves the settings
