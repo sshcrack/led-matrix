@@ -866,6 +866,12 @@ if(ENABLE_EMULATOR)
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/recovery_action_test.py
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/recovery_action.sh)
         set_tests_properties(recovery_action_test PROPERTIES TIMEOUT 60)
+        # GET only reads (#140): runs the installed daemon, so install first;
+        # skipped (77) without an install tree. Serial: it owns the install
+        # tree's config.json.
+        add_test(NAME route_methods_test COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/route_methods_test.py --install ${CMAKE_INSTALL_PREFIX})
+        set_tests_properties(route_methods_test PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
     endif()
     add_executable(video_scene_switch_integration tests/video_scene_switch_integration.cpp)
     target_compile_features(video_scene_switch_integration PRIVATE cxx_std_23)

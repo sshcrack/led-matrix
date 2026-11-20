@@ -10,21 +10,22 @@ using json = nlohmann::json;
 
 std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<router_t> router, Config::MainConfig* cfg)
 {
-    router->http_get("/set_active", [cfg](auto req, auto) {
-        const auto qp = restinio::parse_query(req->header().query());
-        if (!qp.has("id")) {
+    router->http_get("/set_active", [](auto req, auto) { return reply_use_post(req); });
+    // id: query or JSON body.
+    router->http_post("/set_active", [cfg](auto req, auto) {
+        const auto param = request_param(req, "id");
+        if (!param || param->empty()) {
             return reply_with_error(req, "No Id given");
         }
 
-        const string id{qp["id"]};
+        const string id = *param;
         const auto presets = cfg->get_presets();
         if (presets.find(id) == presets.end()) {
             return reply_with_error(req, "Invalid id");
         }
 
-        cfg->set_curr(id);
-        cfg->set_operation_mode("manual");
-        cfg->save();
+        if (!cfg->play_preset(id))
+            return reply_with_error(req, "Could not save the active preset", restinio::status_internal_server_error());
         PlaybackControl::reload_preset(id);
         return reply_success(req);
     });
@@ -65,9 +66,8 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
             do {
                 id = uuid::generate_uuid_v4();
             } while (cfg->get_presets().contains(id));
-            cfg->set_presets(id, preset);
-            if (!cfg->save()) {
-                cfg->delete_preset(id);
+            if (!cfg->set_presets(id, preset)) {
+                (void)cfg->delete_preset(id);
                 return reply_with_error(req, "Could not save the preset", restinio::status_internal_server_error());
             }
             return reply_with_json(req, {{"id", id}, {"display_name", preset->display_name}});
@@ -112,8 +112,8 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
                 pr->display_name = j.value("display_name", id);
             }
 
-            cfg->set_presets(id, pr);
-            cfg->save();
+            if (!cfg->set_presets(id, pr))
+                return reply_with_error(req, "Could not save the preset", restinio::status_internal_server_error());
             // Only the preset on screen needs a restart; other edits are just saved.
             if (id == cfg->get_curr_id())
                 PlaybackControl::reload_preset(id);
@@ -158,8 +158,8 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
                 }
             }
 
-            cfg->set_presets(id, pr);
-            cfg->save();
+            if (!cfg->set_presets(id, pr))
+                return reply_with_error(req, "Could not save the preset", restinio::status_internal_server_error());
             // Only the preset on screen needs a restart; other edits are just saved.
             if (id == cfg->get_curr_id())
                 PlaybackControl::reload_preset(id);
@@ -203,11 +203,14 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
             return reply_with_error(req, "display_name empty");
         }
 
-        if (!cfg->set_preset_display_name(id, display_name)) {
-            return reply_with_error(req, "Preset not found");
+        switch (cfg->set_preset_display_name(id, display_name)) {
+            case Config::Change::NotFound:
+                return reply_with_error(req, "Preset not found");
+            case Config::Change::SaveFailed:
+                return reply_with_error(req, "Could not save the preset", restinio::status_internal_server_error());
+            case Config::Change::Saved:
+                break;
         }
-
-        cfg->save();
         return reply_with_json(req, {
             {"success", "Preset display name updated"},
             {"id", id},
@@ -227,7 +230,9 @@ std::unique_ptr<Server::router_t> Server::add_preset_routes(std::unique_ptr<rout
             return reply_with_error(req, "Can not delete current preset");
         }
 
-        cfg->delete_preset(id);
+        // Deleting a preset that is already gone succeeds, as before.
+        if (cfg->delete_preset(id) == Config::Change::SaveFailed)
+            return reply_with_error(req, "Could not save the deletion", restinio::status_internal_server_error());
         return reply_with_json(req, {{"success", "Preset has been deleted"}});
     });
 

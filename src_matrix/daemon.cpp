@@ -326,7 +326,6 @@ Daemon::Daemon(int argc, char* argv[])
         // settings since the worker took its copy.
         if (s.detected_latitude && s.detected_longitude)
             cfg->set_environment_detected(*s.detected_latitude, *s.detected_longitude, s.detected_label);
-        cfg->save();
     });
 
     // -------------------------------------------------------------------
@@ -395,8 +394,7 @@ Daemon::Daemon(int argc, char* argv[])
             auto router = Server::server_handler(Server::registry,
                                                  {post_processor_.get(), transition_manager_.get(), config_.get(), update_manager_});
             if (is_debugging_)
-                router->http_get("/exit_debug", [](auto req, auto)
-                {
+                router->http_post("/exit_debug", [](auto req, auto) {
                     interrupt_received = true;
                     PlaybackControl::restart("debug_exit");
                     return req->create_response().set_body("Sent interrupt.").done();
@@ -504,7 +502,9 @@ void Daemon::shutdown(bool persist_config) noexcept
     }
 
     if (persist_config && config_) {
-        try { config_->save(); }
+        try {
+            config_->flush();
+        }
         catch (const std::exception &e) { error("Saving config during shutdown failed: {}", e.what()); }
         catch (...) { error("Saving config during shutdown failed"); }
     }

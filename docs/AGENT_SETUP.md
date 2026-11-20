@@ -245,12 +245,12 @@ Create a test preset with the `clock` scene. Digits make mirroring, rotation and
 curl -fsS -X POST "localhost:8080/add_preset?id=setup-test" -H 'Content-Type: application/json' -d '{
   "display_name":"Setup test","transition_duration":0,"transition_name":"blend",
   "scenes":[{"type":"clock","arguments":{"duration":600000}}]}'
-curl -fsS "localhost:8080/operation_mode?mode=manual"
-curl -fsS "localhost:8080/set_active?id=setup-test"
-curl -fsS "localhost:8080/set_enabled?enabled=true"
+curl -fsS -X POST "localhost:8080/operation_mode?mode=manual"
+curl -fsS -X POST "localhost:8080/set_active?id=setup-test"
+curl -fsS -X POST "localhost:8080/set_enabled?enabled=true"
 ```
 
-Then ask: **"What do you see on the panels? Is the clock readable, upright, complete and the right colours?"** Use their answer in the tree below. Afterwards switch back with `operation_mode?mode=automatic` and delete the test preset (play a different preset first; the active one can't be deleted).
+Then ask: **"What do you see on the panels? Is the clock readable, upright, complete and the right colours?"** Use their answer in the tree below. Afterwards switch back with `curl -fsS -X POST "localhost:8080/operation_mode?mode=automatic"` and delete the test preset (play a different preset first; the active one can't be deleted).
 
 ### 4.3 Tuning decision tree
 
@@ -430,7 +430,7 @@ curl -fsS -X POST localhost:8080/brightness_schedule -d '{"enabled":true,"day_br
 
 **How scheduling behaves (tell the person before enabling it):** while *Auto Scheduling* is on, the schedule in force **overrides Automatic Mode**, and outside every schedule window the display **turns off**. If they only want dimming at night, use the brightness schedule and leave Auto Scheduling off. If they want scheduled presets, make the windows cover every hour they want lit. Check the result with `curl -s localhost:8080/status` (`turned_off`, `current`).
 
-Finish by setting the mode the person prefers: `curl -fsS "localhost:8080/operation_mode?mode=automatic"` (the Director picks scenes) or `mode=manual` (their presets play).
+Finish by setting the mode the person prefers: `curl -fsS -X POST "localhost:8080/operation_mode?mode=automatic"` (the Director picks scenes) or `mode=manual` (their presets play).
 
 ---
 
@@ -498,7 +498,7 @@ cat /var/log/led-matrix-update.log          # updater log
 
 ### API quick reference
 
-`GET /status` · `GET /list_presets` · `GET /set_active?id=` · `GET /operation_mode?mode=automatic|manual` · `GET /set_enabled?enabled=true|false` · `GET /skip` · `GET /list_scenes` · `POST /add_preset[?id=]` · `POST /ambiance_packs?id=` · `POST /schedule` · `POST /scheduling_status` · `POST /brightness_schedule` · `GET /diagnostics`.
+`GET /status` · `GET /list_presets` · `POST /set_active?id=` · `POST /operation_mode?mode=automatic|manual` · `POST /set_enabled?enabled=true|false` · `POST /skip` · `GET /list_scenes` · `POST /add_preset[?id=]` · `POST /ambiance_packs?id=` · `POST /schedule` · `POST /scheduling_status` · `POST /brightness_schedule` · `GET /diagnostics`.
 The full table is in the [README](../README.md#rest-api).
 
 ### Upgrade, rollback, uninstall

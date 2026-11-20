@@ -104,8 +104,8 @@ namespace Update
         void set_pre_restart_callback(std::function<void()> callback);
 
         // Configuration methods
-        void set_auto_update_enabled(bool enabled);
-        void set_check_interval_hours(int hours);
+        bool set_auto_update_enabled(bool enabled);
+        bool set_check_interval_hours(int hours);
         bool is_auto_update_enabled() const;
         int get_check_interval_hours() const;
 
