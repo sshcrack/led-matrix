@@ -177,21 +177,6 @@ The daemon's `GET /plugin_ui` returns `{ui_api_version, plugins:[installed names
 
 The UI always talks to its own origin (the daemon serves it). `pnpm dev` proxies `/__api` (REST + `/live_frame` WebSocket) to `LED_MATRIX_DEV_API`, default `http://localhost:8080` (the emulator), e.g. `LED_MATRIX_DEV_API=http://ledmat:8080 pnpm dev`; there is no API-address setting.
 
-## MCP emulator server
-
-An MCP server in `scripts/mcp-emulator/server.py` lets AI agents control the emulator directly:
-
-```bash
-# One-time setup
-./scripts/mcp-emulator/setup.sh
-
-# Server is configured via .mcp.json (already present in the repo root)
-```
-
-Tools exposed: `start_emulator`, `stop_emulator`, `get_status`, `get_frame` (returns PNG of the current matrix), `list_scenes`, `list_presets`, `set_preset`, `http_api`.
-
-The emulator binary must exist at `emulator_build/install/bin/led-matrix` before starting the server.
-
 ## Plugin development
 
 Plugins auto-register via `register_plugin()` in their `CMakeLists.txt`. The macro is defined in `plugins/CMakeLists.txt`. No changes to the root `CMakeLists.txt` or `vcpkg.json` are needed for plugins with no extra vcpkg dependencies.
