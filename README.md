@@ -45,15 +45,17 @@ Aquariums, planets, auroras, music-reactive scenes and self-playing games. Contr
 
 The panel image is Raspberry Pi OS Lite (64-bit) with everything installed. Its system is read-only, so the panel can be unplugged like any appliance ([details](docs/PI_IMAGE.md)).
 
-1. Install [Raspberry Pi Imager](https://www.raspberrypi.com/software/) (version 2 or newer).
-2. Add this project's image list: **App Options → Content Repository → Use custom URL**, and enter
-   ```
-   https://github.com/sshcrack/led-matrix/releases/latest/download/led-matrix-imager.json
-   ```
-   (Or start Imager with `rpi-imager --repo <that URL>`.)
-3. Choose your Pi model, then **LED Matrix** as the operating system, and your SD card.
-4. In the customisation, set a username and password, your **Wi-Fi** (skip it for Ethernet) and, if you want to log in later, **SSH**. Set the hostname to **`led-matrix`** (Imager may suggest another name), or remember the one you choose.
-5. Write the card, put it in the Pi and power it on. The first boot takes a few minutes and restarts once.
+1. Download Raspberry Pi Imager and start it with this project's image list, in one command:
+
+   | OS | Run |
+   |:--|:--|
+   | **Linux / macOS** | `curl -fsSL https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/flash_card.sh \| bash` |
+   | **Windows** (PowerShell) | `irm https://raw.githubusercontent.com/sshcrack/led-matrix/master/scripts/flash_card.ps1 \| iex` |
+
+   The script ([`flash_card.sh`](scripts/flash_card.sh), [`flash_card.ps1`](scripts/flash_card.ps1)) fetches the current Imager (version 2 or newer; on Linux and macOS it is cached and not installed system-wide) and runs `rpi-imager --repo https://github.com/sshcrack/led-matrix/releases/latest/download/led-matrix-imager.json`. If you already have Imager, run that command yourself, or enter the URL under **App Options → Content Repository → Use custom URL**.
+2. Choose your Pi model, then **LED Matrix** as the operating system, and your SD card.
+3. In the customisation, set a username and password, your **Wi-Fi** (skip it for Ethernet) and, if you want to log in later, **SSH**. Set the hostname to **`led-matrix`** (Imager may suggest another name), or remember the one you choose.
+4. Write the card, put it in the Pi and power it on. The first boot takes a few minutes and restarts once.
 
 The image and its checksum are also on the [Releases](https://github.com/sshcrack/led-matrix/releases/latest) page (`led-matrix-<version>-arm64.img.xz`) if you prefer another flashing tool. Imager is still needed for the Wi-Fi and user settings.
 
