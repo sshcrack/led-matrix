@@ -84,11 +84,12 @@ fi
 IFS=',' read -ra LIST <<< "$SCENES"
 for scene in "${LIST[@]}"; do
     echo "==> rendering $scene"
+    stem="${scene//\//--}"   # variants: preview_gen writes name/variant as name--variant
     (cd "$WORK" && "$PREVIEW_GEN" --scenes "$scene" --frames "$TOTAL" --fps "$FPS" \
-        --width "$WIDTH" --height "$HEIGHT" --raw-out "$WORK/raw" "${EXTRA[@]}" >"$WORK/$scene.log" 2>&1) || {
-        tail -20 "$WORK/$scene.log" >&2; exit 1; }
-    RAW="$WORK/raw/$scene.rgb"
-    [[ -s "$RAW" ]] || { echo "no frames for $scene (scene name typo, or it rendered nothing?)" >&2; tail -5 "$WORK/$scene.log" >&2; exit 1; }
+        --width "$WIDTH" --height "$HEIGHT" --raw-out "$WORK/raw" "${EXTRA[@]}" >"$WORK/$stem.log" 2>&1) || {
+        tail -20 "$WORK/$stem.log" >&2; exit 1; }
+    RAW="$WORK/raw/$stem.rgb"
+    [[ -s "$RAW" ]] || { echo "no frames for $scene (scene name typo, or it rendered nothing?)" >&2; tail -5 "$WORK/$stem.log" >&2; exit 1; }
     AUDIO_ARGS=()
     if [[ -n "$AUDIO" ]]; then
         AUDIO_ARGS=(-ss "$START" -i "$AUDIO" -map 0:v -map 1:a -c:a aac -b:a 160k -shortest)
@@ -96,6 +97,6 @@ for scene in "${LIST[@]}"; do
     ffmpeg -loglevel error -y -f rawvideo -pix_fmt rgb24 -s "${WIDTH}x${HEIGHT}" -r "$FPS" \
         -ss "$(python3 -c "print($START_FRAMES/$FPS)")" -i "$RAW" "${AUDIO_ARGS[@]}" \
         -vf "$VF" -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p -movflags +faststart \
-        "$OUTPUT/$scene.mp4"
-    echo "    $OUTPUT/$scene.mp4"
+        "$OUTPUT/$stem.mp4"
+    echo "    $OUTPUT/$stem.mp4"
 done
