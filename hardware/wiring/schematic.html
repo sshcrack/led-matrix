@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LED Wall Wiring</title>
+<style>
+  :root { --v24: #e5484d; --v5: #f59e0b; --v33: #a855f7; --sig: #3b82f6; }
+  body { margin: 0; font-family: var(--font-sans, system-ui, sans-serif); color: var(--foreground, #111); }
+  .scroll { overflow-x: auto; }
+  svg { display: block; width: 1220px; height: auto; }
+  svg text { fill: var(--foreground, #111); font-size: 13px; }
+  svg .small { font-size: 11px; fill: var(--muted-foreground, #555); }
+  svg .title { font-size: 14px; font-weight: 600; }
+  svg .box { fill: var(--card, #fff); stroke: var(--border, #999); stroke-width: 1.5; }
+  svg .wago { fill: var(--secondary, #eee); stroke: var(--border, #999); stroke-width: 1.5; }
+  svg .w { fill: none; stroke-width: 3; stroke-linejoin: round; }
+  svg .v24 { stroke: var(--v24); } svg .v5 { stroke: var(--v5); } svg .gnd { stroke: var(--foreground, #111); }
+  svg .v33 { stroke: var(--v33); stroke-width: 2; } svg .sig { stroke: var(--sig); stroke-width: 2; }
+  svg .dot { stroke: none; }
+  svg .fuse { fill: var(--background, #fff); stroke: var(--foreground, #111); stroke-width: 1.5; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; margin: 8px 0 4px; }
+  .legend span::before { content: ""; display: inline-block; width: 18px; height: 4px; margin-right: 6px; vertical-align: middle; background: var(--c); }
+  h3 { font-size: 15px; margin: 18px 0 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border, #ccc); vertical-align: top; }
+  th { color: var(--muted-foreground, #555); font-weight: 600; }
+  td:first-child { white-space: nowrap; }
+  .note { font-size: 13px; color: var(--muted-foreground, #555); margin: 6px 0; }
+</style></head><body>
+<div class="legend">
+  <span style="--c: var(--v24)">+24 V (power wire)</span>
+  <span style="--c: var(--v5)">+5 V (power wire)</span>
+  <span style="--c: var(--foreground, #111)">GND</span>
+  <span style="--c: var(--v33)">3.3 V</span>
+  <span style="--c: var(--sig)">signal (thin wire)</span>
+  <span style="--c: transparent">● = joined · lines that cross without a dot are not connected</span>
+</div>
+<div class="scroll">
+<svg viewBox="0 0 1340 880" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Wiring schematic">
+  <!-- DC socket, solder side -->
+  <rect class="box" x="20" y="100" width="130" height="170" rx="8"/>
+  <text class="title" x="85" y="88" text-anchor="middle">DC socket (rear)</text>
+  <circle cx="63" cy="163" r="12" fill="none" stroke="var(--v24)" stroke-width="3"/><text x="63" y="168" text-anchor="middle">4</text>
+  <circle cx="107" cy="163" r="12" fill="none" stroke="var(--foreground,#111)" stroke-width="3"/><text x="107" y="168" text-anchor="middle">2</text>
+  <circle cx="63" cy="207" r="12" fill="none" stroke="var(--foreground,#111)" stroke-width="3"/><text x="63" y="212" text-anchor="middle">3</text>
+  <circle cx="107" cy="207" r="12" fill="none" stroke="var(--v24)" stroke-width="3"/><text x="107" y="212" text-anchor="middle">1</text>
+  <text class="small" x="85" y="245" text-anchor="middle">solder side, mirrored</text>
+  <text class="small" x="85" y="259" text-anchor="middle">vs. the plug face</text>
+  <path class="w v24" d="M150 135 H190"/>
+  <rect class="fuse" x="190" y="125" width="54" height="20" rx="3"/><text x="217" y="140" text-anchor="middle">7.5 A</text>
+  <path class="w v24" d="M244 135 H290"/>
+  <text class="small" x="152" y="124">1 + 4</text>
+  <path class="w gnd" d="M150 235 H290"/>
+  <text class="small" x="152" y="226">2 + 3</text>
+
+  <!-- 24 V WAGOs -->
+  <rect class="wago" x="290" y="105" width="60" height="60" rx="5"/><text x="320" y="130" text-anchor="middle">WAGO</text><text class="small" x="320" y="146" text-anchor="middle">+24 V</text>
+  <rect class="wago" x="290" y="205" width="60" height="60" rx="5"/><text x="320" y="230" text-anchor="middle">WAGO</text><text class="small" x="320" y="246" text-anchor="middle">GND</text>
+  <path class="w v24" d="M350 135 H400 M400 70 V330 M400 70 H470 M400 200 H470 M400 330 H470"/>
+  <path class="w gnd" d="M350 235 H420 M420 100 V360 M420 100 H470 M420 230 H470 M420 360 H470"/>
+  <circle class="dot" cx="400" cy="135" r="5" fill="var(--v24)"/><circle class="dot" cx="400" cy="200" r="5" fill="var(--v24)"/>
+  <circle class="dot" cx="400" cy="70" r="5" fill="var(--v24)"/><circle class="dot" cx="400" cy="330" r="5" fill="var(--v24)"/>
+  <circle class="dot" cx="420" cy="235" r="5" fill="var(--foreground,#111)"/><circle class="dot" cx="420" cy="100" r="5" fill="var(--foreground,#111)"/>
+  <circle class="dot" cx="420" cy="230" r="5" fill="var(--foreground,#111)"/><circle class="dot" cx="420" cy="360" r="5" fill="var(--foreground,#111)"/>
+
+  <!-- converters -->
+  <rect class="box" x="470" y="40" width="150" height="90" rx="8"/><text class="title" x="545" y="32" text-anchor="middle">Module A 24→5 V</text>
+  <text x="478" y="74">IN+</text><text x="478" y="104">IN−</text><text x="612" y="74" text-anchor="end">OUT+</text><text x="612" y="104" text-anchor="end">OUT−</text>
+  <rect class="box" x="470" y="170" width="150" height="90" rx="8"/><text class="title" x="545" y="162" text-anchor="middle">Module B 24→5 V</text>
+  <text x="478" y="204">IN+</text><text x="478" y="234">IN−</text><text x="612" y="204" text-anchor="end">OUT+</text><text x="612" y="234" text-anchor="end">OUT−</text>
+  <rect class="box" x="470" y="300" width="150" height="90" rx="8"/><text class="title" x="545" y="292" text-anchor="middle">LM2596 → 5.1 V</text>
+  <text x="478" y="334">IN+</text><text x="478" y="364">IN−</text><text x="612" y="334" text-anchor="end">OUT+</text><text x="612" y="364" text-anchor="end">OUT−</text>
+  <text class="small" x="545" y="384" text-anchor="middle">set 5.1 V before connecting</text>
+
+  <!-- module A to panel cable 1 -->
+  <path class="w v5" d="M620 70 H760"/><rect class="fuse" x="760" y="60" width="54" height="20" rx="3"/><text x="787" y="75" text-anchor="middle">15 A</text>
+  <path class="w v5" d="M814 70 H1000"/>
+  <path class="w gnd" d="M620 100 H1000"/>
+  <rect class="box" x="1000" y="40" width="200" height="90" rx="8"/><text class="title" x="1100" y="32" text-anchor="middle">Panel power cable 1</text>
+  <text x="1010" y="74">red VCC</text><text x="1010" y="104">black GND</text><text class="small" x="1010" y="122">feeds 2 panels</text>
+
+  <!-- module B outputs -->
+  <path class="w v5" d="M620 200 H650"/>
+  <rect class="wago" x="650" y="180" width="40" height="40" rx="4"/><text class="small" x="670" y="176" text-anchor="middle">WAGO 5 V</text>
+  <path class="w v5" d="M690 190 H760"/><rect class="fuse" x="760" y="180" width="54" height="20" rx="3"/><text x="787" y="195" text-anchor="middle">15 A</text>
+  <path class="w v5" d="M814 190 H1000"/>
+  <path class="w gnd" d="M620 230 H635 V265 H650"/>
+  <rect class="wago" x="650" y="245" width="40" height="55" rx="4"/><text class="small" x="670" y="314" text-anchor="middle">WAGO GND</text>
+  <path class="w gnd" d="M690 255 H1000"/>
+  <rect class="box" x="1000" y="160" width="200" height="110" rx="8"/><text class="title" x="1100" y="152" text-anchor="middle">Panel power cable 2</text>
+  <text x="1010" y="194">red VCC</text><text x="1010" y="259">black GND</text><text class="small" x="1010" y="226">feeds 2 panels</text>
+
+  <!-- halo +5 V rail and GND rail -->
+  <path class="w v5" d="M690 210 H850 V420"/>
+  <rect class="fuse" x="840" y="420" width="20" height="54" rx="3"/><text x="832" y="452" text-anchor="end">5 A</text>
+  <path class="w v5" d="M850 474 V715 H900 M850 715 V830 H1220 V715 H1245"/>
+  <circle class="dot" cx="850" cy="715" r="5" fill="var(--v5)"/>
+  <path class="w gnd" d="M690 285 H870 V850 H1232 V775 H1245 M870 770 H900"/>
+  <circle class="dot" cx="870" cy="770" r="5" fill="var(--foreground,#111)"/>
+  <text class="small" x="700" y="226">halo +5 V</text><text class="small" x="700" y="281">halo / Pro Micro GND</text>
+
+  <!-- LM2596 to Electrodragon -->
+  <path class="w v5" d="M620 330 H1000"/>
+  <path class="w gnd" d="M620 360 H1000"/>
+  <rect class="box" x="1000" y="300" width="200" height="150" rx="8"/><text class="title" x="1100" y="292" text-anchor="middle">Electrodragon MPC1119</text>
+  <text x="1010" y="334">VIN (screw terminal)</text><text x="1010" y="364">GND (screw terminal)</text>
+  <text class="small" x="1010" y="388">sits on the Pi; HUB75 ribbons</text><text class="small" x="1010" y="402">to the panels not shown</text>
+  <text class="small" x="1030" y="440" text-anchor="middle">3.3V</text><text class="small" x="1100" y="425" text-anchor="middle">IO14</text>
+  <text class="small" x="1100" y="440" text-anchor="middle">(printed "IO12")</text><text class="small" x="1170" y="440" text-anchor="middle">GND</text>
+
+  <!-- level converter -->
+  <path class="w v33" d="M1030 450 V520"/><path class="w sig" d="M1100 450 V520"/><path class="w gnd" style="stroke-width:2" d="M1170 450 V520"/>
+  <rect class="box" x="1000" y="520" width="200" height="110" rx="8"/>
+  <text class="title" x="1220" y="580">BSS138</text><text class="small" x="1220" y="596">level converter</text>
+  <text x="1030" y="540" text-anchor="middle">LV</text><text x="1100" y="540" text-anchor="middle">LV1</text><text x="1170" y="540" text-anchor="middle">GND</text>
+  <text x="1030" y="622" text-anchor="middle">HV</text><text x="1100" y="622" text-anchor="middle">HV1</text><text x="1170" y="622" text-anchor="middle">GND</text>
+  <path class="w v5" style="stroke-width:2" d="M1030 630 V690"/><path class="w sig" d="M1100 630 V690"/><path class="w gnd" style="stroke-width:2" d="M1170 630 V690"/>
+
+  <!-- Pro Micro -->
+  <rect class="box" x="900" y="690" width="280" height="110" rx="8"/><text class="title" x="1040" y="790" text-anchor="middle">Pro Micro (5 V)</text>
+  <text x="1030" y="710" text-anchor="middle">VCC</text><text x="1100" y="710" text-anchor="middle">RXI</text><text x="1170" y="710" text-anchor="middle">GND</text>
+  <text x="908" y="719">RAW</text><text x="908" y="774">GND</text>
+  <text x="1172" y="749" text-anchor="end">pin 6</text>
+  <text class="small" x="935" y="752">TX: leave free</text>
+  <path class="w sig" d="M1180 745 H1185"/>
+  <rect x="1185" y="738" width="22" height="14" fill="none" stroke="var(--sig)" stroke-width="2"/>
+  <text class="small" x="1196" y="733" text-anchor="middle">330 Ω</text>
+  <path class="w sig" d="M1207 745 H1245"/>
+  <rect class="box" x="1245" y="690" width="90" height="110" rx="8"/><text class="title" x="1290" y="682" text-anchor="middle">Halo strip</text>
+  <text x="1253" y="719">+5 V</text><text x="1253" y="749">DIN</text><text x="1253" y="779">GND</text>
+  <text class="small" x="1290" y="818" text-anchor="middle">1000 µF across</text>
+  <text class="small" x="1290" y="832" text-anchor="middle">+5 V / GND here</text>
+</svg>
+</div>
+
+<p class="note">Scroll sideways on a phone. All grounds end up joined (the modules share IN− and OUT−, and the HUB75 ribbons join panel GND to the Pi). That is intended.</p>
+
+<h3>1 · DC socket (Kycon KPJX-PM-4S-S)</h3>
+<table>
+<tr><th>Pin</th><th>Is</th><th>Wire</th><th>Goes to</th></tr>
+<tr><td>1 and 4 (one diagonal)</td><td>+24 V</td><td>0.75 mm², red, one per pin</td><td>both into the 7.5 A fuse holder lead (via a WAGO), then the +24 V WAGO</td></tr>
+<tr><td>2 and 3 (other diagonal)</td><td>GND</td><td>0.75 mm², black, one per pin</td><td>GND WAGO</td></tr>
+<tr><td>2 metal side tabs</td><td>shield</td><td>none</td><td>leave free</td></tr>
+</table>
+<p class="note">Pin numbers come from the Kycon drawing (plug face: 2 top left, 4 top right, 1 bottom left, 3 bottom right; mirrored when you look at the solder cups). Heat-shrink over every cup. Before connecting anything else: plug the brick in and measure +24 V between the red pair and the black pair.</p>
+
+<h3>2 · 24 V side (1.5 mm²)</h3>
+<table>
+<tr><th>From</th><th>To</th><th>Note</th></tr>
+<tr><td>7.5 A fuse out</td><td>WAGO +24 V (5-way)</td><td>fuse as close to the socket as possible</td></tr>
+<tr><td>WAGO +24 V</td><td>Module A IN+, Module B IN+, LM2596 IN+</td><td>3 of the 5 slots + 1 for the fuse lead</td></tr>
+<tr><td>WAGO GND</td><td>Module A IN−, Module B IN−, LM2596 IN−</td><td>+ the socket's black pair</td></tr>
+</table>
+
+<h3>3 · 5 V side (1.5 mm²)</h3>
+<table>
+<tr><th>From</th><th>To</th><th>Note</th></tr>
+<tr><td>Module A OUT+</td><td>15 A fuse → red VCC of panel cable 1</td><td>cable 1 = the two panels on one power cable</td></tr>
+<tr><td>Module A OUT−</td><td>black GND of panel cable 1</td><td></td></tr>
+<tr><td>Module B OUT+</td><td>WAGO 5 V (3-way): 15 A fuse → red VCC of panel cable 2; 5 A fuse → halo +5 V</td><td></td></tr>
+<tr><td>Module B OUT−</td><td>WAGO GND (5-way): black of panel cable 2, halo strip GND, Pro Micro GND</td><td></td></tr>
+<tr><td>Halo +5 V (after 5 A)</td><td>Pro Micro RAW and strip +5 V</td><td>never plug USB into the Pro Micro while RAW is connected</td></tr>
+<tr><td>LM2596 OUT+ / OUT−</td><td>Electrodragon VIN / GND screw terminals</td><td>set 5.1 V with no load first (max 5.5 V); no USB power on the Pi at the same time</td></tr>
+</table>
+
+<h3>4 · Signals (thin wire, 0.14–0.25 mm²)</h3>
+<table>
+<tr><th>From</th><th>To</th><th>Note</th></tr>
+<tr><td>Electrodragon IO14 (printed "IO12")</td><td>converter LV1</td><td>Pi UART TX, 3.3 V</td></tr>
+<tr><td>Electrodragon 3.3V</td><td>converter LV</td><td></td></tr>
+<tr><td>Electrodragon GND</td><td>converter GND (LV side)</td><td></td></tr>
+<tr><td>Pro Micro VCC</td><td>converter HV</td><td>5 V reference</td></tr>
+<tr><td>converter HV1</td><td>Pro Micro RXI</td><td>Pro Micro TX stays unconnected</td></tr>
+<tr><td>Pro Micro GND</td><td>converter GND (HV side)</td><td></td></tr>
+<tr><td>Pro Micro pin 6</td><td>330 Ω → strip DIN</td><td>resistor near the strip</td></tr>
+<tr><td>1000 µF capacitor</td><td>across strip +5 V / GND at the strip input</td><td>stripe (−) to GND</td></tr>
+</table>
+
+<h3>5 · Order for the first power-up</h3>
+<p class="note">1) Brick → socket only: +24 V at the WAGO, right polarity. 2) Modules A/B without loads: about 5 V at each output. 3) LM2596: set 5.1 V, then connect the Electrodragon + Pi. 4) Panels one cable at a time, dim scene, then bright; feel modules and fuse holders after 10 min. 5) Halo and Pro Micro last.</p>
+</body></html>
