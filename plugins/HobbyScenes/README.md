@@ -23,6 +23,12 @@ Static scenery is cached until the environment changes enough to repaint it.
 Rain ripples and reflected highlights touch only small areas each frame. Shared
 precipitation reduces its particle budget with `render_quality_scale()`.
 
+## Night Railway
+
+**Night Railway** (`night_railway`) is a fixed nighttime look with a moonlit
+viaduct and a short passenger train. It runs a first train as the scene opens,
+then pairs each pass with a quiet stretch of about two minutes at default speed.
+
 ## Previewing changes
 
 Build the emulator preset, then render the base scenes and their affected looks:
