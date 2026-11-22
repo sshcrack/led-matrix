@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "shared/matrix/utils/rgb_blit.h"
+
 float TransitionComposer::ease(float linear_progress)
 {
     return linear_progress * linear_progress * (3.0f - 2.0f * linear_progress);
@@ -22,6 +24,9 @@ bool TransitionComposer::begin(FrameCanvas* from, const std::string& name, tmill
     height_ = height;
     have_incoming_ = false;
     finished_ = false;
+    to_rgb_current_ = false;
+    if (effect_)
+        RgbBlit::read(*from_, width_, height_, from_rgb_);
     return effect_ != nullptr;
 }
 
@@ -31,6 +36,7 @@ void TransitionComposer::end()
     effect_ = nullptr;
     have_incoming_ = false;
     finished_ = false;
+    to_rgb_current_ = false;
 }
 
 bool TransitionComposer::refresh_outgoing(const FrameCanvas& latest)
@@ -38,6 +44,8 @@ bool TransitionComposer::refresh_outgoing(const FrameCanvas& latest)
     if (policy_ != OutgoingPolicy::KeepMoving || !from_ || finished_)
         return false;
     from_->CopyFrom(latest);
+    if (effect_)
+        RgbBlit::read(*from_, width_, height_, from_rgb_);
     return true;
 }
 
@@ -61,10 +69,22 @@ TransitionComposer::Frame TransitionComposer::frame(FrameCanvas* out, FrameCanva
     Frame result;
     result.eased = ease(alpha);
     result.done = alpha >= 1.0f;
-    if (effect_)
-        effect_->apply(out, from_, to, result.eased, width_, height_);
-    else
+    if (effect_) {
+        // Until the incoming scene paints, it blends from the outgoing snapshot.
+        const std::uint8_t* to_rgb = from_rgb_.data();
+        if (have_incoming_) {
+            if (to_has_new_pixels || !to_rgb_current_) {
+                RgbBlit::read(*to, width_, height_, to_rgb_);
+                to_rgb_current_ = true;
+            }
+            to_rgb = to_rgb_.data();
+        }
+        out_rgb_.resize(from_rgb_.size());
+        effect_->apply(out_rgb_.data(), from_rgb_.data(), to_rgb, result.eased, width_, height_);
+        out->SetRGB(0, 0, width_, height_, out_rgb_.data());
+    } else {
         out->CopyFrom(*to);
+    }
     if (result.done)
         finished_ = true;
     return result;

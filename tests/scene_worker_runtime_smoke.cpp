@@ -71,19 +71,13 @@ public:
 class LinearBlend final : public TransitionEffect {
 public:
     std::string get_name() const override { return "blend"; }
-    void apply(FrameCanvas* dst, FrameCanvas* from, FrameCanvas* to, float alpha, int width, int height) override
+    void apply(std::uint8_t* dst, const std::uint8_t* from, const std::uint8_t* to, float alpha, int width, int height) override
     {
-        for (int y = 0; y < height; ++y)
-            for (int x = 0; x < width; ++x) {
-                std::uint8_t fr = 0, fg = 0, fb = 0, tr = 0, tg = 0, tb = 0;
-                from->GetPixel(x, y, &fr, &fg, &fb);
-                to->GetPixel(x, y, &tr, &tg, &tb);
-                const auto mix = [alpha](std::uint8_t a, std::uint8_t b) {
-                    return static_cast<std::uint8_t>(static_cast<float>(a) + (static_cast<float>(b) - static_cast<float>(a)) * alpha +
-                                                     0.5f);
-                };
-                dst->SetPixel(x, y, mix(fr, tr), mix(fg, tg), mix(fb, tb));
-            }
+        const auto mix = [alpha](std::uint8_t a, std::uint8_t b) {
+            return static_cast<std::uint8_t>(static_cast<float>(a) + (static_cast<float>(b) - static_cast<float>(a)) * alpha + 0.5f);
+        };
+        for (int i = 0; i < width * height * 3; ++i)
+            dst[i] = mix(from[i], to[i]);
     }
 };
 

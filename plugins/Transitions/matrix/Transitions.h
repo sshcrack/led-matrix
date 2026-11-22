@@ -30,7 +30,7 @@ class BlendTransition : public TransitionEffect
 {
 public:
     std::string get_name() const override { return "blend"; }
-    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+    void apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
                float alpha, int width, int height) override;
 };
 
@@ -40,7 +40,7 @@ class SwipeTransition : public TransitionEffect
 {
 public:
     std::string get_name() const override { return "swipe"; }
-    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+    void apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
                float alpha, int width, int height) override;
 };
 
@@ -50,7 +50,7 @@ class MorphTransition : public TransitionEffect
 {
 public:
     std::string get_name() const override { return "morph"; }
-    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+    void apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
                float alpha, int width, int height) override;
 };
 
@@ -60,7 +60,7 @@ class RadialRevealTransition : public TransitionEffect
 {
 public:
     std::string get_name() const override { return "radial_reveal"; }
-    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+    void apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
                float alpha, int width, int height) override;
 };
 
@@ -70,7 +70,7 @@ class CheckerRevealTransition : public TransitionEffect
 {
 public:
     std::string get_name() const override { return "checker_reveal"; }
-    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+    void apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
                float alpha, int width, int height) override;
 };
 
@@ -80,7 +80,7 @@ class OrderedDissolveTransition : public TransitionEffect
 {
 public:
     std::string get_name() const override { return "ordered_dissolve"; }
-    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+    void apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
                float alpha, int width, int height) override;
 };
 
@@ -90,7 +90,7 @@ class RandomDissolveTransition : public TransitionEffect
 {
 public:
     std::string get_name() const override { return "random_dissolve"; }
-    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+    void apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
                float alpha, int width, int height) override;
 };
 
@@ -101,7 +101,7 @@ class GlitchTransition : public TransitionEffect
 {
 public:
     std::string get_name() const override { return "glitch_cut"; }
-    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+    void apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
                float alpha, int width, int height) override;
 };
 
@@ -111,7 +111,7 @@ class CrtCollapseTransition : public TransitionEffect
 {
 public:
     std::string get_name() const override { return "crt_collapse"; }
-    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+    void apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
                float alpha, int width, int height) override;
 };
 
@@ -121,7 +121,7 @@ class BlockDissolveTransition : public TransitionEffect
 {
 public:
     std::string get_name() const override { return "block_dissolve"; }
-    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+    void apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
                float alpha, int width, int height) override;
 };
 
@@ -131,6 +131,6 @@ class ZoomBlendTransition : public TransitionEffect
 {
 public:
     std::string get_name() const override { return "zoom_blend"; }
-    void apply(FrameCanvas *dst, FrameCanvas *from, FrameCanvas *to,
+    void apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
                float alpha, int width, int height) override;
 };

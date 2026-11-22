@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
+#include <vector>
 
 #include "led-matrix.h"
 #include "shared/common/utils/utils.h"
@@ -21,6 +23,12 @@
 ///  * **Outgoing policy** (see `OutgoingPolicy`): whether the outgoing image may
 ///    keep changing during the blend. This is the one deliberate difference
 ///    between the hosts.
+///
+/// Composition happens in software RGB: the outgoing snapshot is decoded from its
+/// canvas once (and again only when `refresh_outgoing()` replaces it), the incoming
+/// canvas only when it has new pixels, and each blended frame reaches `out` with one
+/// bulk `SetRGB()`. Reading canvas pixels back decodes the panel's bit planes, which
+/// used to cost two reads per pixel per frame on the Pi.
 ///
 /// The composer owns no canvases and renders no scenes; it only decides what the
 /// blend looks like at a given time. Time is the caller's clock in milliseconds
@@ -83,7 +91,8 @@ public:
 
     /// Composes the blend at `now_ms` into `out`. `to` is the incoming scene's
     /// canvas and `to_has_new_pixels` says whether it received a real frame since
-    /// the last call. Call it only while `active()`.
+    /// the last call; `to` is read back only then, so a caller must not change
+    /// its pixels without saying so. Call it only while `active()`.
     Frame frame(FrameCanvas* out, FrameCanvas* to, bool to_has_new_pixels, tmillis_t now_ms);
 
 private:
@@ -99,4 +108,10 @@ private:
     int height_ = 0;
     bool have_incoming_ = false;
     bool finished_ = false;
+    /// Decoded frames (row-major RGB888), reused across blends.
+    std::vector<std::uint8_t> from_rgb_;
+    std::vector<std::uint8_t> to_rgb_;
+    std::vector<std::uint8_t> out_rgb_;
+    /// `to_rgb_` holds the incoming canvas's current pixels.
+    bool to_rgb_current_ = false;
 };

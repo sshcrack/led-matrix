@@ -5,6 +5,7 @@
 #include <led-matrix.h>
 #include <shared/matrix/transition_composer.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <memory>
@@ -34,13 +35,13 @@ class RecordingEffect final : public TransitionEffect {
 public:
     RecordingEffect(std::string effect_name, std::uint8_t marker) : name_(std::move(effect_name)), marker_(marker) {}
     std::string get_name() const override { return name_; }
-    void apply(FrameCanvas* dst, FrameCanvas* from, FrameCanvas* to, float alpha, int, int) override
+    void apply(std::uint8_t* dst, const std::uint8_t* from, const std::uint8_t* to, float alpha, int width, int height) override
     {
         ++calls;
         last_alpha = alpha;
-        last_from = red(from);
-        last_to = red(to);
-        dst->Fill(marker_, marker_, marker_);
+        last_from = from[0];
+        last_to = to[0];
+        std::fill(dst, dst + width * height * 3, marker_);
     }
     int calls = 0;
     float last_alpha = -1.0f;
@@ -154,8 +155,11 @@ int main()
         composer.frame(out, to, true, 200);
         check(recorded->last_to == 200, "the first real incoming frame is used as is");
         to->Fill(210, 210, 210);
-        composer.frame(out, to, false, 300);
-        check(recorded->last_to == 210, "later calls keep using the incoming canvas even when it holds a frame");
+        composer.frame(out, to, true, 300);
+        check(recorded->last_to == 210, "a newer incoming frame is read back");
+        to->Fill(220, 220, 220);  // not announced: a held frame does not touch its canvas
+        composer.frame(out, to, false, 400);
+        check(recorded->last_to == 210, "a held incoming frame is not read back again");
 
         // The blend ends before the incoming scene ever painted: stay on the snapshot.
         TransitionComposer late(&manager);
@@ -190,6 +194,36 @@ int main()
         check(!moving.refresh_outgoing(*newer) && red(from) == 77, "a finished blend ignores further outgoing frames");
         moving.end();
         check(!moving.active() && !moving.refresh_outgoing(*newer), "end() drops the blend");
+    }
+
+    // The decoded outgoing frame follows refresh_outgoing(), and the effect's
+    // output reaches every pixel of the canvas.
+    {
+        TransitionManager manager;
+        auto effect = std::make_unique<RecordingEffect>("blend", 33);
+        auto* recorded = effect.get();
+        manager.register_transition(std::move(effect));
+        auto* newer = matrix->CreateFrameCanvas();
+        newer->Fill(66, 66, 66);
+        from->Fill(40, 40, 40);
+        to->Fill(200, 200, 200);
+        out->Fill(1, 2, 3);
+
+        TransitionComposer moving(&manager, TransitionComposer::OutgoingPolicy::KeepMoving);
+        moving.begin(from, "blend", 1000, 16, 16, 0);
+        moving.frame(out, to, true, 100);
+        check(recorded->last_from == 40 && recorded->last_to == 200, "begin decodes the outgoing snapshot");
+        moving.refresh_outgoing(*newer);
+        moving.frame(out, to, false, 200);
+        check(recorded->last_from == 66, "a refreshed outgoing frame is decoded again");
+        bool all_marked = true;
+        for (int y = 0; y < 16; ++y)
+            for (int x = 0; x < 16; ++x) {
+                std::uint8_t r = 0, g = 0, b = 0;
+                out->GetPixel(x, y, &r, &g, &b);
+                all_marked = all_marked && r == 33 && g == 33 && b == 33;
+            }
+        check(all_marked, "the composed frame is written to the whole canvas");
     }
 
     if (failures == 0)
