@@ -1,5 +1,9 @@
 # Music analyzer benchmark
 
+The [real-song evaluation](audio-real-world-evaluation.md) compares the
+current analyzer with causal Beat This! Live and records the desktop runtime
+decision.
+
 Build the production analyzer harness with the emulator preset on Linux. The
 `audio_analyzer_benchmark` target also builds with the desktop presets on Linux
 and Windows. Python 3 is sufficient for the scorer.

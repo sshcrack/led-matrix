@@ -11,11 +11,23 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import audio_benchmark as benchmark  # noqa: E402
+import beat_this_live_benchmark as live  # noqa: E402
 
 ANALYZER = Path(sys.argv.pop(1)).resolve()
 
 
 class BenchmarkTest(unittest.TestCase):
+    def test_bounded_candidate_windows_cover_all_frames(self):
+        windows = list(live.candidate_batches(frame_count=13, context=8, block=3))
+        self.assertEqual(windows, [(0, 0, 3), (0, 3, 6), (1, 6, 9), (4, 9, 12), (5, 12, 13)])
+        self.assertTrue(all(left <= start < end and end - left <= 8 for left, start, end in windows))
+
+    def test_candidate_event_times_include_audio_availability(self):
+        times = live.emission_times([-1, 0, 3, 5], frame_count=5)
+        self.assertEqual(len(times), 2)
+        self.assertAlmostEqual(times[0], 512 / 22050)
+        self.assertAlmostEqual(times[1] - times[0], 0.060)
+
     def test_matching_prefers_cardinality_then_nearest(self):
         self.assertEqual(benchmark.match_events([1, 1.08], [0.94, 1.02], 0.07),
                          [(1, 0.94), (1.08, 1.02)])
