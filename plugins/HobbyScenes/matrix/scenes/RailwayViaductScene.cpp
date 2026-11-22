@@ -46,7 +46,10 @@ struct Artwork {
     }
 };
 
-float far_bank(float x) { return 79 - 15 * hill(x, 1.7f); }
+float far_bank(float x)
+{
+    return 79 - 15 * hill(x, 1.7f);
+}
 
 }  // namespace
 
@@ -179,9 +182,7 @@ void RailwayViaductScene::draw_water(float raw_dt, float front, bool train)
 {
     const auto& L = env();
     const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f, W = static_cast<float>(cv_.w);
-    const auto wet = [&](int x, int y) {
-        return x >= 0 && y >= 0 && x < cv_.w && y < cv_.h && water_[static_cast<size_t>(y * cv_.w + x)];
-    };
+    const auto wet = [&](int x, int y) { return x >= 0 && y >= 0 && x < cv_.w && y < cv_.h && water_[static_cast<size_t>(y * cv_.w + x)]; };
     const auto streak = [&](float x, float y, float length, Rgb color, float alpha) {
         const int row = static_cast<int>(y * sy);
         for (int col = static_cast<int>(x * sx); col < static_cast<int>((x + length) * sx); ++col)
