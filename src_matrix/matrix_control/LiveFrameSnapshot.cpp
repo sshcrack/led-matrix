@@ -59,16 +59,7 @@ void SnapshotStore::capture_if_requested(rgb_matrix::FrameCanvas *canvas,
         return;
 
     std::vector<std::uint8_t> rgb(static_cast<std::size_t>(width) * height * 3);
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            std::uint8_t r = 0, g = 0, b = 0;
-            canvas->GetPixel(x, y, &r, &g, &b);
-            const auto offset = static_cast<std::size_t>((y * width + x) * 3);
-            rgb[offset] = r;
-            rgb[offset + 1] = g;
-            rgb[offset + 2] = b;
-        }
-    }
+    canvas->GetRGB(0, 0, width, height, rgb.data());
     publish(width, height, std::move(rgb), generation);
     mark_demand_served(generation);
 }

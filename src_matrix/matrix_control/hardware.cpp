@@ -25,12 +25,9 @@ using namespace spdlog;
 
 static std::unique_ptr<MatrixPresenter> create_presenter(RGBMatrixBase *matrix)
 {
-    (void)matrix;
-#ifdef ENABLE_EMULATOR
-    return std::make_unique<EmulatorPresenter>(matrix);
-#else
+    if (matrix->AsEmulator())
+        return std::make_unique<EmulatorPresenter>(matrix);
     return std::make_unique<NoopPresenter>(matrix);
-#endif
 }
 
 void hardware_mainloop(rgb_matrix::RGBMatrixBase* matrix, PostProcessor* post_processor, TransitionManager* transition_manager,

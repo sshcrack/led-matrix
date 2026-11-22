@@ -1,15 +1,10 @@
+#include <emulator.h>
+#include <led-matrix.h>
 #include <shared/common/remote_render_protocol.h>
 #include <shared/matrix/Scene.h>
 #include <shared/matrix/diagnostics.h>
 #include <shared/matrix/media_artwork_state.h>
 #include <shared/matrix/remote_render.h>
-
-#include "../plugins/RenderOffload/matrix/RenderOffloadPlugin.h"
-
-#ifdef ENABLE_EMULATOR
-#include <emulator.h>
-#include <led-matrix.h>
-#endif
 
 #include <chrono>
 #include <cstdint>
@@ -17,6 +12,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "../plugins/RenderOffload/matrix/RenderOffloadPlugin.h"
 
 namespace {
 class RemoteProbeScene : public Scenes::Scene {
@@ -150,21 +147,25 @@ int main(int argc, char **argv)
         return 2;
     }
 
-#ifdef ENABLE_EMULATOR
-    rgb_matrix::RGBMatrix::Options led;
-    led.rows = 32;
-    led.cols = 32;
-    led.chain_length = 1;
-    led.parallel = 1;
-    rgb_matrix::EmulatorOptions emulator;
-    emulator.headless = true;
-    std::unique_ptr<rgb_matrix::EmulatorMatrix> matrix(rgb_matrix::EmulatorMatrix::Create(led, emulator));
-    if (!matrix) {
-        std::cerr << "failed to create emulator matrix\n";
-        return 3;
+    // Canvas copies need the emulator; the Pi build (no emulator support) checks
+    // the transport only.
+    std::unique_ptr<rgb_matrix::EmulatorMatrix> matrix;
+    rgb_matrix::FrameCanvas* canvas = nullptr;
+    if (rgb_matrix::EmulatorMatrix::Supported()) {
+        rgb_matrix::RGBMatrix::Options led;
+        led.rows = 32;
+        led.cols = 32;
+        led.chain_length = 1;
+        led.parallel = 1;
+        rgb_matrix::EmulatorOptions emulator;
+        emulator.headless = true;
+        matrix.reset(rgb_matrix::EmulatorMatrix::Create(led, emulator));
+        if (!matrix) {
+            std::cerr << "failed to create emulator matrix\n";
+            return 3;
+        }
+        canvas = matrix->CreateFrameCanvas();
     }
-    auto *canvas = matrix->CreateFrameCanvas();
-#endif
 
     std::vector<std::uint8_t> frame(32 * 32 * 3);
     for (std::size_t i = 0; i < frame.size(); i += 3) {
@@ -184,19 +185,19 @@ int main(int argc, char **argv)
         std::cerr << "stale-session remote frame was accepted\n";
         return 6;
     }
-#ifdef ENABLE_EMULATOR
-    if (!RemoteRender::copy_latest(*session, canvas, 32, 32)) {
-        std::cerr << "latest remote frame was not available\n";
-        return 7;
-    }
+    if (canvas) {
+        if (!RemoteRender::copy_latest(*session, canvas, 32, 32)) {
+            std::cerr << "latest remote frame was not available\n";
+            return 7;
+        }
 
-    std::uint8_t r = 0, g = 0, b = 0;
-    canvas->GetPixel(11, 19, &r, &g, &b);
-    if (r != 17 || g != 83 || b != 201) {
-        std::cerr << "remote RGB frame was copied incorrectly\n";
-        return 8;
+        std::uint8_t r = 0, g = 0, b = 0;
+        canvas->GetPixel(11, 19, &r, &g, &b);
+        if (r != 17 || g != 83 || b != 201) {
+            std::cerr << "remote RGB frame was copied incorrectly\n";
+            return 8;
+        }
     }
-#endif
 
     const auto reconnect = RemoteRender::reconnect_command();
     if (!reconnect.has_value() || reconnect->value("session", 0U) != *session) {
@@ -243,13 +244,13 @@ int main(int argc, char **argv)
     // The transition loop reads the newest sequence without the state lock.
     if (RemoteRender::latest_sequence(*second) != 19 || RemoteRender::latest_sequence(*second + 1) != 0)
         return 27;
-#ifdef ENABLE_EMULATOR
-    // The copy reports which frame it copied, so a frame arriving between a
-    // sequence check and the copy is not shown twice.
-    std::uint32_t copied_sequence = 0;
-    if (!RemoteRender::copy_latest(*second, canvas, 32, 32, 300.0, &copied_sequence) || copied_sequence != 19)
-        return 28;
-#endif
+    if (canvas) {
+        // The copy reports which frame it copied, so a frame arriving between a
+        // sequence check and the copy is not shown twice.
+        std::uint32_t copied_sequence = 0;
+        if (!RemoteRender::copy_latest(*second, canvas, 32, 32, 300.0, &copied_sequence) || copied_sequence != 19)
+            return 28;
+    }
     // Additive capabilities are only used when the live worker lists them.
     RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {{"remote_probe", 1}},
                                           {std::string(RemoteRenderProtocol::Features::TransitionSnapshotBase64)});

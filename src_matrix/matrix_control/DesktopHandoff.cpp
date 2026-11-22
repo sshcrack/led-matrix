@@ -244,11 +244,7 @@ bool DesktopHandoff::begin_desktop_transition(const Scenes::Scene& next, const r
     else {
         // One outgoing RGB snapshot; the worker owns transition timing and composition.
         std::vector<std::uint8_t> pixels(static_cast<std::size_t>(width * height * 3));
-        for (int y = 0; y < height; ++y)
-            for (int x = 0; x < width; ++x) {
-                const auto offset = static_cast<std::size_t>((y * width + x) * 3);
-                outgoing.GetPixel(x, y, &pixels[offset], &pixels[offset + 1], &pixels[offset + 2]);
-            }
+        outgoing.GetRGB(0, 0, width, height, pixels.data());
         // A JSON array of 49k numbers took the Pi's render thread ~40 ms to build,
         // copy and serialize while the outgoing frame stood still.
         if (link_.accepts_base64_snapshot())

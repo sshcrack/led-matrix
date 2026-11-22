@@ -26,8 +26,6 @@
  *   (defaults to stdout).
  */
 
-#include <cstdlib>
-#include <random>
 #include <Magick++.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
@@ -35,25 +33,24 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <random>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <unordered_map>
 #include <vector>
 
-#ifdef ENABLE_EMULATOR
 #include "emulator.h"
-#include "matrix-factory.h"
-#endif
-
 #include "led-matrix.h"
+#include "matrix-factory.h"
 #include "shared/matrix/canvas_consts.h"
-#include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/plugin/lifecycle.h"
+#include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/preview.h"
 #include "shared/matrix/utils/consts.h"
 #include "shared/matrix/utils/shared.h"
@@ -267,16 +264,7 @@ struct VisualMetricAccumulator {
 static std::vector<uint8_t> capture_canvas(rgb_matrix::FrameCanvas* canvas, int w, int h)
 {
     std::vector<uint8_t> buf(static_cast<size_t>(w * h * 3));
-    for (int y = 0; y < h; ++y) {
-        for (int x = 0; x < w; ++x) {
-            uint8_t r = 0, g = 0, b = 0;
-            canvas->GetPixel(x, y, &r, &g, &b);
-            const size_t idx = static_cast<size_t>((y * w + x) * 3);
-            buf[idx] = r;
-            buf[idx + 1] = g;
-            buf[idx + 2] = b;
-        }
-    }
+    canvas->GetRGB(0, 0, w, h, buf.data());
     return buf;
 }
 
@@ -329,10 +317,10 @@ int main(int argc, char* argv[])
     }
 
     // ---- create headless emulator matrix ----------------------------------
-#ifndef ENABLE_EMULATOR
-    spdlog::error("preview_gen requires ENABLE_EMULATOR to be set at compile time.");
-    return 1;
-#else
+    if (!rgb_matrix::EmulatorMatrix::Supported()) {
+        spdlog::error("preview_gen needs a panel library built with emulator support.");
+        return 1;
+    }
     rgb_matrix::RGBMatrix::Options led_opts;
     led_opts.rows = args.matrix_height;
     led_opts.cols = args.matrix_width;
@@ -721,5 +709,4 @@ int main(int argc, char* argv[])
     if (args.strict && (skipped > 0 || attempted == 0))
         return 1;
     return (skipped > 0 && generated == 0) ? 1 : 0;
-#endif
 }

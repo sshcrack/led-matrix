@@ -1,17 +1,24 @@
 {
     "name": "rpi-rgb-led-matrix",
-    "version": "0.1.15",
+    "version": "0.2.3",
     "description": "A C++ library for controlling RGB LED matrices on Raspberry Pi, with optional emulator support.",
     "homepage": "https://github.com/sshcrack/rpi-rgb-led-matrix",
     "license": "MIT",
     "features": {
         "emulator": {
-            "description": "Matrix Emulator",
+            "description": "Matrix emulator (headless core, no window)"
+        },
+        "emulator-sdl": {
+            "description": "SDL window for the matrix emulator",
             "dependencies": [
                 {
-                    "name": "sdl2",
-                    "platform": "!windows"
-                }
+                    "name": "rpi-rgb-led-matrix",
+                    "default-features": false,
+                    "features": [
+                        "emulator"
+                    ]
+                },
+                "sdl2"
             ]
         }
     },

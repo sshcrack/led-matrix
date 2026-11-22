@@ -50,7 +50,7 @@ endif()
 # Option to enable/disable emulator
 option(ENABLE_EMULATOR "Enable LED matrix emulator functionality" OFF)
 if(ENABLE_EMULATOR)
-    list(APPEND VCPKG_MANIFEST_FEATURES "emulator" "shadertoy-preview")
+    list(APPEND VCPKG_MANIFEST_FEATURES "emulator" "emulator-window" "shadertoy-preview")
 endif()
 
 if(ENABLE_EMULATOR AND ENABLE_DESKTOP)

@@ -30,6 +30,18 @@
         "fftw3"
       ]
     },
+    "emulator-window": {
+      "description": "SDL window for the emulator preset; desktop builds and scene workers use the headless emulator.",
+      "dependencies": [
+        {
+          "name": "rpi-rgb-led-matrix",
+          "features": [
+            "emulator-sdl"
+          ],
+          "platform": "!windows"
+        }
+      ]
+    },
     "desktop": {
       "description": "Dependencies needed for the desktop application.",
       "dependencies": [

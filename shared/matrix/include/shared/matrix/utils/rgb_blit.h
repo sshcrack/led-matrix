@@ -39,17 +39,14 @@ namespace RgbBlit {
     }
 
     // Reads the w×h frame at the canvas origin into `out` (resized to
-    // w*h*3, row-major RGB888). The library has no bulk read: each pixel is
-    // decoded from the bit planes, so call this only when the canvas changed.
+    // w*h*3, row-major RGB888) with the library's bulk readback. Pixels off the
+    // canvas or unmapped read as black. Still a decode of the bit planes on the
+    // Pi (about as costly as SetRGB()), so call it only when the canvas changed.
     inline void read(const rgb_matrix::FrameCanvas& canvas, int w, int h, std::vector<std::uint8_t>& out)
     {
         if (w <= 0 || h <= 0)
             return;
         out.resize(static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 3);
-        std::uint8_t* p = out.data();
-        for (int y = 0; y < h; ++y)
-            for (int x = 0; x < w; ++x, p += 3)
-                if (!canvas.GetPixel(x, y, &p[0], &p[1], &p[2]))
-                    p[0] = p[1] = p[2] = 0;
+        canvas.GetRGB(0, 0, w, h, out.data());
     }
 }

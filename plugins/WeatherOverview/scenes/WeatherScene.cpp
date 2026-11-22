@@ -14,9 +14,6 @@ inline std::tm* compat_localtime_r(const std::time_t* t, std::tm* out) { return 
 inline std::tm* compat_localtime_r(const std::time_t* t, std::tm* out) { return localtime_r(t, out); }
 #endif
 #include <iostream>
-#ifdef ENABLE_EMULATOR
-#include "emulator.h"
-#endif
 
 std::unique_ptr<Scenes::Scene> Scenes::WeatherSceneWrapper::create()
 {
