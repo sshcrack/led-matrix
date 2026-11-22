@@ -153,3 +153,28 @@ Stress preset, 150 s per arm (shader ↔ worker scenes, 3.5 s each, 1.2 s transi
 | This change | 18 | 0 | 59.8 | 78 ms | 7 of 5,365 (0.1%) |
 
 Transitions into a shader scene are still composed on the Pi (shader scenes are not worker scenes) and run at about 31 FPS.
+
+## Software RGB composition (2026-11-22)
+
+Locally composed transitions (no desktop worker, a failed desktop start, and transitions into shader scenes) used to read both canvases back with `GetPixel()` and write every pixel with `SetPixel()`, every frame. Each read decodes a pixel from the panel's bit planes. `TransitionComposer` now composes in RGB888 ([#148](https://github.com/sshcrack/led-matrix/issues/148)):
+
+- The outgoing snapshot is decoded once per blend (again only when `refresh_outgoing()` replaces it, on the worker).
+- The incoming canvas is decoded only when the caller reports new pixels (`to_has_new_pixels`). During a Pi blend the incoming scene renders every 16–100 ms depending on its visibility, while the blend is presented at up to 60 FPS.
+- `TransitionEffect::apply()` takes RGB888 buffers, and the composed frame reaches the canvas through one bulk `SetRGB()`.
+
+Output is unchanged. A dump of all 11 effects through the composer (572 frames at brightness 100 and 37, emulator, 128×128 with chain 2 / parallel 2) was byte-identical before and after. On the panel, the old and new blend paths gave the same pixels.
+
+**Pi timing.** A standalone benchmark on `ledmat` (Pi 3B, 1.2 GHz) drove the real panel framebuffer with the service's flags (`--led-rows=64 --led-cols=64 --led-chain=2 --led-parallel=2 --led-slowdown-gpio=3 --led-pixel-mapper Rotate:270`), with the daemon stopped and started again afterwards. It compared the master code verbatim with the new path on two fixed 128×128 frames: 240 frames × 3 rounds per cell, no VSync. This is composition cost only, excluding scene rendering and presentation. All times are ms per composed frame:
+
+| Effect | Incoming paints | Old p50 / p95 | New p50 / p95 | New mean vs old |
+|---|---|---:|---:|---:|
+| blend | every frame | 23.1 / 23.3 | 14.2 / 14.4 | 62% |
+| blend | every 3rd frame | 23.1 / 23.2 | 6.1 / 14.2 | 38% |
+| random_dissolve | every frame | 17.7 / 17.8 | 14.5 / 14.6 | 82% |
+| random_dissolve | every 3rd frame | 17.7 / 17.9 | 6.4 / 14.6 | 52% |
+| zoom_blend | every frame | 23.5 / 23.7 | 14.5 / 14.7 | 62% |
+| zoom_blend | every 3rd frame | 23.5 / 23.7 | 6.5 / 14.7 | 39% |
+
+The old path needed more than one 60 FPS frame budget (16.7 ms) for blend and zoom on composition alone. The new path takes about 6 ms on frames without a new incoming picture. The remaining ~8 ms on frames with one is the per-pixel readback of the incoming canvas: the library has no bulk read. A bulk readback in the panel library, or incoming scenes that hand over RGB buffers directly, would remove most of it.
+
+The desktop worker uses the same composer, so its locally composed blends also skip the per-frame readback. Live capture is untouched: no capture or readback happens without a viewer request, and no per-frame metrics were added.
