@@ -23,11 +23,15 @@ Static scenery is cached until the environment changes enough to repaint it.
 Rain ripples and reflected highlights touch only small areas each frame. Shared
 precipitation reduces its particle budget with `render_quality_scale()`.
 
-## Night Railway
+## Railway Viaduct
 
-**Night Railway** (`night_railway`) is a fixed nighttime look with a moonlit
-viaduct and a short passenger train. It runs a first train as the scene opens,
-then pairs each pass with a quiet stretch of about two minutes at default speed.
+**Railway Viaduct** (`railway_viaduct`) shows a short passenger train crossing a
+stone viaduct over a river. It follows the real time of day, weather and season:
+the sun or moon leaves a path on the water, clouds drift behind the ridges,
+snow settles on the parapet and the far-bank trees change with the season. After
+dark the carriage windows, headlight and cottage window light up, and the lit
+windows reflect in the river. The first train runs as the scene opens, then one
+crosses every two minutes at default speed.
 
 ## Previewing changes
 
