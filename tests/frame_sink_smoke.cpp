@@ -81,8 +81,7 @@ public:
     void apply(std::uint8_t* dst, const std::uint8_t* from, const std::uint8_t* to, float alpha, int width, int height) override
     {
         const auto mix = [alpha](std::uint8_t a, std::uint8_t b) { return static_cast<std::uint8_t>(a + (b - a) * alpha); };
-        for (int i = 0; i < width * height * 3; ++i)
-            dst[i] = mix(from[i], to[i]);
+        for (int i = 0; i < width * height * 3; ++i) dst[i] = mix(from[i], to[i]);
     }
 };
 

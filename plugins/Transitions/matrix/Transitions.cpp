@@ -1,8 +1,10 @@
 #include "Transitions.h"
-#include "shared/common/plugin_macros.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+
+#include "shared/common/plugin_macros.h"
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 static inline uint8_t lerp_u8(uint8_t a, uint8_t b, float t)
@@ -23,9 +25,8 @@ static inline void put(uint8_t* dst, std::size_t i, uint8_t r, uint8_t g, uint8_
 }
 
 // `mask_fn(x, y, to_pixel, alpha)` returns how much of the incoming pixel shows.
-template<typename F>
-static void apply_pixel_loop(uint8_t* dst, const uint8_t* from, const uint8_t* to,
-                             float alpha, int width, int height, F&& mask_fn)
+template <typename F>
+static void apply_pixel_loop(uint8_t* dst, const uint8_t* from, const uint8_t* to, float alpha, int width, int height, F&& mask_fn)
 {
     for (int y = 0; y < height; ++y)
     {
@@ -67,45 +68,38 @@ static constexpr uint8_t BAYER_8X8[8][8] = {
     {42, 26, 38, 22, 41, 25, 37, 21}};
 
 // ─── BlendTransition ─────────────────────────────────────────────────────────
-void BlendTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
-                            float alpha, int width, int height)
+void BlendTransition::apply(uint8_t* dst, const uint8_t* from, const uint8_t* to, float alpha, int width, int height)
 {
-    apply_pixel_loop(dst, from, to, alpha, width, height,
-        [](int, int, const uint8_t*, float a) {
-            return a;
-        });
+    apply_pixel_loop(dst, from, to, alpha, width, height, [](int, int, const uint8_t*, float a) { return a; });
 }
 
 // ─── SwipeTransition ─────────────────────────────────────────────────────────
-void SwipeTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
-                            float alpha, int width, int height)
+void SwipeTransition::apply(uint8_t* dst, const uint8_t* from, const uint8_t* to, float alpha, int width, int height)
 {
     const float edge_px = std::max(1.0f, width * 0.10f);
     const float pivot = alpha * static_cast<float>(width);
-    apply_pixel_loop(dst, from, to, alpha, width, height,
-        [edge_px, pivot](int x, int, const uint8_t*, float a) {
-            if (a >= 1.0f) return 1.0f;
-            const float dist = pivot - static_cast<float>(x);
-            return std::clamp(dist / edge_px * 0.5f + 0.5f, 0.0f, 1.0f);
-        });
+    apply_pixel_loop(dst, from, to, alpha, width, height, [edge_px, pivot](int x, int, const uint8_t*, float a) {
+        if (a >= 1.0f)
+            return 1.0f;
+        const float dist = pivot - static_cast<float>(x);
+        return std::clamp(dist / edge_px * 0.5f + 0.5f, 0.0f, 1.0f);
+    });
 }
 
 // ─── MorphTransition ─────────────────────────────────────────────────────────
-void MorphTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
-                            float alpha, int width, int height)
+void MorphTransition::apply(uint8_t* dst, const uint8_t* from, const uint8_t* to, float alpha, int width, int height)
 {
-    apply_pixel_loop(dst, from, to, alpha, width, height,
-        [](int, int, const uint8_t* t, float a) {
-            if (a >= 1.0f) return 1.0f;
-            const float lum = (0.299f * t[0] + 0.587f * t[1] + 0.114f * t[2]) / 255.0f;
-            const float shift = lum * 0.5f;
-            return std::clamp((a - (1.0f - lum) * 0.5f) / (1.0f - shift * 0.5f + 0.001f), 0.0f, 1.0f);
-        });
+    apply_pixel_loop(dst, from, to, alpha, width, height, [](int, int, const uint8_t* t, float a) {
+        if (a >= 1.0f)
+            return 1.0f;
+        const float lum = (0.299f * t[0] + 0.587f * t[1] + 0.114f * t[2]) / 255.0f;
+        const float shift = lum * 0.5f;
+        return std::clamp((a - (1.0f - lum) * 0.5f) / (1.0f - shift * 0.5f + 0.001f), 0.0f, 1.0f);
+    });
 }
 
 // ─── RadialRevealTransition ──────────────────────────────────────────────────
-void RadialRevealTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
-                                   float alpha, int width, int height)
+void RadialRevealTransition::apply(uint8_t* dst, const uint8_t* from, const uint8_t* to, float alpha, int width, int height)
 {
     const float cx = (static_cast<float>(width) - 1.0f) * 0.5f;
     const float cy = (static_cast<float>(height) - 1.0f) * 0.5f;
@@ -114,55 +108,49 @@ void RadialRevealTransition::apply(uint8_t *dst, const uint8_t *from, const uint
     const float max_dist = std::sqrt(max_dx * max_dx + max_dy * max_dy) + 0.0001f;
     const float soft = 0.10f;
 
-    apply_pixel_loop(dst, from, to, alpha, width, height,
-        [cx, cy, max_dist, soft](int x, int y, const uint8_t*, float a) {
-            if (a >= 1.0f) return 1.0f;
-            const float dx = static_cast<float>(x) - cx;
-            const float dy = static_cast<float>(y) - cy;
-            const float threshold = std::sqrt(dx * dx + dy * dy) / max_dist;
-            return std::clamp((a - threshold + soft) / (2.0f * soft), 0.0f, 1.0f);
-        });
+    apply_pixel_loop(dst, from, to, alpha, width, height, [cx, cy, max_dist, soft](int x, int y, const uint8_t*, float a) {
+        if (a >= 1.0f)
+            return 1.0f;
+        const float dx = static_cast<float>(x) - cx;
+        const float dy = static_cast<float>(y) - cy;
+        const float threshold = std::sqrt(dx * dx + dy * dy) / max_dist;
+        return std::clamp((a - threshold + soft) / (2.0f * soft), 0.0f, 1.0f);
+    });
 }
 
 // ─── CheckerRevealTransition ─────────────────────────────────────────────────
-void CheckerRevealTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
-                                    float alpha, int width, int height)
+void CheckerRevealTransition::apply(uint8_t* dst, const uint8_t* from, const uint8_t* to, float alpha, int width, int height)
 {
-    apply_pixel_loop(dst, from, to, alpha, width, height,
-        [](int x, int y, const uint8_t*, float a) {
-            const int tile_phase = ((x >> 3) + (y >> 3)) & 1;
-            const float stage_start = tile_phase == 0 ? 0.0f : 0.5f;
-            return std::clamp((a - stage_start) * 2.0f, 0.0f, 1.0f);
-        });
+    apply_pixel_loop(dst, from, to, alpha, width, height, [](int x, int y, const uint8_t*, float a) {
+        const int tile_phase = ((x >> 3) + (y >> 3)) & 1;
+        const float stage_start = tile_phase == 0 ? 0.0f : 0.5f;
+        return std::clamp((a - stage_start) * 2.0f, 0.0f, 1.0f);
+    });
 }
 
 // ─── OrderedDissolveTransition ───────────────────────────────────────────────
-void OrderedDissolveTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
-                                      float alpha, int width, int height)
+void OrderedDissolveTransition::apply(uint8_t* dst, const uint8_t* from, const uint8_t* to, float alpha, int width, int height)
 {
     const float progress = std::clamp(alpha, 0.0f, 1.0f) * 64.0f;
-    apply_pixel_loop(dst, from, to, alpha, width, height,
-        [progress](int x, int y, const uint8_t*, float) {
-            return std::clamp(progress - static_cast<float>(BAYER_8X8[y & 7][x & 7]), 0.0f, 1.0f);
-        });
+    apply_pixel_loop(dst, from, to, alpha, width, height, [progress](int x, int y, const uint8_t*, float) {
+        return std::clamp(progress - static_cast<float>(BAYER_8X8[y & 7][x & 7]), 0.0f, 1.0f);
+    });
 }
 
 // ─── RandomDissolveTransition ────────────────────────────────────────────────
-void RandomDissolveTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
-                                     float alpha, int width, int height)
+void RandomDissolveTransition::apply(uint8_t* dst, const uint8_t* from, const uint8_t* to, float alpha, int width, int height)
 {
     const float soft = 0.06f;
-    apply_pixel_loop(dst, from, to, alpha, width, height,
-        [soft](int x, int y, const uint8_t*, float a) {
-            if (a >= 1.0f) return 1.0f;
-            const float threshold = hash01(x, y);
-            return std::clamp((a - threshold + soft) / (2.0f * soft), 0.0f, 1.0f);
-        });
+    apply_pixel_loop(dst, from, to, alpha, width, height, [soft](int x, int y, const uint8_t*, float a) {
+        if (a >= 1.0f)
+            return 1.0f;
+        const float threshold = hash01(x, y);
+        return std::clamp((a - threshold + soft) / (2.0f * soft), 0.0f, 1.0f);
+    });
 }
 
 // ─── ZoomBlendTransition ─────────────────────────────────────────────────────
-void ZoomBlendTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
-                                float alpha, int width, int height)
+void ZoomBlendTransition::apply(uint8_t* dst, const uint8_t* from, const uint8_t* to, float alpha, int width, int height)
 {
     const float cx = (static_cast<float>(width) - 1.0f) * 0.5f;
     const float cy = (static_cast<float>(height) - 1.0f) * 0.5f;
@@ -190,8 +178,7 @@ void ZoomBlendTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t
 
 
 // ─── Glitch Cut ──────────────────────────────────────────────────────────────
-void GlitchTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
-                             float alpha, int width, int height)
+void GlitchTransition::apply(uint8_t* dst, const uint8_t* from, const uint8_t* to, float alpha, int width, int height)
 {
     const float a = std::clamp(alpha, 0.0f, 1.0f);
     const int phase = static_cast<int>(a * 31.0f);
@@ -219,8 +206,7 @@ void GlitchTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t *t
 }
 
 // ─── CRT Collapse ────────────────────────────────────────────────────────────
-void CrtCollapseTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
-                                  float alpha, int width, int height)
+void CrtCollapseTransition::apply(uint8_t* dst, const uint8_t* from, const uint8_t* to, float alpha, int width, int height)
 {
     const float a = std::clamp(alpha, 0.0f, 1.0f);
     const float half_h = std::max(1.0f, (height - 1) * 0.5f);
@@ -252,15 +238,13 @@ void CrtCollapseTransition::apply(uint8_t *dst, const uint8_t *from, const uint8
 }
 
 // ─── Block Dissolve ──────────────────────────────────────────────────────────
-void BlockDissolveTransition::apply(uint8_t *dst, const uint8_t *from, const uint8_t *to,
-                                    float alpha, int width, int height)
+void BlockDissolveTransition::apply(uint8_t* dst, const uint8_t* from, const uint8_t* to, float alpha, int width, int height)
 {
     const float a = std::clamp(alpha, 0.0f, 1.0f);
-    apply_pixel_loop(dst, from, to, a, width, height,
-        [](int x, int y, const uint8_t*, float progress) {
-            const float threshold = hash01(x >> 3, y >> 3);
-            return progress >= threshold ? 1.0f : 0.0f;
-        });
+    apply_pixel_loop(dst, from, to, a, width, height, [](int x, int y, const uint8_t*, float progress) {
+        const float threshold = hash01(x >> 3, y >> 3);
+        return progress >= threshold ? 1.0f : 0.0f;
+    });
 }
 
 // ─── Factory ─────────────────────────────────────────────────────────────────

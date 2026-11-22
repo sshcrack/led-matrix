@@ -82,7 +82,8 @@ TransitionComposer::Frame TransitionComposer::frame(FrameCanvas* out, FrameCanva
         out_rgb_.resize(from_rgb_.size());
         effect_->apply(out_rgb_.data(), from_rgb_.data(), to_rgb, result.eased, width_, height_);
         out->SetRGB(0, 0, width_, height_, out_rgb_.data());
-    } else {
+    }
+    else {
         out->CopyFrom(*to);
     }
     if (result.done)

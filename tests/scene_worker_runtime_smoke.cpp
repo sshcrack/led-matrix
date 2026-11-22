@@ -76,8 +76,7 @@ public:
         const auto mix = [alpha](std::uint8_t a, std::uint8_t b) {
             return static_cast<std::uint8_t>(static_cast<float>(a) + (static_cast<float>(b) - static_cast<float>(a)) * alpha + 0.5f);
         };
-        for (int i = 0; i < width * height * 3; ++i)
-            dst[i] = mix(from[i], to[i]);
+        for (int i = 0; i < width * height * 3; ++i) dst[i] = mix(from[i], to[i]);
     }
 };
 

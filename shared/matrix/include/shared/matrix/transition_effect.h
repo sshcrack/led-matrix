@@ -1,8 +1,9 @@
 #pragma once
 
-#include "led-matrix.h"
 #include <cstdint>
 #include <string>
+
+#include "led-matrix.h"
 
 using rgb_matrix::FrameCanvas;
 
@@ -28,6 +29,5 @@ public:
     /// @param alpha  Progress in [0.0, 1.0].
     /// @param width  Frame width in pixels.
     /// @param height Frame height in pixels.
-    virtual void apply(std::uint8_t *dst, const std::uint8_t *from, const std::uint8_t *to,
-                       float alpha, int width, int height) = 0;
+    virtual void apply(std::uint8_t* dst, const std::uint8_t* from, const std::uint8_t* to, float alpha, int width, int height) = 0;
 };
