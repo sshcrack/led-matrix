@@ -1,9 +1,5 @@
 #include "MazeGameScene.h"
 
-#ifdef ENABLE_EMULATOR
-#include "emulator.h"
-#endif
-
 namespace Scenes {
     MazeGameScene::MazeGameScene() : Scene() {
         rng = std::mt19937(std::random_device()());

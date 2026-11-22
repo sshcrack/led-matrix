@@ -6,10 +6,8 @@
 
 #include "../plugins/RenderOffload/matrix/RenderOffloadPlugin.h"
 
-#ifdef ENABLE_EMULATOR
 #include <emulator.h>
 #include <led-matrix.h>
-#endif
 
 #include <chrono>
 #include <cstdint>
@@ -150,7 +148,11 @@ int main(int argc, char **argv)
         return 2;
     }
 
-#ifdef ENABLE_EMULATOR
+    // Canvas copies need the emulator; the Pi build (no emulator support) checks
+    // the transport only.
+    std::unique_ptr<rgb_matrix::EmulatorMatrix> matrix;
+    rgb_matrix::FrameCanvas *canvas = nullptr;
+    if (rgb_matrix::EmulatorMatrix::Supported()) {
     rgb_matrix::RGBMatrix::Options led;
     led.rows = 32;
     led.cols = 32;
@@ -158,13 +160,13 @@ int main(int argc, char **argv)
     led.parallel = 1;
     rgb_matrix::EmulatorOptions emulator;
     emulator.headless = true;
-    std::unique_ptr<rgb_matrix::EmulatorMatrix> matrix(rgb_matrix::EmulatorMatrix::Create(led, emulator));
+    matrix.reset(rgb_matrix::EmulatorMatrix::Create(led, emulator));
     if (!matrix) {
         std::cerr << "failed to create emulator matrix\n";
         return 3;
     }
-    auto *canvas = matrix->CreateFrameCanvas();
-#endif
+    canvas = matrix->CreateFrameCanvas();
+    }
 
     std::vector<std::uint8_t> frame(32 * 32 * 3);
     for (std::size_t i = 0; i < frame.size(); i += 3) {
@@ -184,7 +186,7 @@ int main(int argc, char **argv)
         std::cerr << "stale-session remote frame was accepted\n";
         return 6;
     }
-#ifdef ENABLE_EMULATOR
+    if (canvas) {
     if (!RemoteRender::copy_latest(*session, canvas, 32, 32)) {
         std::cerr << "latest remote frame was not available\n";
         return 7;
@@ -196,7 +198,7 @@ int main(int argc, char **argv)
         std::cerr << "remote RGB frame was copied incorrectly\n";
         return 8;
     }
-#endif
+    }
 
     const auto reconnect = RemoteRender::reconnect_command();
     if (!reconnect.has_value() || reconnect->value("session", 0U) != *session) {
@@ -243,13 +245,13 @@ int main(int argc, char **argv)
     // The transition loop reads the newest sequence without the state lock.
     if (RemoteRender::latest_sequence(*second) != 19 || RemoteRender::latest_sequence(*second + 1) != 0)
         return 27;
-#ifdef ENABLE_EMULATOR
-    // The copy reports which frame it copied, so a frame arriving between a
-    // sequence check and the copy is not shown twice.
-    std::uint32_t copied_sequence = 0;
-    if (!RemoteRender::copy_latest(*second, canvas, 32, 32, 300.0, &copied_sequence) || copied_sequence != 19)
-        return 28;
-#endif
+    if (canvas) {
+        // The copy reports which frame it copied, so a frame arriving between a
+        // sequence check and the copy is not shown twice.
+        std::uint32_t copied_sequence = 0;
+        if (!RemoteRender::copy_latest(*second, canvas, 32, 32, 300.0, &copied_sequence) || copied_sequence != 19)
+            return 28;
+    }
     // Additive capabilities are only used when the live worker lists them.
     RemoteRender::report_worker_heartbeat(RemoteRenderProtocol::Version, {{"remote_probe", 1}},
                                           {std::string(RemoteRenderProtocol::Features::TransitionSnapshotBase64)});

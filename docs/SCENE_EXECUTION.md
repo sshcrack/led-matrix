@@ -215,7 +215,7 @@ Remote offload and adaptive local quality complement each other: local quality p
 
 ## Desktop scene worker
 
-Linux and Windows desktop builds include `led-matrix-scene-worker` by default (`ENABLE_SCENE_WORKER=ON`). The process is supervised by the desktop `RenderOffload` plugin. On Windows the worker uses the native headless backend from our `rpi-rgb-led-matrix` fork, so it does not depend on Raspberry Pi GPIO, POSIX threading/mmap APIs, or SDL.
+Linux and Windows desktop builds include `led-matrix-scene-worker` by default (`ENABLE_SCENE_WORKER=ON`). The process is supervised by the desktop `RenderOffload` plugin. On Linux and Windows the worker uses the portable headless emulator of our `rpi-rgb-led-matrix` fork (port feature `emulator`, v0.2+), so it does not depend on Raspberry Pi GPIO, POSIX threading/mmap APIs, or SDL. Only the `emulator` preset adds the SDL window (root feature `emulator-window` → port feature `emulator-sdl`).
 
 The worker:
 

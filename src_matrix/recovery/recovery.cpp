@@ -464,10 +464,6 @@ int run(int argc, char** argv, Reason reason)
         const auto screen = screen_for(reason, local_ip(), port, read_action_state(), max_chars);
         draw(canvas, font, screen);
         canvas = matrix->SwapOnVSync(canvas);
-#ifdef ENABLE_EMULATOR
-        if (options.use_emulator)
-            static_cast<rgb_matrix::EmulatorMatrix*>(matrix.get())->Render();
-#endif
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 

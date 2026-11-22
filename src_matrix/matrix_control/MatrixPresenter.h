@@ -2,9 +2,7 @@
 
 #include "led-matrix.h"
 
-#ifdef ENABLE_EMULATOR
 #include "emulator.h"
-#endif
 
 class MatrixPresenter {
 public:
@@ -18,14 +16,17 @@ public:
     void present() override {}
 };
 
-#ifdef ENABLE_EMULATOR
+/// Shows what was drawn straight onto the matrix (no swap, e.g. the "No scene
+/// available" fallback) in the emulator. `SwapOnVSync()` shows swapped frames
+/// itself (panel library v0.1.16+), so after a swap this skips an already shown
+/// frame; on hardware it does nothing.
 class EmulatorPresenter : public MatrixPresenter {
     rgb_matrix::RGBMatrixBase *matrix_;
 public:
     explicit EmulatorPresenter(rgb_matrix::RGBMatrixBase *matrix)
         : matrix_(matrix) {}
     void present() override {
-        static_cast<rgb_matrix::EmulatorMatrix *>(matrix_)->Render();
+        if (auto *emulator = matrix_->AsEmulator())
+            emulator->Render();
     }
 };
-#endif

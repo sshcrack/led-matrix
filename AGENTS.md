@@ -26,7 +26,7 @@ CMake + Ninja + vcpkg. Three presets, three distinct build dirs:
 
 | Preset | Purpose | Build dir |
 |---|---|---|
-| `emulator` | x64 build with SDL2 emulator (for local development) | `emulator_build/` |
+| `emulator` | x64 build with SDL2 emulator (for local development); desktop builds use the library's headless emulator without SDL | `emulator_build/` |
 | `cross-compile` | arm64 for Raspberry Pi | `build/` |
 | `desktop-linux` / `desktop-windows` | Desktop ImGui app | `desktop_build/` |
 
@@ -286,7 +286,7 @@ GET only reads; changes are POST (DELETE removes). Read parameters with `Server:
 
 ## Preview Generator (`src_preview_gen`)
 
-The `src_preview_gen` binary generates animated GIF previews for all registered matrix scenes. It is **tightly coupled to the emulator preset** — it requires `ENABLE_EMULATOR` at compile time and instantiates `EmulatorMatrix` directly. It will **not** build under the cross-compile or desktop presets.
+The `src_preview_gen` binary generates animated GIF previews for all registered matrix scenes. It is **tightly coupled to the emulator preset** — CMake builds it only with `ENABLE_EMULATOR`, and it exits unless `EmulatorMatrix::Supported()`. It will **not** build under the cross-compile or desktop presets.
 
 Usage after building the emulator preset:
 ```bash
