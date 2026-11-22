@@ -1,8 +1,7 @@
 #pragma once
 
-#include "led-matrix.h"
-
 #include "emulator.h"
+#include "led-matrix.h"
 
 class MatrixPresenter {
 public:
@@ -26,7 +25,7 @@ public:
     explicit EmulatorPresenter(rgb_matrix::RGBMatrixBase *matrix)
         : matrix_(matrix) {}
     void present() override {
-        if (auto *emulator = matrix_->AsEmulator())
+        if (auto* emulator = matrix_->AsEmulator())
             emulator->Render();
     }
 };

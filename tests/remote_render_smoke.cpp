@@ -1,13 +1,10 @@
+#include <emulator.h>
+#include <led-matrix.h>
 #include <shared/common/remote_render_protocol.h>
 #include <shared/matrix/Scene.h>
 #include <shared/matrix/diagnostics.h>
 #include <shared/matrix/media_artwork_state.h>
 #include <shared/matrix/remote_render.h>
-
-#include "../plugins/RenderOffload/matrix/RenderOffloadPlugin.h"
-
-#include <emulator.h>
-#include <led-matrix.h>
 
 #include <chrono>
 #include <cstdint>
@@ -15,6 +12,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "../plugins/RenderOffload/matrix/RenderOffloadPlugin.h"
 
 namespace {
 class RemoteProbeScene : public Scenes::Scene {
@@ -151,21 +150,21 @@ int main(int argc, char **argv)
     // Canvas copies need the emulator; the Pi build (no emulator support) checks
     // the transport only.
     std::unique_ptr<rgb_matrix::EmulatorMatrix> matrix;
-    rgb_matrix::FrameCanvas *canvas = nullptr;
+    rgb_matrix::FrameCanvas* canvas = nullptr;
     if (rgb_matrix::EmulatorMatrix::Supported()) {
-    rgb_matrix::RGBMatrix::Options led;
-    led.rows = 32;
-    led.cols = 32;
-    led.chain_length = 1;
-    led.parallel = 1;
-    rgb_matrix::EmulatorOptions emulator;
-    emulator.headless = true;
-    matrix.reset(rgb_matrix::EmulatorMatrix::Create(led, emulator));
-    if (!matrix) {
-        std::cerr << "failed to create emulator matrix\n";
-        return 3;
-    }
-    canvas = matrix->CreateFrameCanvas();
+        rgb_matrix::RGBMatrix::Options led;
+        led.rows = 32;
+        led.cols = 32;
+        led.chain_length = 1;
+        led.parallel = 1;
+        rgb_matrix::EmulatorOptions emulator;
+        emulator.headless = true;
+        matrix.reset(rgb_matrix::EmulatorMatrix::Create(led, emulator));
+        if (!matrix) {
+            std::cerr << "failed to create emulator matrix\n";
+            return 3;
+        }
+        canvas = matrix->CreateFrameCanvas();
     }
 
     std::vector<std::uint8_t> frame(32 * 32 * 3);
@@ -187,17 +186,17 @@ int main(int argc, char **argv)
         return 6;
     }
     if (canvas) {
-    if (!RemoteRender::copy_latest(*session, canvas, 32, 32)) {
-        std::cerr << "latest remote frame was not available\n";
-        return 7;
-    }
+        if (!RemoteRender::copy_latest(*session, canvas, 32, 32)) {
+            std::cerr << "latest remote frame was not available\n";
+            return 7;
+        }
 
-    std::uint8_t r = 0, g = 0, b = 0;
-    canvas->GetPixel(11, 19, &r, &g, &b);
-    if (r != 17 || g != 83 || b != 201) {
-        std::cerr << "remote RGB frame was copied incorrectly\n";
-        return 8;
-    }
+        std::uint8_t r = 0, g = 0, b = 0;
+        canvas->GetPixel(11, 19, &r, &g, &b);
+        if (r != 17 || g != 83 || b != 201) {
+            std::cerr << "remote RGB frame was copied incorrectly\n";
+            return 8;
+        }
     }
 
     const auto reconnect = RemoteRender::reconnect_command();

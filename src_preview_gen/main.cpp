@@ -26,8 +26,6 @@
  *   (defaults to stdout).
  */
 
-#include <cstdlib>
-#include <random>
 #include <Magick++.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
@@ -35,10 +33,12 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <random>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -46,12 +46,11 @@
 #include <vector>
 
 #include "emulator.h"
-#include "matrix-factory.h"
-
 #include "led-matrix.h"
+#include "matrix-factory.h"
 #include "shared/matrix/canvas_consts.h"
-#include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/plugin/lifecycle.h"
+#include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/preview.h"
 #include "shared/matrix/utils/consts.h"
 #include "shared/matrix/utils/shared.h"
