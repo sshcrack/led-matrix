@@ -5,15 +5,19 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <numeric>
 #include <optional>
 #include <random>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "../plugins/AudioVisualizer/desktop/MusicAnalyzer.h"
+#include "led_matrix_version.h"
 
 namespace {
 constexpr double Pi = 3.14159265358979323846;
@@ -21,6 +25,10 @@ constexpr double Pi = 3.14159265358979323846;
 struct Track {
     std::vector<float> mono;
     double sampleRate = 44100.0;
+    std::vector<float> left;
+    std::vector<float> right;
+
+    Track(size_t samples, double rate) : mono(samples), sampleRate(rate) {}
 };
 
 struct Result {
@@ -48,7 +56,7 @@ float median(std::vector<float> values)
 Track syntheticDrums(float bpm, float seconds, double sampleRate = 44100.0)
 {
     const size_t count = static_cast<size_t>(seconds * sampleRate);
-    Track track{std::vector<float>(count, 0.0f), sampleRate};
+    Track track(count, sampleRate);
     const double beatPeriod = 60.0 / bpm;
     std::mt19937 rng(0x51A17U + static_cast<unsigned>(bpm * 10.0f));
     std::uniform_real_distribution<float> noise(-1.0f, 1.0f);
@@ -133,17 +141,37 @@ std::optional<Track> loadPcm16Wav(const std::string& path)
 
     const size_t frameBytes = static_cast<size_t>(channels) * 2;
     const size_t frames = dataSize / frameBytes;
-    Track result{std::vector<float>(frames), static_cast<double>(sampleRate)};
+    if (dataSize % frameBytes != 0 || frames < MUSIC_ANALYSIS_WINDOW_SIZE)
+        return std::nullopt;
+    Track result(frames, sampleRate);
+    if (channels == 2) {
+        result.left.resize(frames);
+        result.right.resize(frames);
+    }
     for (size_t i = 0; i < frames; ++i) {
+        const size_t p = dataOffset + i * frameBytes;
         float sum = 0.0f;
-        for (uint16_t channel = 0; channel < channels; ++channel) {
-            const size_t p = dataOffset + i * frameBytes + static_cast<size_t>(channel) * 2;
-            const int16_t sample = static_cast<int16_t>(u16(p));
-            sum += static_cast<float>(sample) / 32768.0f;
+        for (uint16_t channel = 0; channel < channels; ++channel) sum += static_cast<int16_t>(u16(p + 2 * channel)) / 32768.0f;
+        result.mono[i] = sum / channels;
+        if (channels == 2) {
+            result.left[i] = static_cast<int16_t>(u16(p)) / 32768.0f;
+            result.right[i] = static_cast<int16_t>(u16(p + 2)) / 32768.0f;
         }
-        result.mono[i] = sum / static_cast<float>(channels);
     }
     return result;
+}
+
+void fillFrame(const Track& track, size_t end, AudioRecorder::CapturedAudioFrame& frame)
+{
+    const auto last = static_cast<std::ptrdiff_t>(end);
+    const auto first = last - static_cast<std::ptrdiff_t>(MUSIC_ANALYSIS_WINDOW_SIZE);
+    frame.sampleRate = track.sampleRate;
+    frame.sequence = end;
+    frame.mono.assign(track.mono.begin() + first, track.mono.begin() + last);
+    const auto& left = track.left.empty() ? track.mono : track.left;
+    const auto& right = track.right.empty() ? track.mono : track.right;
+    frame.left.assign(left.begin() + first, left.begin() + last);
+    frame.right.assign(right.begin() + first, right.begin() + last);
 }
 
 Result analyzeTrack(const Track& track, float collectAfterSeconds = 8.0f)
@@ -162,12 +190,7 @@ Result analyzeTrack(const Track& track, float collectAfterSeconds = 8.0f)
 
     for (size_t end = MUSIC_ANALYSIS_WINDOW_SIZE; end <= track.mono.size(); end += FFT_HOP_SIZE) {
         AudioRecorder::CapturedAudioFrame frame;
-        frame.sampleRate = track.sampleRate;
-        frame.sequence = end;
-        frame.mono.assign(track.mono.begin() + static_cast<std::ptrdiff_t>(end - MUSIC_ANALYSIS_WINDOW_SIZE),
-                          track.mono.begin() + static_cast<std::ptrdiff_t>(end));
-        frame.left = frame.mono;
-        frame.right = frame.mono;
+        fillFrame(track, end, frame);
         const auto result = analyzer.analyze(frame, displayBands);
         const double seconds = static_cast<double>(end) / track.sampleRate;
         if (std::getenv("AUDIO_BENCH_TRACE") && result.event(AudioProtocol::OnsetEvent)) {
@@ -218,6 +241,99 @@ Result analyzeTrack(const Track& track, float collectAfterSeconds = 8.0f)
             static_cast<float>(lastSection - firstSection) / duration};
 }
 
+int observe(const Track& track, bool stress)
+{
+    AudioVisualizerConfig config;
+    MusicAnalyzer analyzer(config);
+    constexpr int analysisHz = 60;
+    constexpr std::array jitterSeconds{0.0, 0.003, -0.003, 0.001, -0.001};
+    constexpr size_t skipPeriod = 53;
+    constexpr size_t skipOffset = 17;
+    nlohmann::json metadata{
+        {"schema", 1},
+        {"commit", LED_MATRIX_GIT_REVISION},
+        {"version", PROJECT_VERSION_STRING},
+        {"sample_rate", track.sampleRate},
+        {"samples", track.mono.size()},
+        {"window_samples", MUSIC_ANALYSIS_WINDOW_SIZE},
+        {"min_hop_samples", FFT_HOP_SIZE},
+        {"analysis_hz", analysisHz},
+        {"cadence", stress ? "jitter_skip" : "regular"},
+        {"settings",
+         {
+             {"music_analysis_gain", config.musicAnalysisGain},
+             {"transient_sensitivity", config.transientSensitivity},
+             {"beat_sensitivity", config.beatSensitivity},
+         }},
+    };
+    if (stress) {
+        metadata["jitter_seconds"] = jitterSeconds;
+        metadata["skip_period_ticks"] = skipPeriod;
+        metadata["skip_offset_ticks"] = skipOffset;
+    }
+    std::cout << metadata.dump() << '\n' << std::setprecision(9);
+    std::cout
+        << "sample_end,sequence,analyzer_ms,bpm,confidence,stability,phase,beat_count,onset_count,drop_count,section_count,"
+           "beat,onset,kick,snare,hihat,drop,section,silent,rms,bass,flux,onset_strength,kick_strength,snare_strength,hihat_strength\n";
+
+    AudioRecorder::CapturedAudioFrame audio;
+    size_t previous = 0;
+    for (size_t tick = 0;; ++tick) {
+        const double seconds = static_cast<double>(tick) / analysisHz;
+        const double jitter = stress ? jitterSeconds[tick % jitterSeconds.size()] : 0.0;
+        const auto end = MUSIC_ANALYSIS_WINDOW_SIZE + static_cast<size_t>(std::llround((seconds + jitter) * track.sampleRate));
+        if (end > track.mono.size())
+            break;
+        // Use the same minimum fresh-sample count as Recorder::getLastSamples.
+        if ((stress && tick % skipPeriod == skipOffset) || end - previous < FFT_HOP_SIZE)
+            continue;
+        fillFrame(track, end, audio);
+        previous = end;
+        const auto frame = analyzer.analyze(audio, {});
+        using namespace AudioProtocol;
+        std::cout << end << ',' << frame.sequence << ',' << frame.timestamp_ms;
+        for (auto feature : {Feature::Bpm, Feature::BeatConfidence, Feature::TempoStability, Feature::BeatPhase})
+            std::cout << ',' << frame.feature(feature);
+        for (auto counter : {frame.beat_counter, frame.onset_counter, frame.drop_counter, frame.section_counter})
+            std::cout << ',' << counter;
+        for (auto flag : {BeatEvent, OnsetEvent, KickEvent, SnareEvent, HihatEvent, DropEvent, SectionEvent, Silent})
+            std::cout << ',' << frame.event(flag);
+        for (auto feature :
+             {Feature::Rms, Feature::Bass, Feature::SpectralFlux, Feature::OnsetStrength, Feature::Kick, Feature::Snare, Feature::Hihat})
+            std::cout << ',' << frame.feature(feature);
+        std::cout << '\n';
+    }
+    return std::cout ? 0 : 1;
+}
+
+bool checkDeviceReset()
+{
+    using namespace AudioProtocol;
+    AudioVisualizerConfig config;
+    MusicAnalyzer analyzer(config);
+    AudioRecorder::CapturedAudioFrame audio;
+    const Track firstDevice = syntheticDrums(120.0f, 8.0f);
+    Frame before;
+    for (size_t end = MUSIC_ANALYSIS_WINDOW_SIZE; end <= firstDevice.mono.size(); end += FFT_HOP_SIZE) {
+        fillFrame(firstDevice, end, audio);
+        before = analyzer.analyze(audio, {});
+    }
+
+    // The desktop resets on a selected-device change. The new capture clock
+    // starts from its own sample sequence and may have a different sample rate.
+    analyzer.reset();
+    const Track secondDevice(MUSIC_ANALYSIS_WINDOW_SIZE + 2 * FFT_HOP_SIZE, 48000);
+    fillFrame(secondDevice, MUSIC_ANALYSIS_WINDOW_SIZE, audio);
+    const auto reset = analyzer.analyze(audio, {});
+    fillFrame(secondDevice, secondDevice.mono.size(), audio);
+    const auto skipped = analyzer.analyze(audio, {});
+    return before.beat_counter > 0 && before.onset_counter > 0 && before.feature(Feature::Bpm) > 1.0f &&
+           reset.sequence == before.sequence + 1 && reset.timestamp_ms == 0 && reset.beat_counter == before.beat_counter &&
+           reset.onset_counter == before.onset_counter && reset.drop_counter == before.drop_counter &&
+           reset.section_counter == before.section_counter && reset.feature(Feature::Bpm) == 0.0f && skipped.timestamp_ms == 10 &&
+           skipped.beat_counter == reset.beat_counter && skipped.onset_counter == reset.onset_counter;
+}
+
 void printResult(const std::string& name, const Result& r)
 {
     std::cout << name << ": bpm=" << r.bpm << " confidence=" << r.confidence << " stability=" << r.stability << " onsets/s=" << r.onsetRate
@@ -228,6 +344,19 @@ void printResult(const std::string& name, const Result& r)
 
 int main(int argc, char** argv)
 {
+    if (argc >= 2 && std::string_view(argv[1]) == "--observe") {
+        const bool stress = argc == 4 && std::string_view(argv[3]) == "--jitter-skip";
+        if (argc != 3 && !stress) {
+            std::cerr << "usage: audio_analyzer_benchmark --observe <PCM16 WAV> [--jitter-skip]\n";
+            return 2;
+        }
+        const auto track = loadPcm16Wav(argv[2]);
+        if (!track) {
+            std::cerr << "Expected PCM16 WAV with at least " << MUSIC_ANALYSIS_WINDOW_SIZE << " samples: " << argv[2] << '\n';
+            return 2;
+        }
+        return observe(*track, stress);
+    }
     if (argc >= 2) {
         const auto track = loadPcm16Wav(argv[1]);
         if (!track) {
@@ -249,6 +378,10 @@ int main(int argc, char** argv)
     }
 
     bool ok = true;
+    if (!checkDeviceReset()) {
+        std::cerr << "FAILED capture clock or counters after analyzer reset\n";
+        ok = false;
+    }
     for (float expected : {72.0f, 90.0f, 120.0f, 150.0f, 168.0f, 170.0f, 174.0f, 176.0f, 180.0f}) {
         const Result result = analyzeTrack(syntheticDrums(expected, 22.0f));
         printResult("synthetic " + std::to_string(static_cast<int>(expected)) + " BPM", result);
@@ -264,7 +397,7 @@ int main(int argc, char** argv)
         }
     }
 
-    Track silence{std::vector<float>(static_cast<size_t>(12.0 * 44100.0), 0.0f), 44100.0};
+    Track silence(static_cast<size_t>(12.0 * 44100.0), 44100.0);
     const Result silent = analyzeTrack(silence, 5.0f);
     printResult("silence", silent);
     if (silent.confidence > 0.05f || silent.onsetRate > 0.05f || silent.beatRate > 0.05f) {
@@ -281,7 +414,7 @@ int main(int argc, char** argv)
         ok = false;
     }
 
-    Track noise{std::vector<float>(static_cast<size_t>(16.0 * 44100.0)), 44100.0};
+    Track noise(static_cast<size_t>(16.0 * 44100.0), 44100.0);
     std::mt19937 noiseRng(0xA11D10U);
     std::uniform_real_distribution<float> randomSample(-0.08f, 0.08f);
     for (float& sample : noise.mono) sample = randomSample(noiseRng);
@@ -315,7 +448,7 @@ int main(int argc, char** argv)
         std::cerr << "FAILED tempo-change recovery\n";
         ok = false;
     }
-    Track evolving{std::vector<float>(static_cast<size_t>(24.0 * 44100.0)), 44100.0};
+    Track evolving(static_cast<size_t>(24.0 * 44100.0), 44100.0);
     for (size_t i = 0; i < evolving.mono.size(); ++i) {
         const double t = static_cast<double>(i) / evolving.sampleRate;
         const double blend = std::clamp((t - 12.0) / 1.5, 0.0, 1.0);
