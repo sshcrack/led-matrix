@@ -175,6 +175,19 @@ Output is unchanged. A dump of all 11 effects through the composer (572 frames a
 | zoom_blend | every frame | 23.5 / 23.7 | 14.5 / 14.7 | 62% |
 | zoom_blend | every 3rd frame | 23.5 / 23.7 | 6.5 / 14.7 | 39% |
 
-The old path needed more than one 60 FPS frame budget (16.7 ms) for blend and zoom on composition alone. The new path takes about 6 ms on frames without a new incoming picture. The remaining ~8 ms on frames with one is the per-pixel readback of the incoming canvas: the library has no bulk read. A bulk readback in the panel library, or incoming scenes that hand over RGB buffers directly, would remove most of it.
+The old path needed more than one 60 FPS frame budget (16.7 ms) for blend and zoom on composition alone. The new path takes about 6 ms on frames without a new incoming picture. The remaining ~8 ms on frames with one was the per-pixel readback of the incoming canvas.
+
+**Bulk readback (panel library v0.2.3).** `FrameCanvas::GetRGB()` decodes the whole frame in one pass, and `RgbBlit::read()` now uses it. The live capture, the desktop handoff snapshot and `preview_gen` use it too. The same benchmark, re-run on 2026-11-22 with v0.2.3 against the per-pixel readback (ms per composed frame, p50 / p95):
+
+| Effect | Incoming paints | Old canvas path | RGB + `GetPixel()` readback | RGB + `GetRGB()` readback |
+|---|---|---:|---:|---:|
+| blend | every frame | 23.5 / 23.6 | 14.4 / 14.6 | 10.4 / 10.6 |
+| blend | every 3rd frame | 23.5 / 23.6 | 6.1 / 14.5 | 6.1 / 10.5 |
+| random_dissolve | every frame | 17.9 / 18.0 | 14.7 / 14.8 | 10.7 / 10.9 |
+| random_dissolve | every 3rd frame | 17.9 / 18.0 | 6.4 / 14.8 | 6.4 / 10.8 |
+| zoom_blend | every frame | 23.9 / 24.0 | 14.7 / 14.9 | 10.7 / 10.9 |
+| zoom_blend | every 3rd frame | 23.9 / 24.0 | 6.4 / 14.8 | 6.4 / 10.8 |
+
+A full 128×128 readback through `Rotate:270` costs 4.2 ms with `GetRGB()` against 8.0 ms with a `GetPixel()` loop, and both give identical bytes. With the incoming scene painting every frame, a blend frame now costs 44% of the old path. The rest is the blend itself plus `SetRGB()` (about 6 ms), and the readback (about 4 ms). Incoming scenes handing over RGB buffers directly would remove the readback entirely.
 
 The desktop worker uses the same composer, so its locally composed blends also skip the per-frame readback. Live capture is untouched: no capture or readback happens without a viewer request, and no per-frame metrics were added.
