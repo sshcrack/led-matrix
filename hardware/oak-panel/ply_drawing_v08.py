@@ -2,10 +2,11 @@
 """Drill sheet for the v0.8 plywood back (v08.py), in German like the v0.7 wood sheets.
 
 Writes exports/v08/sperrholz-bohrplan.pdf:
-  1  drawing (rear view) with the window and every hole
-  2  hole table, measured from the bottom-left corner
-  3  shopping list and order of work
-  4-9 templates at 1:1 (2 x 3 tiles on A4, 10 mm overlap): tape onto the board, punch the centres
+  1  overview and page index
+  2  shopping list
+  3  order of work
+  4  drill table, measured from the bottom-left corner
+  5-10 full-size A4 templates, with 10 mm overlap
 
 View: from the wall side. The plywood lies on the table with its inner face (the side the panels
 touch) DOWN and the top edge away from you; that is also how it lies on the face-down panels.
@@ -56,17 +57,53 @@ def lines(x, y, rows, size=9, lead=4.6):
 
 
 def header(title, sub):
+    txt(285, 198, f"Seite {c.getPageNumber()}", 8, anchor="right", colour=GREY)
     txt(12, 198, title, 14, True)
     txt(12, 192, sub, 8.5, colour=(0.3, 0.3, 0.3))
 
+
+FULL = 2 * E
+OVER = 10.0
+COLS, ROWS = 2, 3
+TW = (FULL + (COLS - 1) * OVER) / COLS  # 196.5 wide
+TH = (FULL + (ROWS - 1) * OVER) / ROWS  # 134.3 high
+MX, MY = 14.0, 40.0  # page position of the tile's bottom-left corner
+
+
+def mline(x0, y0, x1, y1, w=0.25, col=INK, dash=None):
+    c.setLineWidth(w)
+    c.setStrokeColorRGB(*col)
+    c.setDash(*dash) if dash else c.setDash()
+    c.line(x0 * mm, y0 * mm, x1 * mm, y1 * mm)
+    c.setDash()
+
+
+
+FIRST_TILE_PAGE = 5
+
+
+def tile_map(x, y, cell, active=None):
+    """Wall-side sheet positions, reading from top left."""
+    txt(x + COLS * cell / 2, y + ROWS * cell + 3, "OBEN", 7, True, anchor="centre")
+    for row in range(ROWS):
+        for col in range(COLS):
+            name = f"{'ABC'[row]}{col + 1}"
+            page = FIRST_TILE_PAGE + row * COLS + col
+            px, py = x + col * cell, y + (ROWS - 1 - row) * cell
+            c.setFillColorRGB(*((0.82, 0.90, 0.98) if name == active else (1, 1, 1)))
+            c.setStrokeColorRGB(*GREY)
+            c.setLineWidth(0.35)
+            c.rect(px * mm, py * mm, cell * mm, cell * mm, stroke=1, fill=1)
+            txt(px + cell / 2, py + cell * 0.55, name, 7, name == active, anchor="centre")
+            txt(px + cell / 2, py + cell * 0.18, f"S. {page}", 6, anchor="centre")
 
 holes = []  # (from_left, from_bottom, what, d)
 for x, y, what, d in v08.ply_holes():
     holes.append((round(x + E, 1), round(y + E, 1), what, d))
 wx0, wx1, wy0, wy1 = (v + E for v in v08.pod_window())
 
-# --- Page 1: drawing --------------------------------------------------------------------------
-header(f"v0.8 Rückwand: Pappelsperrholz {fmt(2 * E)} x {fmt(2 * E)} x {fmt(v08.PLY_T)} mm",
+# --- Page 1: overview --------------------------------------------------------------------------
+header(f"v0.8 Holzrückseite: Übersicht | Pappelsperrholz {fmt(2 * E)} x {fmt(2 * E)} x {fmt(v08.PLY_T)} mm",
        "Ansicht von der Wandseite: Innenseite (zu den Panels) liegt unten, Oberkante von dir weg. "
        "Maße ab der Ecke unten links, in mm.")
 S = 0.43
@@ -115,45 +152,25 @@ lines(lx, 170, [
     f"{fmt(wx1 - wx0)} x {fmt(wy1 - wy0)} mm, links {fmt(wx0)}, unten {fmt(wy0)}.",
     "In den Ecken Ø 8 vorbohren, dann aussägen.",
     "",
-    "## Wichtig",
-    "Die Ø 6-Löcher geben ±1,3 mm Spiel: die Panels",
-    "bestimmen die Lage, nicht das Holz. Panels erst",
-    "fugenlos zusammenspannen, dann verschrauben.",
-    "Alle Löcher senkrecht bohren (Bohrständer oder",
-    "Winkel), Holz unterlegen gegen Ausreißen.",
+    "## Seiten",
+    "S. 2  Einkaufsliste Bauhaus",
+    "S. 3  Arbeitsablauf und Kachelübersicht",
+    "S. 4  Bohrtabelle und Fenstermaße",
+    "S. 5-10  Schablonen A1 bis C2 (1:1)",
     "",
-    "Die Zeichnung ist NICHT maßstäblich zum",
-    "Abnehmen: Maße aus der Tabelle (Seite 2).",
+    "Die Übersicht ist verkleinert.",
+    "Zum Übertragen die Schablonen verwenden.",
 ], 8.5, 4.3)
+tile_map(lx + 2, 21, 15)
 
-# --- Page 2: table ----------------------------------------------------------------------------
-c.showPage()
-c.setPageSize(landscape(A4))
-header("Bohrtabelle", "Ab Ecke unten links (Wandansicht). Erst alle Mittelpunkte mit Winkel und Bleistift anreißen, "
-       "dann mit 2 mm vorbohren, dann aufbohren.")
-order = ["panel screw", "M3 rail", "M3 pod", "M3 halo", "M3 bumper", "cable tie", "vent"]
-rows = sorted(holes, key=lambda h: (order.index(h[2]), h[1], h[0]))
-col_w, per_col = 68, 34
-for i, (hx, hy, what, d) in enumerate(rows):
-    col, row = divmod(i, per_col)
-    x = 12 + col * col_w
-    y = 180 - row * 4.8
-    if row == 0:
-        txt(x, y + 5.5, "Nr  Zweck            Ø     links   unten", 7.5, True)
-    txt(x, y, f"{i + 1:>2}", 7.5)
-    txt(x + 7, y, WHAT_DE[what], 7.5)
-    txt(x + 33, y, fmt(d if d != v08.M3_CLEAR else 3.5), 7.5, anchor="right")
-    txt(x + 47, y, fmt(hx), 7.5, anchor="right")
-    txt(x + 60, y, fmt(hy), 7.5, anchor="right")
-
-# --- Page 3: shopping list and order of work ------------------------------------------------------
+# --- Pages 2-3: shopping list and order of work ------------------------------------------------------
 c.showPage()
 c.setPageSize(landscape(A4))
 n_m3_12 = sum(1 for *_, L, _ in v08.inside_screws() if L == 12.0)
 n_m3_20 = sum(1 for *_, L, _ in v08.inside_screws() if L == 20.0)
 n_ties = 2 * (len(v08.BOARDS) + 1)  # two ties per board and the fuse
-header("Einkauf und Reihenfolge", "Ein Druckauftrag für die Halo-Teile, einer für Gehäuse, Schienen, Puffer und Röhrchen.")
-y = lines(12, 180, [
+header("Einkaufsliste Bauhaus", "Holzzuschnitt im Baumarkt. Bohrungen und Fenster machst du zu Hause.")
+lines(12, 180, [
     "## Bauhaus / Baumarkt",
     f"Pappelsperrholz {fmt(v08.PLY_T)} mm, Zuschnitt {fmt(2 * E)} x {fmt(2 * E)} mm (Toleranz lieber -1 als +1)",
     "Bohrer Ø 2, 3,5, 4, 6, 8 und 10 mm (Holz), Stichsäge mit feinem Blatt",
@@ -168,12 +185,27 @@ y = lines(12, 180, [
     "4 x M2,5 x 10 (vorhanden: Pi ans Gehäusedach)",
     "2 x M5 x 45 + Mutter (Sicherung an den Wandschrauben, wie v0.7)",
 ], 9, 4.7)
-lines(150, 180, [
-    "## Reihenfolge",
-    "1  Schablonen (Seite 4-9) mit 100 % drucken, 100-mm-Balken nachmessen, an den",
-    "   Kanten zusammenkleben, Ecke unten links bündig aufs Holz kleben. Alle Mitten",
-    "   mit Vorstecher/Körner durchstechen, Ø 2 vorbohren, dann aufbohren. Fenster",
-    "   aussägen, Kanten schleifen.",
+lines(156, 180, [
+    "## Druckaufträge",
+    "1 Auftrag: Halo-Teile",
+    "1 Auftrag: Gehäuse, Schienen, Puffer und Röhrchen",
+    "",
+    "## Unterlagen",
+    "Bohrtabelle S. 4, A4-Schablonen S. 5-10.",
+], 9, 4.7)
+
+c.showPage()
+header("Arbeitsablauf", "Die Schablonen zeigen die Wandseite. Die Innenseite der Rückwand liegt beim Anzeichnen unten.")
+lines(12, 180, [
+    "## Rückwand vorbereiten",
+    "1  Schablonen S. 5-10 in A4 quer bei 100 % drucken. Jeden 100-mm-Balken",
+    "   nachmessen. Blätter nach dem Kachelplan anordnen, eine Papierkante je Stoß",
+    "   am Kachelrahmen abschneiden und die 10-mm-Streifen deckungsgleich kleben.",
+    "   Die Außenkanten der Schablone bündig an der Rückwand ausrichten.",
+    "   Lochmitten durchstechen, Ø 2 vorbohren und nach Kennung aufbohren.",
+    "   Fenster nach gestrichelter Kontur aussägen, Kanten schleifen.",
+    "",
+    "## Zusammenbau",
     "2  Auf dem Tisch, Innenseite nach oben: Halo-Teile, Schienen, Puffer und",
     "   Pi-Gehäuse von der Innenseite mit M3 x 12 / M3 x 20 anschrauben.",
     "3  Pi kopfüber mit 4 x M2,5 x 10 ans Gehäusedach, Pro Micro mit",
@@ -192,25 +224,37 @@ lines(150, 180, [
     "",
     "Zum Abnehmen später: Streifen an den 8 Stellen anheben, 16 Schrauben raus.",
 ], 9, 4.7)
+tile_map(221, 112, 23)
+lines(199, 98, [
+    "A1 beginnt oben links (S. 5).",
+    "C2 liegt unten rechts (S. 10).",
+    "Graue Streifen überlappen 10 mm.",
+    "Nur Lochmarken mit Kennung bohren.",
+], 8.5, 4.8)
 
-# --- Pages 4-9: templates at 1:1 ------------------------------------------------------------------
+# --- Page 4: drill table ----------------------------------------------------------------------------
+c.showPage()
+c.setPageSize(landscape(A4))
+header("Rückwand: Bohrtabelle", "Wandansicht, Maße in mm ab Ecke unten links. Schablonen auf S. 5-10.")
+txt(12, 10, f"Fenster: X {fmt(wx0)} bis {fmt(wx1)}, Y {fmt(wy0)} bis {fmt(wy1)}. Eckbohrungen Ø 8.", 8)
+order = ["panel screw", "M3 rail", "M3 pod", "M3 halo", "M3 bumper", "cable tie", "vent"]
+rows = sorted(holes, key=lambda h: (order.index(h[2]), h[1], h[0]))
+col_w, per_col = 68, 34
+for i, (hx, hy, what, d) in enumerate(rows):
+    col, row = divmod(i, per_col)
+    x = 12 + col * col_w
+    y = 180 - row * 4.8
+    if row == 0:
+        txt(x, y + 5.5, "Nr  Zweck            Ø     links   unten", 7.5, True)
+    txt(x, y, f"{i + 1:>2}", 7.5)
+    txt(x + 7, y, WHAT_DE[what], 7.5)
+    txt(x + 33, y, fmt(d if d != v08.M3_CLEAR else 3.5), 7.5, anchor="right")
+    txt(x + 47, y, fmt(hx), 7.5, anchor="right")
+    txt(x + 60, y, fmt(hy), 7.5, anchor="right")
+
+# --- Pages 5-10: templates at 1:1 ------------------------------------------------------------------
 LABEL = {"panel screw": "P6", "M3 halo": "H3,5", "M3 pod": "G3,5", "M3 bumper": "U3,5", "M3 rail": "S3,5",
          "cable tie": "K4", "vent": "L10"}
-FULL = 2 * E
-OVER = 10.0
-COLS, ROWS = 2, 3
-TW = (FULL + (COLS - 1) * OVER) / COLS  # 196.5 wide
-TH = (FULL + (ROWS - 1) * OVER) / ROWS  # 134.3 high
-MX, MY = 14.0, 40.0  # page position of the tile's bottom-left corner
-
-
-def mline(x0, y0, x1, y1, w=0.25, col=INK, dash=None):
-    c.setLineWidth(w)
-    c.setStrokeColorRGB(*col)
-    c.setDash(*dash) if dash else c.setDash()
-    c.line(x0 * mm, y0 * mm, x1 * mm, y1 * mm)
-    c.setDash()
-
 
 for row in range(ROWS - 1, -1, -1):
     for col in range(COLS):
@@ -221,7 +265,8 @@ for row in range(ROWS - 1, -1, -1):
         name = f"{'ABC'[ROWS - 1 - row]}{col + 1}"
         header(f"Schablone {name} (1:1)  -  links {fmt(tx0)} bis {fmt(tx0 + TW)}, unten {fmt(ty0)} bis {fmt(ty0 + TH)}",
                "Mit 100 % drucken (nicht 'an Seite anpassen'), Balken unten nachmessen. Grau: 10 mm Überlappung "
-               "mit der Nachbarschablone, Kreuze dort decken sich. A oben, C unten; 1 links, 2 rechts.")
+               "mit der Nachbarschablone. A oben, C unten; 1 links, 2 rechts.")
+        tile_map(237, 113, 17, name)
 
         def T(x, y):
             return MX + x - tx0, MY + y - ty0
@@ -262,15 +307,28 @@ for row in range(ROWS - 1, -1, -1):
                 mline(MX, y, MX - (3 if v % 50 == 0 else 1.5), y, 0.2)
                 if v % 50 == 0:
                     txt(MX - 4, y - 1, str(v), 6, anchor="right")
-        # window
-        x0, y0, x1, y1 = max(wx0, tx0), max(wy0, ty0), min(wx1, tx0 + TW), min(wy1, ty0 + TH)
-        if x0 < x1 and y0 < y1:
-            c.setDash(3, 2)
-            c.setLineWidth(0.5)
-            c.setStrokeColorRGB(*INK)
-            c.rect(T(x0, 0)[0] * mm, T(0, y0)[1] * mm, (x1 - x0) * mm, (y1 - y0) * mm, stroke=1, fill=0)
-            c.setDash()
-            txt(T((x0 + x1) / 2, 0)[0], T(0, (y0 + y1) / 2)[1], "Fenster aussägen (Ecken Ø 8)", 8, anchor="centre")
+        # Clip the actual window outline so a tile seam never becomes a cut line.
+        c.saveState()
+        tile = c.beginPath()
+        tile.rect(MX * mm, MY * mm, TW * mm, TH * mm)
+        c.clipPath(tile, stroke=0)
+        c.setDash(3, 2)
+        c.setLineWidth(0.5)
+        c.setStrokeColorRGB(*INK)
+        x0, y0 = T(wx0, wy0)
+        c.rect(x0 * mm, y0 * mm, (wx1 - wx0) * mm, (wy1 - wy0) * mm, stroke=1, fill=0)
+        c.restoreState()
+        if inside((wx0 + wx1) / 2, (wy0 + wy1) / 2):
+            txt(*T((wx0 + wx1) / 2, (wy0 + wy1) / 2), "Fenster aussägen (Ecken Ø 8)", 8, anchor="centre")
+        # Dashed lines show the inside edge of each grey overlap strip.
+        if col > 0:
+            mline(MX + OVER, MY, MX + OVER, MY + TH, dash=(2, 2), col=GREY)
+        if col < COLS - 1:
+            mline(MX + TW - OVER, MY, MX + TW - OVER, MY + TH, dash=(2, 2), col=GREY)
+        if row > 0:
+            mline(MX, MY + OVER, MX + TW, MY + OVER, dash=(2, 2), col=GREY)
+        if row < ROWS - 1:
+            mline(MX, MY + TH - OVER, MX + TW, MY + TH - OVER, dash=(2, 2), col=GREY)
         # holes: true-size circle, a cross through the centre, label
         for hx, hy, what, d in holes:
             if not inside(hx, hy):
@@ -290,7 +348,7 @@ for row in range(ROWS - 1, -1, -1):
         for i in range(11):
             mline(MX + 120 + 10 * i, 14, MX + 120 + 10 * i, 14 + (3 if i % 5 == 0 else 1.6), 0.3)
         txt(MX + 170, 18.5, "100 mm: nachmessen", 7, anchor="centre")
-        txt(MX, 14, "P6 Panelschraube Ø6 · H/G/U/S Ø3,5 · K4 Kabelbinder Ø4 · L10 Lüftung Ø10", 7)
+        txt(MX, 26, "P6 Panelschraube Ø6 · H/G/U/S Ø3,5 · K4 Kabelbinder Ø4 · L10 Lüftung Ø10", 7)
 
 c.save()
 print(args.output, Counter(h[2] for h in holes))
