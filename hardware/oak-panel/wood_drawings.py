@@ -10,6 +10,7 @@ Writes exports/v07/holz-zuschnitt-bohrplan.pdf:
   5-6   strip templates at 1:1 (two halves that overlap by 10 mm)
   7     HDF back: drawing and hole table
   8-13  HDF templates at 1:1 (six tiles)
+  14    panel-head reliefs and rail crossbar
 
 Every view is from the wall side: the display lies face down on the table with its top edge away
 from you. The templates only work printed at 100 % ("actual size"); measure the 100 mm bar first.
@@ -36,6 +37,7 @@ SIDE_LEN = 2 * INN
 FULL = 2 * OUT
 CB_D, CB_DEPTH = v07.STRIP_CBORE
 GREY, WOOD, INK = (0.55, 0.55, 0.55), (0.93, 0.85, 0.72), (0, 0, 0)
+CAUTION = (0.64, 0.20, 0.10)
 
 
 def fmt(v):
@@ -82,8 +84,8 @@ def socket_holes():
 
 
 def hdf_holes():
-    """[(X, Y, d, what)] from the HDF's bottom-left corner, seen from the wall side."""
-    return [(x + OUT, y + OUT, d, what) for x, y, what, d in v07.hdf_holes()]
+    """Fixed drill marks from the bottom-left HDF corner, seen from the wall side."""
+    return [(x + OUT, y + OUT, d, what) for x, y, what, d in v07.hdf_holes() if what != "fuse tie"]
 
 
 # --- Drawing helpers -------------------------------------------------------------------------
@@ -190,8 +192,12 @@ for _, e, h in v07.halo_piece_placements():
         rect(px, py, 2 * w * S, (a1 - a0) * S, stroke=(0.1, 0.3, 0.8), width=0.3)
 for x, y, what in v07.strip_screws():
     circle(*P(x, y), CB_D * S, 0.25, fill=(1, 1, 1))
-for x, y, what, d in v07.hdf_holes():
+for X, Y, d, what in hdf_holes():
+    x, y = X - OUT, Y - OUT
     circle(*P(x, y), max(d, 3) * S, 0.2, colour=(0.3, 0.3, 0.3))
+bx, by = P(-INN, v07.CROSSBAR[0])
+rect(bx, by, 2 * INN * S, (v07.CROSSBAR[1] - v07.CROSSBAR[0]) * S, stroke=(0.45, 0.28, 0.12), width=0.3, dash=(3, 2))
+txt(*P(0, v07.CROSSBAR[1] - 20), "Querträger unter HDF", 7, anchor="centre")
 for sx in (-1, 1):
     a, b = sorted((sx * (v07.PITCH / 2 + v07.RAIL_X_IN), sx * (v07.PITCH / 2 + v07.RAIL_X_OUT)))
     px, py = P(a, v07.PITCH / 2 + v07.RAIL_LIP_Y0)
@@ -230,17 +236,19 @@ rows = [
     f"   zusammen {fmt(2 * FULL + 2 * SIDE_LEN)} mm + Sägeschnitte: eine 2,4-m-Leiste reicht.",
     "   30 mm ist die Tiefe (Richtung Wand), 19 mm liegen in der Panelebene.",
     "   Seitenteile = 390 - 2 x echte Leistendicke. Erst messen!",
-    "   Jede Leiste von 15 bis 20 mm Dicke passt.",
+    "   19 mm Nennstärke: Bohrpositionen für 19 x 30 mm.",
+    "Hartholz-Querträger 352 x 48 x 18 mm (Bohrplan S. 14).",
     f"HDF 3 mm: 1 x {fmt(FULL)} x {fmt(FULL)} mm, im Baumarkt zuschneiden lassen.",
     "",
     "## Was bleibt gedruckt",
-    "4 Träger, 8 Verbinder, 2 Elektronikplatten,",
+    "4 Träger, 8 Verbinder, 2 Elektronikplatten, 1 WAGO-Halter,",
     "2 Aufhängeschienen, 2 Puffer, 8 Halo-Kanalstücke (neu).",
-    "Etwa 528 cm3 statt 900 cm3 Druck.",
+    "Die Druckmenge steht im Prüfmanifest.",
     "",
     "## Seiten",
     "2 Einkaufsliste Bauhaus,  3 Arbeitsablauf,  4 Bohrtabellen Leisten,",
-    "5-6 Schablonen Leisten 1:1,  7 HDF-Rückwand,  8-13 Schablonen HDF 1:1",
+    "5-6 Schablonen Leisten 1:1,  7 HDF,  8-13 HDF-Kacheln",
+    "14 Kopftaschen und Querträger",
 ]
 lines(190, 186, rows, 8.5, 4.3)
 scale_bar(190, 20)
@@ -278,24 +286,30 @@ def table(y, rows_, size=7.6, lead=3.7):
 shop = [
     "Holz",
     ("Kiefernleiste, gehobelt\n(Rechteckleiste)", "19 x 30 mm, 2,4 m lang\ngerade aussuchen (über die Länge peilen)", "1",
-     "4 Seitenteile\n(Zuschnitt S. 1)", "z. B. Rechteckleiste 240 x 3 x 1,9 cm (Nr. 30735017,\nlackiert) oder unbehandelt; 15-20 mm Dicke geht auch"),
+     "4 Seitenteile\n(Zuschnitt S. 1)", "z. B. Rechteckleiste 240 x 3 x 1,9 cm (Nr. 30735017,\nlackiert) oder unbehandelt; Plan gilt für 19 x 30 mm"),
     ("HDF-Platte (Hartfaser)", f"3 mm, Zuschnitt {fmt(FULL)} x {fmt(FULL)} mm\nwinklig, Maß genau angeben", "1",
      "Rückwand", "Hartfaserplatte nach Maß; schwarz (Nr. 14512381)\nspart das Lackieren"),
+    ("Querträger, Hartholz", "352 x 48 x 18 mm", "1", "Aufhängung", "Enden und Bohrungen siehe S. 14"),
     "Schrauben und Scheiben (für die ganze Rückseite)",
-    ("Gewindeschraube M3 x 40", "Linsen-, Flach- oder Zylinderkopf, verzinkt\nKopf muss in ein 10-mm-Loch passen", "22 (+2)",
-     "Leisten an Träger (16)\nund Plattenpfosten (6)", "z. B. Profi Depot Gewindeschraube VZ 3 x 40\n(100er-Packung)"),
-    ("Unterlegscheibe M3, groß", "DIN 9021 / ISO 7093: 3,2 x 9 mm\n(Notlösung: DIN 125, 3,2 x 7 mm)", "22 (+2)",
-     "unter die M3 x 40", "online nicht gefunden: im Markt nach 'Scheibe 3,2'\nfragen; bei 7-mm-Scheiben Löcher nicht auf 6 aufbohren"),
+    ("Gewindeschraube M3 x 40", "Linsen- oder Flachkopf, verzinkt\nKopf + Scheibe bei den Leisten max. 3,5 mm", "28 (+2)",
+     "Leisten (22),\nSchienen (6)", "z. B. Profi Depot Gewindeschraube VZ 3 x 40\n(100er-Packung)"),
+    ("Unterlegscheibe M3", "3,2 x 7 mm, ca. 0,8 mm dick", "28 (+2)",
+     "unter die M3 x 40", "Durchgangslöcher in den Leisten bei 5 mm halten"),
     ("Spanplattenschraube\nSenkkopf", "3 x 20 mm, Kreuzschlitz PZ1", "28 (+4)",
      "Halo-Stücke (24),\nHDF-Ecken (4)", "z. B. Nr. 10800509 (20 Stück, also 2 Packungen)\noder SWG 3 x 20 (Nr. 32882140, 200 Stück)"),
-    ("Gewindeschraube M3 x 12", "Linsenkopf ISO 7380", "26 (+4)",
-     "Verbinder 16, Schienen 6,\nPuffer 2, innere Pfosten 2", "Marinetech (Nr. 23678981), 0,13 EUR/Stück:\n30 Stück = 3,90 EUR"),
+    ("Gewindeschraube M3 x 12", "Linsenkopf ISO 7380", "22 (+4)",
+     "Verbinder 16, Puffer 2,\ninnere Pfosten 2, WAGO-Halter 2", "Marinetech (Nr. 23678981), 0,13 EUR/Stück:\n30 Stück = 3,90 EUR"),
     ("Gewindeschraube M3 x 20", "Linsenkopf, verzinkt", "16",
      "Träger an Panel-Gewinde", "Profi Depot VZ (Nr. 10807533), 100er = 3,95 EUR"),
     ("Zylinderschraube M2,5 x 10", "DIN 912, Innensechskant", "4",
      "Pi", "Suki (Nr. 21307474), 10er = 3,90 EUR"),
     ("Holzschraube Halbrundkopf", "3 x 16 mm (z. B. Spax)", "2 (+2)",
      "DC-Buchse", "Linsen-/Halbrundkopf, kein Senkkopf"),
+    ("M6 x 45 + Quergewindebolzen", "M6, Quergewindebolzen Ø10, Loch mittig", "je 4",
+     "Querträger an Seitenleisten", "Einbaumaße auf S. 14"),
+    ("M5 x 45 + Sechskantmutter", "Stahl, Vollgewinde; Mutter SW8", "je 2",
+     "Abhebesicherung", "Seitlich in die gedruckten Schienen"),
+    ("Kabelbinder", "4,8 mm breit, 360 mm lang", "nach Bedarf", "Elektronik", "Durch die Tunnel auf der Plattenoberseite"),
     "Farbe und Kleinkram",
     ("Lack schwarz matt", "Sprühdose oder Acryllack, kleine Dose", "1",
      "Leisten (außen, Enden)", "HDF nur, wenn sie nicht schwarz ist"),
@@ -304,8 +318,8 @@ shop = [
     ("Schleifpapier", "Körnung 120", "1-2 Bogen", "Schnittkanten", ""),
     ("Kreppband", "", "1", "Schablonen, Tiefenmarke", "falls nicht vorhanden"),
     "Bohrer und Werkzeug (falls nicht vorhanden)",
-    ("Holzspiralbohrer\nmit Zentrierspitze", "2, 3, 5, 6, 8 und 10 mm\n+ 3,5 mm Metallbohrer (HDF, Buchse)", "je 1",
-     "alle Löcher; 10 mm für\ndie Ansenkungen", "Satz ist oft günstiger als einzelne Bohrer"),
+    ("Holzspiralbohrer\nmit Zentrierspitze", "2, 3, 5, 6,5, 8, 9 und 10 mm\n+ 3,5 mm Metallbohrer (HDF, Buchse)", "je 1",
+     "9 mm für die Rückseiten-Taschen;\nØ10 für Quergewindebolzen", "Satz ist oft günstiger als einzelne Bohrer"),
     ("Forstnerbohrer oder\nFlachfräsbohrer", "14 mm", "1", "DC-Buchse", "Forstner reißt weniger aus"),
     ("Kegelsenker", "für 3-mm-Senkkopf (Ø6-10)", "1", "HDF-Ecken", "optional; die Halo-Stücke sind angesenkt"),
     ("Feinsäge + Gehrungslade", "", "1", "gerade Schnitte", "oder Zuschnitt im Markt (Leiste auf Länge)"),
@@ -313,7 +327,7 @@ shop = [
     ("Schraubzwingen", "", "2", "beim Bohren festhalten", ""),
 ]
 y = table(186, shop)
-txt(12, max(y - 2, 8), "Bereits geplante Schrauben (M3 x 12, M3 x 20, M2,5 x 10) stehen mit drin, falls sie noch nicht gekauft sind. Muttern sind nicht nötig.", 7.5, colour=(0.3, 0.3, 0.3))
+
 
 # ============================================================================================
 # Page 3: order of work
@@ -329,17 +343,17 @@ rows = [
     "## 2  Leisten bohren (Tabelle S. 4, Schablonen S. 5-6)",
     "Schablone auf die RÜCKSEITE kleben: Schablonen-Außenkante auf die Außenkante des Holzes, Ende auf Ende.",
     "Jedes Kreuz mit dem Vorstecher durchstechen. Dann für jedes M3-Loch:",
-    f"   a) zuerst 10-mm-Ansenkung, {fmt(CB_DEPTH)} mm tief, auf der Rückseite (die Zentrierspitze findet die Markierung;",
+    f"   a) zuerst Ø{fmt(CB_D)} mm, {fmt(CB_DEPTH)} mm tief, auf der Rückseite (die Zentrierspitze findet die Markierung;",
     "      Kreppband als Tiefenmarke auf den Bohrer).",
     "   b) dann 5 mm ganz durch die 30 mm. Bohrer senkrecht halten; mit Bohrständer ist das einfach.",
-    "Nur untere Leiste, AUSSENFLÄCHE (Schablone S. 6): erst zwei 6-mm-Taschen, 7 mm tief, darin 2 mm bis 17 mm tief,",
+    "Nur untere Leiste, AUSSENFLÄCHE (Detail S. 14): erst zwei 6-mm-Taschen, 7 mm tief, darin 2 mm bis 17 mm tief,",
     "dann 14 mm ganz durch für die DC-Buchse. Vorher an einem Reststück testen. Kabel vor dem Einbau anlöten.",
     "",
     "## 3  Probe-Aufbau vor dem Lackieren",
     "Die vier Panels mit Trägern und Verbindern mit den LEDs nach unten hinlegen. Leisten auf die Außenränder der",
     "Träger stellen: oben und unten über die volle Breite, die Seiten dazwischen, Außenflächen 3 mm über die Panelkante.",
-    "Durch jedes Loch eine M3 x 40 stecken: sie muss das Vorbohrloch darunter treffen. Wenn eine danebenliegt,",
-    "das Loch auf 6 mm aufbohren (die 9-mm-Scheibe deckt das noch ab).",
+    "Kopftaschen für die M3 x 20 auf der TRÄGERSEITE anzeichnen und bohren (S. 14). Leisten müssen bündig aufliegen.",
+    "Jede M3 x 40 mit 3,2 x 7-mm-Scheibe bündig einsetzen. 5-mm-Durchgangslöcher beibehalten.",
     "",
     "## 4  Lackieren",
     "Leisten schwarz matt (vor allem Außenflächen und Enden). Die HDF auch, wenn sie nicht schwarz gekauft ist.",
@@ -348,10 +362,11 @@ rows = [
     "Die sechs Kacheln an den gestrichelten Linien zusammenkleben, die 390-mm-Außenkante mit der Platte vergleichen,",
     "Markierungen durchstechen, bohren. Die Seite, von der du bohrst, ist die WANDSEITE (außen). Ein Reststück",
     "Holz unterlegen und festzwingen, damit die Löcher nicht ausreißen.",
+    "Sicherungshalter vorerst NICHT bohren. Halter und Leitungen auf der Innenseite probelegen (siehe S. 7).",
     "",
     "## 6  Zusammenbau",
     "Elektronikplatten und Träger wie geplant. Leisten mit M3 x 40 + Scheibe anschrauben (Eckstöße dürfen geleimt werden).",
-    "Aufhängeschienen und Puffer an die HDF: M3 x 12 von innen. HDF auflegen, Außenkanten bündig mit den Leisten.",
+    "Schienen mit sechs M3 x 40 durch Querträger und HDF verschrauben, Puffer mit M3 x 12. Ablauf siehe S. 14.",
     "Ecken: 2-mm-Vorbohrung durch die Eckbohrung in die Leiste, Spanplattenschraube 3 x 20.",
     "Halo-Stücke auf die HDF über den Leisten (mittig auf der Leiste, Stoß jeweils in der Kantenmitte): durch jedes",
     "Loch 3 mm durch Stück und HDF bohren, dann 2 mm, 15 mm tief in die Leiste vorbohren; 3 x 20 eindrehen.",
@@ -363,7 +378,7 @@ lines(14, 186, rows, 8.5, 4.3)
 # Page 3: strip drilling tables
 # ============================================================================================
 page()
-header("Leisten: Bohrtabellen", "Lage wie auf den Schablonen: Rückseite oben, Außenkante oben, Maße vom linken Ende. Durchgangslöcher 5 mm, Ansenkung 10 mm x 3 mm auf der Rückseite.")
+header("Leisten: Bohrtabellen", "Lage wie auf den Schablonen: Rückseite oben, Außenkante oben, Maße vom linken Ende. Durchgangslöcher 5 mm, Taschen Ø9 mm x 3,5 mm auf der Rückseite.")
 data = strip_holes()
 y = 180
 names = {"top": "Leiste oben", "bottom": "Leiste unten", "left": "Leiste links (Netzteil-Seite)", "right": "Leiste rechts (Pi-Seite)"}
@@ -448,9 +463,6 @@ for part in (0, 1):
         hs = [(a, inset, v07.STRIP_HOLE) for a, inset, _ in holes]
         band(y, length, hs, f"{names[key]}, RÜCKSEITE", lend, rend, T, part)
         y -= T + (21 if part == 0 else 14)
-    if part == 1:  # the socket sits at 213 mm: only this half is needed
-        sh = [(a, e, d) for a, e, d, _ in socket_holes()]
-        band(y - 14, FULL, sh, "Leiste unten, AUSSENFLÄCHE (DC-Buchse)", "Netzteil-Ende", "Pi-Ende", v07.STRIP_D, part, socket=True)
     scale_bar(185, 186)
 
 
@@ -488,16 +500,23 @@ for Y in sorted(by_row, reverse=True):
 rows += [
     "",
     "## Hinweise",
-    "Schienen und Puffer: M3 x 12 von innen in das Druckteil.",
+    "Schienen: M3 x 40 durch Querträger und HDF. Puffer: M3 x 12.",
     "Ecklöcher: auf der Wandseite ansenken, 3 x 20 in die Leiste.",
     "Halo-Kabel (unten rechts): Kabel vom Pro Micro zum Halo-Streifen.",
     "Lüftung über den Netzteilmodulen (unten links), dem Pi (unten",
     "rechts) und oben. Auf ein Reststück bohren, damit nichts ausreißt.",
+    "",
+    "## Sicherungshalter: vorerst NICHT bohren",
+    "Für einen 90°-Bogen ab Kabelausgang ca. 30 mm einplanen.",
+    "Halter und Leitungen auf der Innenseite spannungsfrei probelegen.",
+    "Abstand zur DC-Buchse, Leisten und Nachbarhaltern prüfen.",
+    "Zugang zum Deckel und Spiel zum Abnehmen der HDF prüfen.",
+    "Erst dann je Halter zwei Ø6-Binderlöcher anzeichnen und bohren.",
 ]
 y = 186
 for r in rows:
     if r.startswith("## "):
-        txt(186, y, r[3:], 9.5, True)
+        txt(186, y, r[3:], 9.5, True, colour=CAUTION if "NICHT" in r else INK)
         y -= 5.5
     else:
         # wrap long rows
@@ -528,6 +547,7 @@ for ri, (Y0, Y1) in enumerate(reversed(ROWS)):
         page()
         header(f"Schablone HDF, Kachel {n} von 6, 1:1  (Reihe {ri + 1} von oben, Spalte {ci + 1} von links)",
                "Wandseite. Kacheln so zusammenkleben, dass die gestrichelten Überlappungslinien und die Lochmarken übereinanderliegen.")
+        txt(14, 180, "Sicherungshalter: erst probelegen, dann separat anzeichnen und bohren (S. 7).", 9, True, colour=CAUTION)
         px0, py0 = 14.0, 16.0
         c.saveState()
         p = c.beginPath()
@@ -563,5 +583,50 @@ for ri, (Y0, Y1) in enumerate(reversed(ROWS)):
         rect(lx, ly, FULL * ls, FULL * ls, width=0.3)
         rect(lx + X0 * ls, ly + Y0 * ls, (X1 - X0) * ls, (Y1 - Y0) * ls, fill=(0.6, 0.6, 0.6), width=0.2)
 
+# Page 14: carrier-side reliefs, centred socket and timber rail support.
+page()
+header("Kopftaschen, DC-Buchse und Querträger", "Maße in mm. Rückansicht wie auf S. 1. Kopftaschen von der TRÄGERSEITE bohren.")
+reliefs = {key: [] for key in ("top", "bottom", "left", "right")}
+for name, x, y in v07.strip_head_reliefs():
+    key = name.removeprefix("strip-")
+    along, inset = {
+        "top": (x + OUT, OUT - y),
+        "bottom": (OUT - x, y + OUT),
+        "left": (y + INN, x + OUT),
+        "right": (INN - y, OUT - x),
+    }[key]
+    reliefs[key].append((along, inset))
+rows = [
+    "## Kopftaschen auf der Trägerseite, Ø8 x 3,5 tief",
+    "Gleicher physischer Startpunkt und gleiche Außenkante wie in der Tabelle S. 4.",
+]
+for key in ("top", "bottom", "left", "right"):
+    positions = "  ".join(f"({fmt(a)}, {fmt(i)})" for a, i in sorted(reliefs[key]))
+    rows.append(f"{names[key]}:  {positions}")
+rows += [
+    "Paare = (Abstand vom Startende, Abstand von der Außenkante). Ein Überstand ergibt eine offene Ausklinkung.",
+    "Für Ø8-Taschen an der Kante ein bündiges Opferholz festspannen; an den Eckstößen beide Leisten markieren.",
+    "Die Köpfe müssen ganz freiliegen und die Leisten flach auf den Trägern sitzen.",
+    "",
+    "## DC-Buchse, untere Außenfläche",
+    "Mitte bei 195 mm vom Ende, 15 mm von beiden Längskanten. Ø14 durch; Dome und Piloten wie auf S. 4.",
+    "",
+    "## Hartholz-Querträger 352 x 48 x 18, Aufhängung",
+    "Auf die Innenseite der HDF legen, Oberkante 19 mm unter HDF-Oberkante. Die sechs Schienenlöcher Ø3,4",
+    "durch Querträger und HDF übernehmen. Schienen mit M3 x 40 und Scheiben von innen durch beide Teile montieren.",
+    "Die Seitenleisten außen in der 30-mm-Fläche bei 314 und 344 mm vom unteren Ende bohren, je 9 mm von der",
+    "HDF-seitigen Kante. Ø6,5 durch die Seitenleiste und fluchtend in den Querträger bohren, 45 mm tief ab außen.",
+    "Vier Quergewindebolzen Ø10: 14 mm vom Querträgerende, jeweils 10 und 40 mm von seiner unteren Kante.",
+    "Die M6-Gewinde auf halbe Dicke (9 mm) ausrichten. Je Seite zwei M6 x 45 von außen einsetzen.",
+    "Erst die Kiefernleisten an die Träger schrauben. Danach HDF, Querträger und Schienen als Einheit auflegen,",
+    "die vier seitlichen M6-Schrauben setzen und dann die HDF- und Halo-Schrauben montieren.",
+    "",
+    "## Abhebesicherung",
+    "Je eine M5-Mutter SW8 in die seitliche Schienentasche einsetzen. Die M5 x 45 zum Einhängen zurückdrehen,",
+    "anschließend seitlich bis zum Anschlag eindrehen. Schrauben vor dem Abnehmen wieder zurückdrehen.",
+    "Erst an der leeren Rückseite mit beiden Wandschrauben prüfen. Der Sitz und die Lastprobe sind vor Ort erforderlich.",
+]
+lines(14, 186, rows, 8.5, 4.6)
+scale_bar(186, 15)
 c.save()
 print(args.output)

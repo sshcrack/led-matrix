@@ -54,6 +54,9 @@ parts["halo-piece"] = dict(
 power = v07.build_power_plate_v07()
 ctrl = v07.build_controller_plate_v07()
 parts["power-plate"] = dict(asm=[at(power, *v07.POWER_QUADRANT, v07.plate_z())], print=power, qty=1)
+wago_deck = v07.build_wago_deck()
+parts["wago-deck"] = dict(asm=[at(wago_deck, *v07.POWER_QUADRANT)],
+                         print=wago_deck.translate((0, 0, -v07.WAGO_DECK_Z)), qty=1)
 parts["controller-plate"] = dict(asm=[at(ctrl, *v07.CONTROLLER_QUADRANT, v07.plate_z())], print=ctrl, qty=1)
 joiners = [v07.build_joiner(*p) for p in v07.joiner_positions()]
 parts["joiner"] = dict(asm=joiners, print=v07.build_joiner(0, 0, True).translate((0, 0, -v07.Z_REAR)), qty=8)
@@ -67,6 +70,7 @@ parts["bumper"] = dict(asm=[at(v07.build_bumper(sx), sx, -1) for sx in (-1, 1)],
 # --- Wood (bought, cut and drilled by hand) ---------------------------------------------------
 wood = dict(v07.build_strips())
 wood["hdf-back"] = v07.build_hdf()
+wood["rail-crossbar"] = v07.build_crossbar()
 
 # --- Reference envelopes ---------------------------------------------------------------------
 refs = {}
@@ -76,6 +80,8 @@ for sx, sy in QUADRANTS:
 for plate, quad in (("power-plate", v07.POWER_QUADRANT), ("controller-plate", v07.CONTROLLER_QUADRANT)):
     for name, env in v07.component_envelopes(plate):
         refs[f"{plate}:{name}"] = at(env, *quad)
+for name, env in v07.fuse_envelopes():
+    refs[f"inline-fuse-{name}"] = env
 d, depth = v07.DC_SOCKET_BODY
 refs["dc-socket-body"] = v07.cyl_y(v07.DC_SOCKET_X, v07.DC_SOCKET_Z, d, -v07.STRIP_OUT, -v07.STRIP_OUT + depth)
 refs["wall"] = v07.box(-300, 300, -300, 300, v07.Z_WALL, v07.Z_WALL + 5)
@@ -84,9 +90,12 @@ screw_y = v07.PITCH / 2 + v07.RAIL_LIP_Y0 - ws["shank_d"] / 2  # shank top touch
 for s in (-1, 1):
     x = s * ws["spacing"] / 2
     refs[f"wall-screw-shank-{s}"] = v07.cyl(x, screw_y, ws["shank_d"], v07.Z_WALL - ws["head_gap"], v07.Z_WALL)
-    refs[f"wall-screw-head-{s}"] = v07.cyl(
-        x, screw_y, ws["head_d"], v07.Z_WALL - ws["head_gap"] - ws["head_t"], v07.Z_WALL - ws["head_gap"]
-    )
+    refs[f"wall-screw-head-{s}"] = cq.Workplane(obj=cq.Solid.makeCone(
+        ws["head_d"] / 2, ws["shank_d"] / 2, ws["head_t"],
+        cq.Vector(x, screw_y, v07.Z_WALL - ws["head_gap"] - ws["head_t"]),
+    ))
+    refs[f"keeper-bolt-{s}"] = v07.keeper_shank(s)
+
 
 # --- Assembly interference -------------------------------------------------------------------
 solids = []
@@ -127,6 +136,49 @@ grip = {
 }
 assert tip >= v07.Z_INSERT + 1.0 and tip >= v07.plate_z(), tip  # never touches a panel
 assert min(grip.values()) >= 8.0, grip
+# Include the hardware envelopes that can hit parts other than the intended pilot.
+for x, y, target in screws:
+    if target != "carrier":
+        continue
+    shank = v07.cyl(x, y, 3.0, tip, v07.Z_WEB_FRONT).val()
+    for name in ("power-plate", "controller-plate"):
+        assert shank.intersect(parts[name]["asm"][0].val()).Volume() < 1e-3, (x, y, name)
+for sx, sy in QUADRANTS:
+    cx, cy = v07.quadrant_centre(sx, sy)
+    for x, y in v07.PATTERN:
+        head = v07.cyl(cx + x, cy + y, 6.5, v07.Z_REAR, v07.Z_REAR + 3).val()
+        for name in v07.strip_boxes():
+            assert head.intersect(wood[name].val()).Volume() < 1e-3, (x, y, name)
+socket_bore = v07.cyl_y(v07.DC_SOCKET_X, v07.DC_SOCKET_Z, ep.DC_SOCKET["body_cutout"],
+                        -v07.STRIP_OUT, -v07.STRIP_IN).val()
+for x, y in v07.halo_screws():
+    z = v07.Z_BACK + v07.HALO["floor"]
+    shank = v07.cyl(x, y, v07.WOOD_SCREW[0], z - v07.WOOD_SCREW[1], z).val()
+    assert shank.intersect(socket_bore).Volume() < 1e-3, (x, y)
+for sx in (-1, 1):
+    for y in v07.CROSSBAR_JOINT_Y:
+        member_bolt = v07.cyl_x(y, v07.crossbar_joint_z(), 6.0,
+                               sx * (v07.STRIP_OUT - v07.CROSSBAR_JOINT_DEPTH), sx * v07.STRIP_OUT).val()
+        for xh, yh in v07.halo_screws():
+            z = v07.Z_BACK + v07.HALO["floor"]
+            halo_bolt = v07.cyl(xh, yh, v07.WOOD_SCREW[0], z - v07.WOOD_SCREW[1], z).val()
+            assert member_bolt.intersect(halo_bolt).Volume() < 1e-3, (sx, y, xh, yh)
+# Keep the DC socket pigtail's bend space clear of fuse bodies and their lead exits.
+w, depth, height = v07.DC_WIRE_ROOM
+x, z = v07.DC_SOCKET_X, v07.DC_SOCKET_Z
+wire_room = v07.box(x - w / 2, x + w / 2, -v07.STRIP_IN, -v07.STRIP_IN + depth,
+                     z - height / 2, z + height / 2).val()
+for name, solid in solids:
+    if name != "dc-socket-body":
+        assert wire_room.intersect(solid).Volume() < 1e-3, ("DC pigtail", name)
+# The keeper must catch the screw before the lip can rise past its head.
+for sx in (-1, 1):
+    bolt = refs[f"keeper-bolt-{sx}"].val()
+    raised = bolt.translate((0, (ws["head_d"] - ws["shank_d"]) / 2, 0))
+    assert raised.intersect(refs[f"wall-screw-shank-{sx}"].val()).Volume() > 1e-3, sx
+rail_engagement = 40.0 - v07.CROSSBAR[2] - v07.HDF_T - 0.8
+assert 16.0 <= rail_engagement <= 19.8, rail_engagement
+
 # Wood screws keep clear of the M3 holes and counterbores.
 for hx, hy in v07.halo_screws() + [(x, y) for x, y, _, _ in v07.hdf_holes("corner")]:
     for x, y, _ in screws:
@@ -140,17 +192,20 @@ joint_boss_bottom = v07.Z_WEB_FRONT - v07.JOINT_BOSS[1]
 plate_top = v07.plate_z() + ep.PLATE_T
 assert joint_boss_bottom - plate_top >= 1.0
 lip_overlap = (screw_y + ws["head_d"] / 2) - (v07.PITCH / 2 + v07.RAIL_LIP_Y0)
-assert lip_overlap >= 2.0, lip_overlap  # how far the lip reaches down behind a 10 mm head
+assert lip_overlap >= 2.0, lip_overlap  # radial capture on the measured countersunk head
 head_room = (v07.PITCH / 2 + v07.RAIL_WEB_Y[0]) - (screw_y + ws["head_d"] / 2)
 assert head_room >= 5.0, head_room
 assert v07.Z_WALL - rail_back >= 5.0  # rail's back stays off the wall
-shift = []
-for s in (-1, 1):
-    xs = sorted((s * v07.RAIL_X_IN, s * v07.RAIL_X_OUT))
-    lo, hi = s * v07.PITCH / 2 + xs[0], s * v07.PITCH / 2 + xs[1]
-    shift.append((lo - s * ws["spacing"] / 2, hi - s * ws["spacing"] / 2))
-sideways = (max(a for a, _ in shift), min(b for _, b in shift))
-assert sideways[0] <= -20 and sideways[1] >= 20, sideways
+sideways = (-8.0, 8.0)
+for sx in (-1, 1):
+    rail = parts["rail-left" if sx < 0 else "rail-right"]["asm"][0].val()
+    keeper = refs[f"keeper-bolt-{sx}"].val()
+    for shift in sideways:
+        for kind in ("head", "shank"):
+            screw = refs[f"wall-screw-{kind}-{sx}"].val().translate((shift, 0, 0))
+            assert rail.intersect(screw).Volume() < 1e-3, (sx, shift, kind)
+        shank = refs[f"wall-screw-shank-{sx}"].val().translate((shift, 0, 0))
+        assert keeper.translate((0, lip_overlap, 0)).intersect(shank).Volume() > 1e-3, (sx, shift)
 # Probe: carrier pilot, bores, notches; strip holes; halo channel.
 c = carrier_local.val()
 for x, y in v07.JOINT_HOLES:
@@ -161,9 +216,51 @@ assert not c.isInside((94.0, 50.0, 22.5)) and c.isInside((94.0, 0.0, 22.5))
 top = wood["strip-top"].val()
 x, y, _ = next(p for p in screws if p[1] > v07.STRIP_IN)
 assert not top.isInside((x, y, v07.Z_REAR + 5)) and top.isInside((x + v07.STRIP_HOLE / 2 + 0.5, y, v07.Z_REAR + 5))
-assert not top.isInside((x + 4.5, y, v07.Z_STRIP_BACK - 1)) and top.isInside((x + 4.5, y, v07.Z_STRIP_BACK - 4))
+r = v07.STRIP_CBORE[0] / 2 - 0.4
+assert not top.isInside((x + r, y, v07.Z_STRIP_BACK - 1)) and top.isInside((x + r, y, v07.Z_STRIP_BACK - 4))
 bottom = wood["strip-bottom"].val()
-assert not bottom.isInside((v07.DC_SOCKET_X, -v07.HALF - 1, v07.DC_SOCKET_Z))
+assert not bottom.isInside((v07.DC_SOCKET_X, -(v07.STRIP_IN + v07.STRIP_OUT) / 2, v07.DC_SOCKET_Z))
+# Check the entire path for a 4.8 x 2.0 mm strap, including the part of the path across the seat.
+strap_bottom = ep.PLATE_T + 0.05
+strap_top = strap_bottom + 2.0
+for x, y in v07.BUCK_CENTRES:
+    for dx in (-21.0, 21.0):
+        strap = v07.box(x + dx - 2.4, x + dx + 2.4, y - 39, y + 39,
+                       strap_bottom, strap_top).val()
+        assert strap.intersect(power.val()).Volume() < 1e-3, ("converter strap", x, y, dx)
+for x, y in v07.BUCK_CENTRES:
+    width, depth, height = v07.BUCK_BODY
+    exit_y = y + depth / 2
+    z = v07.plate_z() + ep.PLATE_T + v07.TIE_BRIDGE_H
+    bend = at(v07.box(x - width / 2, x + width / 2, exit_y, exit_y + v07.BUCK_BEND_DEPTH,
+                     z, z + height), *v07.POWER_QUADRANT).val()
+    for name, solid in solids:
+        assert bend.intersect(solid).Volume() < 1e-3, ("converter bend", x, name)
+
+# The shelf and underside ties pass above the panel plugs, with the levers on the cover side.
+strap_z = v07.WAGO_DECK_Z - v07.WAGO_STRAP_T
+for name, plug_top in ep.PLUG_TOP.items():
+    assert strap_z > plug_top, ("WAGO deck clearance", name)
+for i, (name, (width, depth, height), x) in enumerate(v07.WAGOS):
+    left, right = v07.WAGO_STRAP_X[i:i + 2]
+    assert left + 2 < x - width / 2 and right - 2 > x + width / 2, ("WAGO strap slots", name)
+    assert abs(v07.WAGO_STRAP_Y - v07.WAGO_CY) + 2.4 <= depth / 2
+    strap = at(v07.box(x - width / 2, x + width / 2, v07.WAGO_STRAP_Y - 2.4, v07.WAGO_STRAP_Y + 2.4,
+                      v07.WAGO_DECK_Z + v07.WAGO_DECK_T + height,
+                      v07.WAGO_DECK_Z + v07.WAGO_DECK_T + height + v07.WAGO_STRAP_T),
+               *v07.POWER_QUADRANT).val()
+    for ref_name, solid in solids:
+        assert strap.intersect(solid).Volume() < 1e-3, ("WAGO strap", name, ref_name)
+for x in v07.WAGO_MOUNTS:
+    screw = at(v07.cyl(x, v07.WAGO_MOUNT_Y, 6.5, v07.WAGO_DECK_Z + v07.WAGO_DECK_T,
+                      v07.WAGO_DECK_Z + v07.WAGO_DECK_T + 3.0), *v07.POWER_QUADRANT).val()
+    for name, solid in solids:
+        assert screw.intersect(solid).Volume() < 1e-3, ("WAGO deck screw head", x, name)
+for comp, x, y in v07.CONTROLLER_MODULES:
+    w = ep.COMPONENTS[comp][0]
+    strap = v07.box(x - w / 2 - 1, x + w / 2 + 1, y - 2.4, y + 2.4, strap_bottom, strap_top).val()
+    assert strap.intersect(ctrl.val()).Volume() < 1e-3, ("controller strap", comp)
+
 h = parts["halo-piece"]["asm"][0].val()
 assert not h.isInside((60.0, v07.HALO_C, v07.Z_BACK + v07.HALO_DEPTH - 0.5))  # opening
 assert h.isInside((60.0, v07.HALO_C + v07.HALO["inner_w"] / 2 - 0.3, v07.Z_BACK + v07.HALO_DEPTH - 0.5))  # lip
@@ -173,11 +270,11 @@ assert h.isInside((60.0, v07.HALO_C + v07.HALO_BAND_W / 2 - 0.5, v07.Z_BACK + 1)
 # --- Export parts ----------------------------------------------------------------------------
 manifest = {
     "design": "led-matrix v0.7 rear parts (front frame/diffuser not included)",
-    "basis": "Trial kit v6 results, issue #170; fasteners #172; wall mount #171 (2026-11-17)",
-    "provisional": {
+    "basis": "Trial kit v6 results, issue #170; fasteners #172; wall mount #171",
+    "pilot_holes": {
         "m3_pilot_mm": v07.M3_PILOT,
         "m2_5_pilot_mm": v07.M25_PILOT,
-        "note": "set from the screw-coupon test before the final print",
+        "note": "Selected from the screw-coupon test; assembled fit remains to be checked",
     },
     "stack_mm_from_led_tips": {
         "insert_face": v07.Z_INSERT,
@@ -192,11 +289,14 @@ manifest = {
     },
     "hanging": {
         "wall_screw_spacing_mm": ws["spacing"],
-        "lip_overlap_behind_10mm_head_mm": round(lip_overlap, 2),
+        "lip_overlap_behind_measured_head_mm": round(lip_overlap, 2),
+        "rail_screw_engagement_mm": round(rail_engagement, 2),
+        "keeper": "Fully threaded M5 x 45 steel bolt; CAD checked to block lift before the lip clears",
         "sideways_adjustment_mm": [round(v, 1) for v in sideways],
         "screw_height_above_display_centre_mm": round(screw_y, 1),
     },
-    "assembly_interference": "none (printed parts, wood, panels, components, DC socket body, wall, wall screws)",
+    "assembly_interference": "clear at nominal geometry, including targeted fastener interference checks",
+    "converter_bend_depth_mm": v07.BUCK_BEND_DEPTH,
     "wood": {n: [round(v, 1) for v in (lambda b: (b.xlen, b.ylen, b.zlen))(w.val().BoundingBox())] for n, w in wood.items()},
     "parts": {},
     "jobs": {},
@@ -258,15 +358,16 @@ layout(
     "power-plate-joiners-bumpers",
     [("power-plate", (5, 5))]
     + [("joiner", (5 + i * (jw[0] + 8), 130)) for i in range(4)]
-    + [("bumper", (5 + 4 * (jw[0] + 8) + i * 24, 130)) for i in range(2)],
+    + [("bumper", (5 + 4 * (jw[0] + 8) + i * 24, 130)) for i in range(2)]
+    + [("wago-deck", (5, 155))],
     1,
 )
 rw = meshes["rail-left"].extents
 layout(
     "controller-plate-joiners-rails",
     [("controller-plate", (5, 5))]
-    + [("rail-left", (5, 125)), ("rail-right", (5, 125 + rw[1] + 8))]
-    + [("joiner", (5 + rw[0] + 10 + (i % 2) * (jw[0] + 8), 125 + (i // 2) * (jw[1] + 8))) for i in range(4)],
+    + [("rail-left", (5, 120)), ("rail-right", (5, 125 + rw[1]))]
+    + [("joiner", (5 + rw[0] + 7 + (i % 2) * (jw[0] + 8), 123 + (i // 2) * (jw[1] + 8))) for i in range(4)],
     1,
 )
 total = sum(manifest["parts"][n]["volume_cm3"] * manifest["parts"][n]["quantity"] for n in manifest["parts"])

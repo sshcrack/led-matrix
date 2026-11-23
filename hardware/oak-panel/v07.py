@@ -20,9 +20,10 @@ Stack along Z (owner measurements, measurement-basis.json):
   15-27  carrier corner bosses (12 mm)
   21-27  carrier rim, 27-31 carrier web                     (trial carrier geometry, fit OK)
   16-    electronics plates in the carriers' open middle    (electronics_plates.py)
-  31-60  tray side walls on the outer edges, 60-62 tray cover
-  62     rear face; halo channels open here, LEDs facing the wall
-  87     wall (25 mm gap for the halo); wall-screw heads 10 mm off the wall
+  31-61  pine strips; upper timber crossbar supports the rails
+  61-64  HDF back
+  70.1   halo channel openings, LEDs facing the wall
+  95.1   wall; 10 mm from the wall to the narrow end of each screw head
 """
 
 import cadquery as cq
@@ -32,8 +33,8 @@ from trial_carrier import BOSS_MM, OUTER_MM, PATTERN
 
 # --- Fasteners (Bauhaus Karlsruhe-Oststadt, #172) --------------------------------------------
 M3_CLEAR = 3.4  # screw coupon: smallest hole an M3 passes freely (owner, 2026-11-17)
-M3_PILOT = 2.6  # PROVISIONAL: M3 x 12 cutting its own thread in PETG; set from the coupon test
-M25_PILOT = 2.2  # PROVISIONAL: M2.5 x 10 into PETG; set from the coupon test
+M3_PILOT = 2.8  # PETG coupon: M3 x 12 and M3 x 40 threaded in from both faces
+M25_PILOT = 2.4  # PETG coupon: M2.5 x 10 threaded in from both faces
 M25_CLEAR = 2.8
 
 # --- Array and Z stack -----------------------------------------------------------------------
@@ -50,13 +51,13 @@ Z_STRIP_BACK = Z_REAR + STRIP_D  # 61: inside ceiling
 HDF_T = 3.0
 Z_BACK = Z_STRIP_BACK + HDF_T  # 64: rear face of the HDF
 STRIP_HOLE = 5.0  # M3 x 40 through the strip: 0.8 mm play per side for hand drilling
-STRIP_CBORE = (10.0, 3.0)  # washer + head sink in, so the HDF lies flat
-WASHER_OD = 9.0  # DIN 9021 M3 (3.2 x 9)
+STRIP_CBORE = (9.0, 3.5)  # washer + head sink in, so the HDF lies flat
+WASHER_OD = 7.0  # M3 flat washer (3.2 x 7); keep the through-hole at 5 mm
 WOOD_SCREW = (3.0, 20.0)  # countersunk wood screws: halo pieces and HDF corners
 WOOD_PILOT = 2.0
-WALL_SCREW = {"head_gap": 10.0, "head_d": 10.0, "head_t": 3.0, "shank_d": 4.5, "spacing": 260.0}
-# Owner: two screws in wall plugs, level, outer-to-outer ~268 mm with 7-10 mm heads -> ~260 mm
-# centres; heads set to 10 mm off the wall.
+PANEL_HEAD_RELIEF = (8.0, 3.5)  # underside of the pine, for the M3 x 20 panel heads
+WALL_SCREW = {"head_gap": 10.0, "head_d": 8.8, "head_t": 5.2, "shank_d": 4.37, "spacing": 260.0}
+# Owner measured the countersunk head and shank. Gap is measured to the narrow end of the cone.
 
 # --- Carrier v0.7 (same outline, bosses and rim as the trial carrier) ------------------------
 WEB_BAND = 16.0  # web band width from the outer edge
@@ -94,23 +95,42 @@ HALO_FEED = (168.0, -168.0, 8.0)  # x, y, hole: halo cable from the Pro Micro ou
 WALL_GAP = 25.0  # channel openings to the wall: halo throw (#208)
 Z_WALL = Z_BACK + HALO_DEPTH + WALL_GAP  # 95.1
 VENT_D, VENT_PITCH = 10.0, 22.0  # drilled vent holes in the HDF
+FUSE_BODY = (34.8, 46.0, 14.0)  # measured holder on its side, cap accessible
+FUSES = (
+    ("input-7.5A", 6.0, -113.0, False),
+    ("panel-A-15A", -135.0, -42.0, True),
+    ("panel-B-15A", -64.0, -42.0, True),
+    ("halo-5A", 7.0, -42.0, True),
+)  # centre in rear-view XY; True means leads exit along X
+FUSE_LEAD_EXIT = 12.0  # clear straight run before bending the measured leads
+FUSE_TIE = (19.5, 15.0, 6.0)  # offset from centre in X and Y, and tie bore diameter
 
-# --- Hanging rail (top trays) and bumpers (bottom trays) -------------------------------------
-# The rail's lip hooks behind the wall-screw heads; its lower edge rests on the shanks. Each
-# top tray carries one rail, so each rail catches one screw; +/-26 mm sideways adjustment.
+# --- Hanging rails and bumpers --------------------------------------------------------------
+# The lips carry the weight on the screw shanks. Side-inserted steel keepers block lift-off.
 RAIL_X_IN, RAIL_X_OUT = -88.0, 60.0  # quadrant-local along +sx
 RAIL_WEB_Y = (40.0, 48.0)
 RAIL_LIP_Y0 = 26.0  # lip lower edge: rests on the screw shank
 RAIL_LIP_T = 3.5
-RAIL_SCREWS_X = (-70.0, -14.0, 42.0)  # M3 x 12 from inside, through the HDF
+RAIL_SCREWS_X = (-70.0, -14.0, 42.0)  # M3 x 40 from inside, through crossbar and HDF
+CROSSBAR = (128.0, 176.0, 18.0)  # Y bounds and depth; hardwood crossbar spans the side strips
+CROSSBAR_JOINT_Y = (138.0, 168.0)
+CROSSBAR_NUT_X = 162.0  # M6 cross dowel is 14 mm in from each end
+CROSSBAR_JOINT_CLEAR = 6.5
+CROSSBAR_NUT_D = 10.0
+CROSSBAR_JOINT_DEPTH = 45.0
+KEEPER_X = (48.0, 64.0)  # rail-local distance outward; access from enclosure sides
+KEEPER_Y = 18.2
+KEEPER_Z_OFFSET = 1.3  # in front of the lip's bearing plane
+KEEPER_LENGTH = 45.0  # fully threaded M5 steel bolt in a standard 8 mm AF nut
 BUMPER = {"d": 16.0, "x": 34.0, "y": -44.0}  # bottom quadrants; M3 x 12 from inside; bears on the wall
 
 # --- Electronics placement -------------------------------------------------------------------
 POWER_QUADRANT = (-1, -1)  # near the DC socket (wiring README: modules and fuses at the bottom)
 CONTROLLER_QUADRANT = (1, -1)
-DC_SOCKET_X = 18.0  # global, in the bottom strip's outer face (toward the Pi side)
+DC_SOCKET_X = 0.0  # centred between the two nearest halo screws
 DC_SOCKET_Z = Z_REAR + STRIP_D / 2  # 46: centred in the strip's 30 mm face
-DC_SOCKET_BODY = (13.8, 20.0)  # envelope from the outer face: diameter, length incl. cups and wire bends
+DC_SOCKET_BODY = (13.8, 20.0)  # envelope from the outer face: diameter and depth incl. solder cups
+DC_WIRE_ROOM = (24.0, 25.0, 16.0)  # reserved width, depth inboard of the pine, and height
 # Kycon drawing (datasheet KPJX-PM-4S, 2026-11-18): flange 25.2 x 14.2, holes 2.3 on 19.0; the two
 # plastic screw bosses and the body reach 6.05 behind the flange front. Kycon IGES of the shielded
 # KPJX-PM-4S-S (the owner's part, measured 2026-11-18): flange 25.7 x 14.7, about 1.55 thick (metal +
@@ -143,6 +163,12 @@ def cyl_y(x, z, d, y0, y1):
     """Cylinder along Y from y0 to y1 at (x, z)."""
     y0, y1 = sorted((y0, y1))
     return cq.Workplane("XZ").circle(d / 2).extrude(-(y1 - y0)).translate((x, y0, z))
+
+
+def cyl_x(y, z, d, x0, x1):
+    """Cylinder along X from x0 to x1 at (y, z)."""
+    x0, x1 = sorted((x0, x1))
+    return cq.Workplane("YZ").circle(d / 2).extrude(x1 - x0).translate((x0, y, z))
 
 
 def quadrant_centre(sx, sy):
@@ -243,8 +269,46 @@ def strip_boxes():
     }
 
 
+def strip_head_reliefs():
+    """Panel screw head reliefs by strip; near-edge reliefs can be open scallops."""
+    d, _ = PANEL_HEAD_RELIEF
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            cx, cy = quadrant_centre(sx, sy)
+            for dx, dy in PATTERN:
+                x, y = cx + dx, cy + dy
+                for name, (x0, x1, y0, y1) in strip_boxes().items():
+                    nearest_x = min(x1, max(x0, x))
+                    nearest_y = min(y1, max(y0, y))
+                    if (x - nearest_x) ** 2 + (y - nearest_y) ** 2 < (d / 2) ** 2:
+                        yield name, x, y
+
+
+def rail_mount_holes():
+    y = PITCH / 2 + sum(RAIL_WEB_Y) / 2
+    return [(sx * (PITCH / 2 + x), y) for sx in (-1, 1) for x in RAIL_SCREWS_X]
+
+
+def crossbar_joint_z():
+    return Z_STRIP_BACK - CROSSBAR[2] / 2
+
+
+def build_crossbar():
+    y0, y1, depth = CROSSBAR
+    bar = box(-STRIP_IN, STRIP_IN, y0, y1, Z_STRIP_BACK - depth, Z_STRIP_BACK)
+    for x, y in rail_mount_holes():
+        bar = bar.cut(cyl(x, y, M3_CLEAR, Z_STRIP_BACK - depth, Z_STRIP_BACK))
+    for sx in (-1, 1):
+        for y in CROSSBAR_JOINT_Y:
+            bar = bar.cut(cyl(sx * CROSSBAR_NUT_X, y, CROSSBAR_NUT_D, Z_STRIP_BACK - depth, Z_STRIP_BACK))
+            bar = bar.cut(cyl_x(y, crossbar_joint_z(), CROSSBAR_JOINT_CLEAR,
+                               sx * (STRIP_OUT - CROSSBAR_JOINT_DEPTH), sx * STRIP_IN))
+    return bar
+
+
 def build_strips():
     out = {}
+    head_d, head_depth = PANEL_HEAD_RELIEF
     for name, (x0, x1, y0, y1) in strip_boxes().items():
         s = box(x0, x1, y0, y1, Z_REAR, Z_STRIP_BACK)
         for x, y, _ in strip_screws():
@@ -258,6 +322,12 @@ def build_strips():
             if x0 < x < x1 and y0 < y < y1:
                 depth = WOOD_SCREW[1] - HDF_T - HALO["floor"]
                 s = s.cut(cyl(x, y, WOOD_PILOT, Z_STRIP_BACK - depth, Z_STRIP_BACK))
+        for target, x, y in strip_head_reliefs():
+            if target == name:
+                s = s.cut(cyl(x, y, head_d, Z_REAR, Z_REAR + head_depth))
+        if name in ("strip-left", "strip-right"):
+            for y in CROSSBAR_JOINT_Y:
+                s = s.cut(cyl_x(y, crossbar_joint_z(), CROSSBAR_JOINT_CLEAR, x0, x1))
         if name == "strip-bottom":
             s = _add_dc_socket(s)
         out[name] = s
@@ -298,10 +368,15 @@ def hdf_holes(kind=None):
     holes += [(sx * o, sy * o, "corner", 3.2) for sx in (-1, 1) for sy in (-1, 1)]
     for sx in (-1, 1):
         cx, cy = quadrant_centre(sx, 1)
-        holes += [(cx + sx * x, cy + sum(RAIL_WEB_Y) / 2, "rail", M3_CLEAR) for x in RAIL_SCREWS_X]
         cx, cy = quadrant_centre(sx, -1)
         holes.append((cx + sx * BUMPER["x"], cy + BUMPER["y"], "bumper", M3_CLEAR))
+    holes.extend((x, y, "rail", M3_CLEAR) for x, y in rail_mount_holes())
     holes.append((HALO_FEED[0], HALO_FEED[1], "halo cable", HALO_FEED[2]))
+    dx, dy, bore = FUSE_TIE
+    for _, x, y, along_x in FUSES:
+        for side in (-1, 1):
+            tx, ty = (dy, side * dx) if along_x else (side * dx, dy)
+            holes.append((x + tx, y + ty, "fuse tie", bore))
     taken = [(x, y, d / 2) for x, y, _, d in holes]
     # Keep-outs: rail footprints and bumper footprints (plus the holes above).
     for sx in (-1, 1):
@@ -313,12 +388,12 @@ def hdf_holes(kind=None):
     # Vents: a 3 x 3 grid over each power module and over the Pi, and a row along the top.
     centres = []
     pcx, pcy = quadrant_centre(*POWER_QUADRANT)
-    centres += [(pcx + mx, pcy + my) for mx, my in ep.MODULE_CENTRES]
+    centres += [(pcx + mx, pcy + my) for mx, my in BUCK_CENTRES]
     ccx, ccy = quadrant_centre(*CONTROLLER_QUADRANT)
     x0, x1, y0, y1 = pi_board_box()
     centres.append((ccx + (x0 + x1) / 2, ccy + (y0 + y1) / 2))
     cand = [(gx + i * VENT_PITCH, gy + j * VENT_PITCH) for gx, gy in centres for i in (-1, 0, 1) for j in (-1, 0, 1)]
-    cand += [(x, 160.0) for x in range(-165, 166, 30)]
+    cand += [(x, 100.0) for x in range(-165, 166, 30)]
     r = VENT_D / 2
     for x, y in cand:
         if max(abs(x), abs(y)) + r <= STRIP_IN - 3.0 and _keep_clear(x, y, r, taken):
@@ -335,6 +410,23 @@ def build_hdf():
     for x, y in halo_screws():
         panel = panel.cut(cyl(x, y, WOOD_SCREW[0] + 0.2, Z_STRIP_BACK, Z_BACK))
     return panel
+
+
+def fuse_envelopes():
+    """Bodies and straight lead exits for the four holders strapped inside the HDF."""
+    w, length, height = FUSE_BODY
+    base = Z_STRIP_BACK - height
+    z = base + height / 2
+    for name, x, y, along_x in FUSES:
+        sx, sy = (length, w) if along_x else (w, length)
+        yield name, box(x - sx / 2, x + sx / 2, y - sy / 2, y + sy / 2,
+                        base, Z_STRIP_BACK)
+        for side in (-1, 1):
+            face = side * length / 2
+            end = face + side * FUSE_LEAD_EXIT
+            lead = (box(x + face, x + end, y - 3, y + 3, z - 3, z + 3) if along_x
+                    else box(x - 3, x + 3, y + face, y + end, z - 3, z + 3))
+            yield f"{name}-lead-{side}", lead
 
 
 # ============================================================================================
@@ -387,8 +479,22 @@ def build_rail(sx):
     rail = rail.union(box(x0, x1, RAIL_LIP_Y0, RAIL_WEB_Y[1], lip_front, back))
     ym = sum(RAIL_WEB_Y) / 2
     for x in RAIL_SCREWS_X:
-        rail = rail.cut(cyl(sx * x, ym, M3_PILOT, Z_BACK, Z_BACK + 12))
+        rail = rail.cut(cyl(sx * x, ym, M3_PILOT, Z_BACK, Z_BACK + 19.8))
+    inner, outer = KEEPER_X
+    kz = lip_front - KEEPER_Z_OFFSET
+    rail = rail.union(box(sx * inner, sx * outer, 9.0, 34.0, kz - 6.0, back))
+    rail = rail.cut(cyl_x(KEEPER_Y, kz, 5.5, sx * inner, sx * outer))
+    # Insert the nut from the low-Y face with the assembly off the wall.
+    rail = rail.cut(box(sx * (inner + 4), sx * (inner + 8.5), 8.0, KEEPER_Y + 4.15,
+                       kz - 4.15, kz + 4.15))
     return rail
+
+
+def keeper_shank(sx):
+    """Installed anti-lift bolt envelope, along X, inserted from the side."""
+    cx, cy = quadrant_centre(sx, 1)
+    x = cx + sx * KEEPER_X[1]
+    return cyl_x(cy + KEEPER_Y, rail_z()[0] - KEEPER_Z_OFFSET, 5.0, x, x - sx * KEEPER_LENGTH)
 
 
 def build_bumper(sx):
@@ -401,24 +507,95 @@ def build_bumper(sx):
 # ============================================================================================
 # Electronics plates v0.7 (from electronics_plates.py)
 # ============================================================================================
-TIE_SLOT = (3.0, 6.0)  # x, y: cable tie slots either side of each 20 A module
-TIE_ROWS = (-20.0, 20.0)  # two ties per module, relative to its centre
+TIE_TUNNEL = (5.8, 2.2)  # 4.8 mm strap, minimum 2 mm free height along the route
+TIE_BRIDGE_H = 4.2
+CONTROLLER_MODULES = (
+    ep.SADDLE_PARTS["controller-plate"]["lm2596"],
+    ep.SADDLE_PARTS["controller-plate"]["pro_micro"],
+)
+BUCK_BODY = (73.44, 74.7, 31.0)  # measured including the metal envelope
+BUCK_CENTRES = ((-40.0, -40.5), (40.0, -40.5))
+WAGO_5 = (30.1, 21.1, 8.4)  # conservative envelope for WAGO 221-415
+WAGO_3 = (18.7, 21.1, 8.4)
+WAGO_DECK_Z = 34.5  # underside above the panel's power plug and wire bend
+WAGO_DECK_T = 2.5
+WAGO_DECK_X = (-79.5, 90.0)
+WAGO_DECK_Y = (17.0, 47.0)
+WAGO_CY = 35.1  # ports face -Y, toward the converters
+WAGO_MOUNTS = (-71.0, 73.0)
+WAGO_MOUNT_Y = 21.0
+WAGO_STRAP_Y = 42.0  # straps run across the backs, away from the levers
+WAGO_STRAP_T = 1.5
+BUCK_BEND_DEPTH = 20.0
+WAGOS = (
+    ("module_a_gnd", WAGO_3, -64.0),
+    ("input_24v", WAGO_5, -33.0),
+    ("input_gnd", WAGO_5, 5.0),
+    ("module_b_gnd", WAGO_5, 43.0),
+    ("module_b_5v", WAGO_3, 74.0),
+)
+WAGO_STRAP_X = (-76.0, -52.0, -14.0, 24.0, 62.0, 86.0)
+
+
+def _plate_with_screw_reliefs(quadrant):
+    plate = ep._plate()
+    for x, y in JOINT_HOLES:
+        if max(abs(quadrant[0] * PITCH / 2 + x), abs(quadrant[1] * PITCH / 2 + y)) > STRIP_IN:
+            plate = plate.cut(cyl(x, y, 4.5, 0, ep.PLATE_T))
+    return plate
+
+
+def _tie_bridge(x, y, along_y=False):
+    """Raised component seat with a top-side, pass-through strap tunnel."""
+    width, height = TIE_TUNNEL
+    z = ep.PLATE_T
+    bridge = box(-4.0, 4.0, -(width + 5) / 2, (width + 5) / 2, z - 0.1, z + TIE_BRIDGE_H)
+    bridge = bridge.cut(box(-4.1, 4.1, -width / 2, width / 2, z, z + height))
+    if along_y:
+        bridge = bridge.rotate((0, 0, 0), (0, 0, 1), 90)
+    return bridge.translate((x, y, 0))
+
+
+def _seat(plate, x, y, width, depth, strap_y):
+    plate = plate.union(_tie_bridge(x, strap_y))
+    for sx in (-1, 1):
+        dx = sx * (width / 2 - 2.5)
+        plate = plate.union(box(x + dx - 1.5, x + dx + 1.5, y + 3.5, min(ep.PLATE_TOP_Y, y + depth / 2 - 0.5),
+                               ep.PLATE_T - 0.1, ep.PLATE_T + TIE_BRIDGE_H))
+    return plate
 
 
 def build_power_plate_v07():
-    """Modules held by two cable ties each (no M4); WAGO saddles and vents as v3."""
-    plate = ep._plate()
-    mw = ep.COMPONENTS["buck_20a"][0]
-    for mx, my in ep.MODULE_CENTRES:
-        for side in (-1, 1):
-            for dy in TIE_ROWS:
-                plate = plate.cut(
-                    box(mx + side * (mw / 2 + 1.0), mx + side * (mw / 2 + 1.0 + TIE_SLOT[0]),
-                        my + dy - TIE_SLOT[1] / 2, my + dy + TIE_SLOT[1] / 2, 0, ep.PLATE_T)
-                )
-    plate = ep._add_saddles(plate, "power-plate")
-    plate = ep._vents(plate, -1.5, 1.5, -74.0, -10.0)
-    return plate
+    """Converter seats and the two posts that carry the separate WAGO deck."""
+    plate = _plate_with_screw_reliefs(POWER_QUADRANT)
+    for mx, my in BUCK_CENTRES:
+        for dx in (-21.0, 21.0):
+            plate = plate.union(_tie_bridge(mx + dx, my, along_y=True))
+        for dy in (-26.0, 26.0):
+            plate = plate.union(box(mx - 12, mx + 12, my + dy - 2.5, my + dy + 2.5,
+                                    ep.PLATE_T - 0.1, ep.PLATE_T + TIE_BRIDGE_H))
+    for x in WAGO_MOUNTS:
+        z = WAGO_DECK_Z - plate_z()
+        plate = plate.union(box(x - 4, x + 4, 14.0, 25.0, 0, ep.PLATE_T))
+        plate = plate.union(box(x - 4, x + 4, 17.0, 25.0, ep.PLATE_T - 0.1, z))
+        plate = plate.cut(cyl(x, WAGO_MOUNT_Y, M3_PILOT, z - 10, z + 0.1))
+    return ep._vents(plate, -1.5, 1.5, -74.0, -10.0)
+
+
+def build_wago_deck():
+    """Flat, removable shelf. Two adjacent ties share each interior slot."""
+    z0 = WAGO_DECK_Z
+    z1 = z0 + WAGO_DECK_T
+    deck = box(*WAGO_DECK_X, *WAGO_DECK_Y, z0, z1)
+    # The upper vertical-seam joiner and its screws pass the right front corner.
+    deck = deck.cut(box(80.0, WAGO_DECK_X[1] + 1, WAGO_DECK_Y[0] - 1, 22.0, z0, z1))
+    for x in WAGO_STRAP_X:
+        deck = deck.cut(box(x - 2, x + 2, WAGO_STRAP_Y - 3, WAGO_STRAP_Y + 3, z0, z1))
+    for y in (27.0, 35.0):
+        deck = deck.cut(box(84.0, 88.0, y - 3, y + 3, z0, z1))
+    for x in WAGO_MOUNTS:
+        deck = deck.cut(cyl(x, WAGO_MOUNT_Y, M3_CLEAR, z0, z1))
+    return deck
 
 
 def pi_board_box():
@@ -429,15 +606,17 @@ def pi_board_box():
 
 
 def build_controller_plate_v07():
-    """Pi on four 7 mm standoffs for M2.5 x 10 (same screws as the DC socket)."""
-    plate = ep._plate()
+    """Pi on four M2.5 standoffs with top-side anchors for the auxiliary boards."""
+    plate = _plate_with_screw_reliefs(CONTROLLER_QUADRANT)
     od, h = PI_STANDOFF_V07
     px, py = PI_CENTRE_V07
     for hx, hy in ep.PI_HOLES:
         x, y = px + hx, py + hy
         plate = plate.union(cyl(x, y, od, ep.PLATE_T, ep.PLATE_T + h))
         plate = plate.cut(cyl(x, y, M25_PILOT, ep.PLATE_T + h - 9.0, ep.PLATE_T + h))
-    plate = ep._add_saddles(plate, "controller-plate")
+    for comp, x, y in CONTROLLER_MODULES:
+        width, depth, _ = ep.COMPONENTS[comp][:3]
+        plate = _seat(plate, x, y, width, depth, y)
     plate = ep._vents(plate, px - 22.0, px + 22.0, py - 16.0, py + 16.0)
     return plate
 
@@ -451,16 +630,21 @@ def component_envelopes(plate):
     out = []
     z_top = plate_z() + ep.PLATE_T
     if plate == "power-plate":
-        for i, (x, y) in enumerate(ep.MODULE_CENTRES):
-            w, d, h = ep.COMPONENTS["buck_20a"][:3]
-            out.append((f"module_{'AB'[i]}", box(x - w / 2, x + w / 2, y - d / 2, y + d / 2, z_top, z_top + h)))
+        mounted = z_top + TIE_BRIDGE_H
+        for i, (x, y) in enumerate(BUCK_CENTRES):
+            w, d, h = BUCK_BODY
+            out.append((f"module_{'AB'[i]}", box(x - w / 2, x + w / 2, y - d / 2, y + d / 2, mounted, mounted + h)))
+        deck_top = WAGO_DECK_Z + WAGO_DECK_T
+        for name, (w, d, h), x in WAGOS:
+            out.append((name, box(x - w / 2, x + w / 2, WAGO_CY - d / 2, WAGO_CY + d / 2,
+                                  deck_top, deck_top + h)))
     else:
         x0, x1, y0, y1 = pi_board_box()
         h = ep.COMPONENTS["pi_stack"][2]
         z0 = z_top + PI_STANDOFF_V07[1]
         out.append(("pi_stack", box(x0, x1, y0, y1, z0, z0 + h)))
-    for name, (comp, x, y) in ep.SADDLE_PARTS[plate].items():
-        w, d, h = ep.COMPONENTS[comp][:3]
-        z0 = z_top + ep.SADDLE[1]
-        out.append((name, box(x - w / 2, x + w / 2, y - d / 2, y + d / 2, z0, z0 + h)))
+        for comp, x, y in CONTROLLER_MODULES:
+            w, d, h = ep.COMPONENTS[comp][:3]
+            z0 = z_top + TIE_BRIDGE_H
+            out.append((comp, box(x - w / 2, x + w / 2, y - d / 2, y + d / 2, z0, z0 + h)))
     return out
