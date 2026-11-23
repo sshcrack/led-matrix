@@ -5,6 +5,7 @@ Writes exports/v08/sperrholz-bohrplan.pdf:
   1  drawing (rear view) with the window and every hole
   2  hole table, measured from the bottom-left corner
   3  shopping list and order of work
+  4-9 templates at 1:1 (2 x 3 tiles on A4, 10 mm overlap): tape onto the board, punch the centres
 
 View: from the wall side. The plywood lies on the table with its inner face (the side the panels
 touch) DOWN and the top edge away from you; that is also how it lies on the face-down panels.
@@ -169,7 +170,10 @@ y = lines(12, 180, [
 ], 9, 4.7)
 lines(150, 180, [
     "## Reihenfolge",
-    "1  Holz anreißen, bohren, Fenster aussägen, Kanten schleifen.",
+    "1  Schablonen (Seite 4-9) mit 100 % drucken, 100-mm-Balken nachmessen, an den",
+    "   Kanten zusammenkleben, Ecke unten links bündig aufs Holz kleben. Alle Mitten",
+    "   mit Vorstecher/Körner durchstechen, Ø 2 vorbohren, dann aufbohren. Fenster",
+    "   aussägen, Kanten schleifen.",
     "2  Auf dem Tisch, Innenseite nach oben: Halo-Teile, Schienen, Puffer und",
     "   Pi-Gehäuse von der Innenseite mit M3 x 12 / M3 x 20 anschrauben.",
     "3  Pi kopfüber mit 4 x M2,5 x 10 ans Gehäusedach, Pro Micro mit",
@@ -188,5 +192,105 @@ lines(150, 180, [
     "",
     "Zum Abnehmen später: Streifen an den 8 Stellen anheben, 16 Schrauben raus.",
 ], 9, 4.7)
+
+# --- Pages 4-9: templates at 1:1 ------------------------------------------------------------------
+LABEL = {"panel screw": "P6", "M3 halo": "H3,5", "M3 pod": "G3,5", "M3 bumper": "U3,5", "M3 rail": "S3,5",
+         "cable tie": "K4", "vent": "L10"}
+FULL = 2 * E
+OVER = 10.0
+COLS, ROWS = 2, 3
+TW = (FULL + (COLS - 1) * OVER) / COLS  # 196.5 wide
+TH = (FULL + (ROWS - 1) * OVER) / ROWS  # 134.3 high
+MX, MY = 14.0, 40.0  # page position of the tile's bottom-left corner
+
+
+def mline(x0, y0, x1, y1, w=0.25, col=INK, dash=None):
+    c.setLineWidth(w)
+    c.setStrokeColorRGB(*col)
+    c.setDash(*dash) if dash else c.setDash()
+    c.line(x0 * mm, y0 * mm, x1 * mm, y1 * mm)
+    c.setDash()
+
+
+for row in range(ROWS - 1, -1, -1):
+    for col in range(COLS):
+        c.showPage()
+        c.setPageSize(landscape(A4))
+        tx0 = col * (TW - OVER)
+        ty0 = row * (TH - OVER)
+        name = f"{'ABC'[ROWS - 1 - row]}{col + 1}"
+        header(f"Schablone {name} (1:1)  -  links {fmt(tx0)} bis {fmt(tx0 + TW)}, unten {fmt(ty0)} bis {fmt(ty0 + TH)}",
+               "Mit 100 % drucken (nicht 'an Seite anpassen'), Balken unten nachmessen. Grau: 10 mm Überlappung "
+               "mit der Nachbarschablone, Kreuze dort decken sich. A oben, C unten; 1 links, 2 rechts.")
+
+        def T(x, y):
+            return MX + x - tx0, MY + y - ty0
+
+        def inside(x, y, m=0.0):
+            return tx0 - m <= x <= tx0 + TW + m and ty0 - m <= y <= ty0 + TH + m
+        # tile frame and overlap bands
+        c.setFillColorRGB(0.9, 0.9, 0.9)
+        if col > 0:
+            c.rect(MX * mm, MY * mm, OVER * mm, TH * mm, stroke=0, fill=1)
+        if col < COLS - 1:
+            c.rect((MX + TW - OVER) * mm, MY * mm, OVER * mm, TH * mm, stroke=0, fill=1)
+        if row > 0:
+            c.rect(MX * mm, MY * mm, TW * mm, OVER * mm, stroke=0, fill=1)
+        if row < ROWS - 1:
+            c.rect(MX * mm, (MY + TH - OVER) * mm, TW * mm, OVER * mm, stroke=0, fill=1)
+        c.setStrokeColorRGB(*GREY)
+        c.setLineWidth(0.2)
+        c.rect(MX * mm, MY * mm, TW * mm, TH * mm, stroke=1, fill=0)
+        # board edges (thick) where they fall on this tile
+        for x in (0.0, FULL):
+            if tx0 <= x <= tx0 + TW:
+                mline(*T(x, ty0), *T(x, ty0 + TH), 0.8)
+                txt(T(x, 0)[0] + (2 if x == 0 else -2), MY + TH / 2, "Holzkante", 7, anchor="left" if x == 0 else "right")
+        for y in (0.0, FULL):
+            if ty0 <= y <= ty0 + TH:
+                mline(*T(tx0, y), *T(tx0 + TW, y), 0.8)
+                txt(MX + TW / 2, T(0, y)[1] + (2 if y == 0 else -4), "Holzkante", 7, anchor="centre")
+        # 10 mm ticks along the bottom and left tile border with board coordinates
+        for v in range(0, int(FULL) + 1, 10):
+            if tx0 <= v <= tx0 + TW:
+                x, _ = T(v, 0)
+                mline(x, MY, x, MY - (3 if v % 50 == 0 else 1.5), 0.2)
+                if v % 50 == 0:
+                    txt(x, MY - 6, str(v), 6, anchor="centre")
+            if ty0 <= v <= ty0 + TH:
+                _, y = T(0, v)
+                mline(MX, y, MX - (3 if v % 50 == 0 else 1.5), y, 0.2)
+                if v % 50 == 0:
+                    txt(MX - 4, y - 1, str(v), 6, anchor="right")
+        # window
+        x0, y0, x1, y1 = max(wx0, tx0), max(wy0, ty0), min(wx1, tx0 + TW), min(wy1, ty0 + TH)
+        if x0 < x1 and y0 < y1:
+            c.setDash(3, 2)
+            c.setLineWidth(0.5)
+            c.setStrokeColorRGB(*INK)
+            c.rect(T(x0, 0)[0] * mm, T(0, y0)[1] * mm, (x1 - x0) * mm, (y1 - y0) * mm, stroke=1, fill=0)
+            c.setDash()
+            txt(T((x0 + x1) / 2, 0)[0], T(0, (y0 + y1) / 2)[1], "Fenster aussägen (Ecken Ø 8)", 8, anchor="centre")
+        # holes: true-size circle, a cross through the centre, label
+        for hx, hy, what, d in holes:
+            if not inside(hx, hy):
+                continue
+            x, y = T(hx, hy)
+            c.setLineWidth(0.25)
+            c.setStrokeColorRGB(*INK)
+            c.circle(x * mm, y * mm, d / 2 * mm, stroke=1, fill=0)
+            r = d / 2 + 3
+            mline(x - r, y, x + r, y, 0.15)
+            mline(x, y - r, x, y + r, 0.15)
+            c.setFillColorRGB(*INK)
+            c.circle(x * mm, y * mm, 0.35 * mm, stroke=0, fill=1)
+            txt(x + d / 2 + 1.2, y + 1.2, LABEL[what], 5.5, colour=GREY)
+        # scale bar
+        mline(MX + 120, 14, MX + 220, 14, 0.5)
+        for i in range(11):
+            mline(MX + 120 + 10 * i, 14, MX + 120 + 10 * i, 14 + (3 if i % 5 == 0 else 1.6), 0.3)
+        txt(MX + 170, 18.5, "100 mm: nachmessen", 7, anchor="centre")
+        txt(MX, 14, "P6 Panelschraube Ø6 · H/G/U/S Ø3,5 · K4 Kabelbinder Ø4 · L10 Lüftung Ø10", 7)
+
 c.save()
 print(args.output, Counter(h[2] for h in holes))
