@@ -103,6 +103,16 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
     }
     const float moonX = W * 0.22f, moonY = H * 0.16f;
     Environment::paint_moon(surf, L, {moonX, moonY}, 5.0f);
+    // Storm clouds drag across the moon: only a smudge of it shows.
+    if (L.storm > 0.02f)
+        for (int y = static_cast<int>(moonY - 14); y <= static_cast<int>(moonY + 14); ++y)
+            for (int x = static_cast<int>(moonX - 20); x <= static_cast<int>(moonX + 20); ++x) {
+                if (!buf_.inside(x, y))
+                    continue;
+                const float n = 0.5f + 0.5f * std::sin(x * 0.21f + time_ * 0.6f) * std::sin(y * 0.33f - time_ * 0.4f + x * 0.05f);
+                const float edge = std::clamp(1.0f - AudioKit::len((x - moonX) / 20.0f, (y - moonY) / 14.0f), 0.0f, 1.0f);
+                buf_.mix(x, y, RGB{20, 21, 28}, std::min(0.92f, L.storm * (0.55f + 0.45f * n) * std::min(1.0f, edge * 3.0f)));
+            }
     lightningEnv_.update_and_draw(surf, L, dt, static_cast<float>(horizon));
     for (size_t i = 1; i < bolt_.size() && lightning_.v > 0.05f; ++i) {
         const auto [x0, y0] = bolt_[i - 1];
@@ -136,6 +146,7 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
     const RGB farWater = lerp(RGB{8, 16, 40}, RGB{14, 18, 28}, grey * 0.8f) + RGB{80, 80, 110} * (flash * 0.2f);
     for (int y = horizon; y < H; ++y)
         for (int x = 0; x < W; ++x) buf_.at(x, y) = farWater;
+    auto speedOf = [](int layer) { return 6.0f + 4.0f * static_cast<float>(layer); };  // whitecaps drift towards the shore
     for (int k = 0; k < Layers; ++k) {
         const float depth = static_cast<float>(k) / (Layers - 1);  // 0 far .. 1 near
         const float level = layerLevel_[static_cast<size_t>(k)];
@@ -159,7 +170,16 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
                 buf_.at(x, y) = c;
             }
             // Foam on crests, brighter when the band is loud.
-            const float crest = std::clamp(0.4f + level * 0.9f - std::fabs(slope) * 0.6f, 0.0f, 1.0f);
+            float crest = std::clamp(0.4f + level * 0.9f - std::fabs(slope) * 0.6f, 0.0f, 1.0f);
+            // Storm whitecaps: broken patches of foam on the near swell.
+            const bool cap =
+                L.storm > 0.05f && depth > 0.3f &&
+                hash(static_cast<uint32_t>((x + static_cast<int>(time_ * speedOf(k))) / 3) * 97 + static_cast<uint32_t>(k) * 13) > 0.55f;
+            if (cap) {
+                crest = std::min(1.0f, crest + L.storm * 0.8f);
+                if (sy + 1 >= horizon)
+                    buf_.mix(x, static_cast<int>(std::floor(sy)) + 1, RGB{170, 190, 215}, L.storm * 0.55f * depth);
+            }
             if (sy >= horizon)
                 buf_.mix(x, static_cast<int>(std::floor(sy)), RGB{150, 180, 210} * (0.4f + 0.6f * depth),
                          std::min(1.0f, crest * (0.35f + 0.5f * depth) * (1.0f + 0.5f * L.storm)));
@@ -231,6 +251,13 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
                 const float drift = 0.75f + 0.25f * std::sin(x * 0.07f + time_ * 0.15f) * std::sin(x * 0.023f - time_ * 0.09f);
                 buf_.mix(x, y, RGB{62, 66, 76}, std::min(0.85f, L.fog * v * drift));
             }
+    // Heavy rain blurs the horizon line.
+    if (L.rain > 0.05f)
+        for (int y = horizon - 10; y < horizon + 10; ++y)
+            for (int x = 0; x < W; ++x) {
+                const float v = 1.0f - std::fabs(static_cast<float>(y - horizon)) / 10.0f;
+                buf_.mix(x, y, RGB{34, 37, 48}, L.rain * 0.5f * v * (0.7f + 0.3f * std::sin(x * 0.11f + time_ * 0.8f)));
+            }
     // Storm surf bursts white against the foot of the cliff.
     if (L.storm > 0.05f) {
         if (events_.beatHit || rnd() < dt * 1.5f)
@@ -239,7 +266,7 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int i = 0; i < 40; ++i) {
             const float a = hash(i * 7 + 3), b = hash(i * 13 + 1);
             const float rise = spray_ * (6.0f + 22.0f * b) * L.storm;
-            const float sx = W * 0.72f - 2.0f + (a - 0.6f) * 16.0f * (1.2f - spray_);
+            const float sx = W * 0.72f - 2.0f + (a - 0.6f) * 16.0f * (1.2f - spray_) + rise * L.wind * 0.6f;  // leans with the wind
             const float sy = H - 18.0f - rise + 3.0f * a;
             buf_.splat(sx, sy, RGB{200, 215, 235} * (spray_ * (0.5f + 0.5f * b)));
         }

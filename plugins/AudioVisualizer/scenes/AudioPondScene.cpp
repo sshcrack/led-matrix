@@ -26,6 +26,7 @@ void AudioPondScene::initialize(int width, int height)
     AmbientMusicScene::initialize(width, height);
     flakes_.clear();
     leaves_.clear();
+    rings_.clear();
     env_->snap();
 }
 
@@ -111,15 +112,19 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
     // Real rain patters on the whole pond; snowflakes settle and melt in.
     const auto& L = env_->update(dt);
     // Many small, short-lived impact rings; the large rings stay for beats.
-    weatherDrops_ += dt * (L.rain * 55.0f + L.storm * 25.0f);
+    weatherDrops_ += dt * (L.rain * 30.0f + L.storm * 15.0f);
     while (weatherDrops_ >= 1.0f) {
         weatherDrops_ -= 1.0f;
-        drop(rnd() * W, rnd() * H, 0.8f, 0.10f + rnd() * 0.12f);
+        rings_.push_back({rnd() * W, rnd() * H, 0.0f});
+        if (rnd() < 0.3f)
+            drop(rings_.back().x, rings_.back().y, 0.8f, 0.12f);
     }
+    for (auto& r : rings_) r.age += dt;
+    std::erase_if(rings_, [](const Ring& r) { return r.age >= 0.7f; });
     flakeClock_ += dt * L.snow * 22.0f;
     while (flakeClock_ >= 1.0f && flakes_.size() < 80) {
         flakeClock_ -= 1.0f;
-        flakes_.push_back({rnd() * W, rnd() * H, 0.0f});
+        flakes_.push_back({rnd() * W, rnd() * H, 0.0f, rnd() < 0.15f ? 2.0f : 1.0f});
     }
     for (auto& f : flakes_) {
         f.life += dt;
@@ -177,12 +182,14 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
             const size_t i = static_cast<size_t>(y * W + x);
             const float gx = h0_[static_cast<size_t>(y * W + std::min(x + 1, W - 1))] - h0_[static_cast<size_t>(y * W + std::max(x - 1, 0))];
             const float gy = h0_[static_cast<size_t>(std::min(y + 1, H - 1) * W + x)] - h0_[static_cast<size_t>(std::max(y - 1, 0) * W + x)];
-            const int sx = std::clamp(static_cast<int>(x + gx * 14.0f), 0, W - 1);
+            // A slow shimmer keeps the reflection from reading as open sky.
+            const float shimmer = std::sin(y * 0.9f + time_ * 1.6f + std::sin(x * 0.05f)) * 0.9f;
+            const int sx = std::clamp(static_cast<int>(x + gx * 14.0f + shimmer), 0, W - 1);
             const int sy = std::clamp(static_cast<int>(y + gy * 14.0f), 0, H - 1);
             RGB c = lerp(sky_[static_cast<size_t>(sy * W + sx)], greySky * (0.8f + 0.4f * static_cast<float>(sy) / H), grey);
             const float slope = (-gx - gy) * 2.2f;
             const float spec = std::pow(std::clamp(slope, 0.0f, 1.0f), 1.4f) * 0.8f;
-            c = c * (1.0f - 0.45f * std::clamp(-slope, 0.0f, 1.0f)) + RGB{130, 165, 210} * spec;
+            c = c * (1.0f - 0.25f * std::clamp(-slope, 0.0f, 1.0f)) + RGB{120, 150, 195} * spec;
             c = c + RGB{10, 40, 60} * (tint * 0.6f + beat_.v * 0.25f);
             buf_.px[i] = c;
         }
@@ -196,9 +203,8 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
     for (size_t pi = 0; pi < pads_.size(); ++pi) {
         const auto& p = pads_[pi];
         // In autumn each pad turns its own way, from ochre to rust.
-        const RGB padTone =
-            lerp(padColor, RGB{padColor.r * 1.15f, padColor.g * (0.75f - 0.15f * static_cast<float>(pi % 3)), padColor.b * 0.7f},
-                 L.autumn * 0.8f);
+        const RGB autumnTones[] = {RGB{70, 72, 24}, RGB{120, 78, 22}, RGB{125, 45, 20}, RGB{95, 85, 30}};  // olive .. rust
+        const RGB padTone = lerp(padColor, autumnTones[pi % 4], L.autumn * 0.85f);
         const float bob = std::sin(time_ * 0.8f + p.phase) * 0.4f;
         for (int y = static_cast<int>(p.y - p.r - 1); y <= static_cast<int>(p.y + p.r + 1); ++y)
             for (int x = static_cast<int>(p.x - p.r - 1); x <= static_cast<int>(p.x + p.r + 1); ++x) {
@@ -235,32 +241,42 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
         const float ca = std::cos(l.angle), sa = std::sin(l.angle);
         for (int v = -5; v <= 5; ++v)
             for (int u = -7; u <= 7; ++u) {
-                const float a = u / 3.4f, b = v / 1.9f;
-                const float lu = u * 0.5f, lv = v * 0.5f;
-                const float shape = 1.0f - (a * a / 4.0f + b * b * (1.0f + 0.35f * std::fabs(a)));
+                // Wider on one half and towards the tip: reads as a leaf.
+                const float a = u / 3.4f, b = v / (v > 0 ? 2.4f : 1.7f);
+                const float lu = u * 0.85f, lv = v * 0.85f;
+                const float shape = 1.0f - (a * a / 4.0f + b * b * (1.0f + 0.35f * std::fabs(a) - 0.12f * a));
                 if (shape <= 0.0f)
                     continue;
                 const float px = l.x + ca * lu - sa * lv, py = l.y + sa * lu + ca * lv;
                 const RGB c = std::fabs(v) < 1 ? l.color * 0.55f : l.color * (0.8f + 0.2f * hash(static_cast<uint32_t>(u * 5 + v)));
                 buf_.mix(static_cast<int>(px), static_cast<int>(py), c, std::clamp(shape * 3.0f, 0.0f, 0.95f));
             }
-        buf_.mix(static_cast<int>(l.x - ca * 4.5f), static_cast<int>(l.y - sa * 4.5f), l.color * 0.45f, 0.9f);
+        buf_.mix(static_cast<int>(l.x - ca * 6.5f), static_cast<int>(l.y - sa * 6.5f), l.color * 0.45f, 0.9f);
     }
     // Shore banks in the bottom corners (snow lies on them in winter) with
     // reeds that lean, overlap and sway with the mids.
     const float mid = spectrum_.band(0.25f, 0.6f);
     const RGB bankEarth = lerp(RGB{9, 11, 8}, RGB{6, 7, 6}, L.wetness);
     const RGB bankSnow = RGB{120, 128, 150};
+    const float moonGlow = 1.0f - grey * 0.8f;
     for (int side = 0; side < 2; ++side) {
         const float cx = side == 0 ? -6.0f : W + 6.0f;
         for (int y = H - 22; y < H; ++y)
             for (int x = side == 0 ? 0 : W - 44; x < (side == 0 ? 44 : W); ++x) {
                 const float dx = (x + 0.5f - cx) / 44.0f, dy = (y + 0.5f - (H + 4.0f)) / 20.0f;
-                const float d = dx * dx + dy * dy;
-                if (d >= 1.0f)
+                const float wobble = 0.10f * std::sin(x * 0.45f + side * 2.0f) + 0.06f * std::sin(x * 1.3f + 1.0f);
+                const float d = dx * dx + dy * dy + wobble;
+                if (d >= 1.08f)
                     continue;
+                // Cool light on the waterline.
+                if (d >= 1.0f) {
+                    buf_.add(x, y, RGB{30, 45, 70} * (moonGlow * (1.08f - d) / 0.08f));
+                    continue;
+                }
                 const float rim = std::clamp((1.0f - d) * 8.0f, 0.0f, 1.0f);
-                const float snowTop = std::clamp(0.35f + (d - 0.2f) * 1.6f, 0.0f, 1.0f) * L.snow_cover;  // covers the bank, thickest on top
+                const float patchy = 0.75f + 0.25f * std::sin(x * 0.7f + y * 1.1f) * std::sin(x * 0.23f - y * 0.4f);
+                const float snowTop =
+                    std::clamp((0.35f + (d - 0.2f) * 1.6f) * patchy, 0.0f, 1.0f) * L.snow_cover;  // covers the bank, thickest on top
                 buf_.mix(x, y, lerp(bankEarth, bankSnow * (0.85f + 0.15f * hash(static_cast<uint32_t>(x * 7 + y * 3))), snowTop), rim);
             }
     }
@@ -277,7 +293,9 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
             const float t = s / len;
             const float x = bx + (lean + sway * (left ? 1.0f : -1.0f)) * t * t;
             const int ix = static_cast<int>(x), iy = H - 3 - s;
-            buf_.mix(ix, iy, stem, 0.95f);
+            buf_.mix(ix, iy, lerp(stem, RGB{95, 62, 18}, L.autumn * std::clamp((t - 0.55f) * 2.5f, 0.0f, 1.0f)), 0.95f);
+            if (r % 4 == 1 && t > 0.2f)  // moonlight on a few stalks
+                buf_.add(ix + (left ? 1 : -1), iy, RGB{22, 32, 48} * (moonGlow * 0.6f));
             if (thick && t < 0.6f)
                 buf_.mix(ix + 1, iy, stem * 0.8f, 0.9f);
             const bool head = r % 3 == 0 && t > 0.72f && t < 0.9f;  // cattail
@@ -291,6 +309,16 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
         }
     }
 
+    // Raindrop rings: a thin circle that widens and fades.
+    for (const auto& r : rings_) {
+        const float rad = 0.8f + r.age * 6.0f, a = (1.0f - r.age / 0.7f) * 0.55f;
+        const int n = 10 + static_cast<int>(rad * 5.0f);
+        for (int k = 0; k < n; ++k) {
+            const float ang = k * Tau / static_cast<float>(n);
+            buf_.splat(r.x + std::cos(ang) * rad, r.y + std::sin(ang) * rad,
+                       RGB{110, 135, 170} * (a * 6.0f / static_cast<float>(n) * 2.2f));
+        }
+    }
     // Snowflakes resting on the surface fade as they melt.
     for (const auto& f : flakes_) {
         const float a = std::clamp(1.0f - f.life / 1.6f, 0.0f, 1.0f);
@@ -298,6 +326,11 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
         buf_.mix(fx, fy, RGB{215, 222, 240}, a);
         buf_.mix(fx + 1, fy, RGB{170, 178, 200}, a * 0.55f);
         buf_.mix(fx, fy + 1, RGB{170, 178, 200}, a * 0.55f);
+        if (f.size > 1.5f) {  // a few near flakes, bigger and softer
+            buf_.mix(fx - 1, fy, RGB{170, 178, 200}, a * 0.5f);
+            buf_.mix(fx, fy - 1, RGB{170, 178, 200}, a * 0.5f);
+            buf_.mix(fx + 1, fy + 1, RGB{150, 158, 180}, a * 0.35f);
+        }
     }
     const Environment::Surface surf{&buf_.px[0].r, W, H, 255.0f};
     Environment::paint_fog(surf, L, time_, 0.0f, static_cast<float>(H));

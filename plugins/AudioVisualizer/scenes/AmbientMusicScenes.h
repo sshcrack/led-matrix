@@ -65,7 +65,7 @@ class AudioPondScene final : public AmbientMusicScene {
     // into it, a grey reflected sky) and season (pads, leaves, fireflies).
     std::unique_ptr<Environment::SceneEnvironment> env_;
     struct Flake {
-        float x, y, life;
+        float x, y, life, size;
     };
     std::vector<Flake> flakes_;
     struct Leaf {
@@ -73,6 +73,10 @@ class AudioPondScene final : public AmbientMusicScene {
         AudioKit::RGB color;
     };
     std::vector<Leaf> leaves_;
+    struct Ring {
+        float x, y, age;
+    };
+    std::vector<Ring> rings_;  // small raindrop rings drawn on top of the ripple field
     float weatherDrops_ = 0.0f, flakeClock_ = 0.0f;
 
     void drop(float x, float y, float radius, float strength);
