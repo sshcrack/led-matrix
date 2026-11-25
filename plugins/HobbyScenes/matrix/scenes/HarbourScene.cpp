@@ -112,6 +112,17 @@ void HarbourScene::build_backdrop()
                                               std::max(1, static_cast<int>(2 * sx)), std::max(1, static_cast<int>(3 * sy)),
                                               static_cast<uint32_t>(i * 7 + row * 2 + col));
             }
+        // Window boxes: tulips in spring, red geraniums in summer.
+        const float flowers = std::clamp(L.spring + L.summer - L.snow_cover, 0.0f, 1.0f);
+        if (flowers > 0.05f)
+            for (int col = 0; col < 2; ++col) {
+                int row = 2;
+                while (row > 0 && h.top + 3.0f + row * 6.0f + 3 >= QuayTop - 4) --row;
+                const float wx = h.x + 1.5f + col * (h.w - 4.0f), wy = h.top + 3.0f + row * 6.0f + 3.0f;
+                const Rgb bloom = mix(i % 2 ? Rgb{1.0f, 0.85f, 0.25f} : Rgb{1.0f, 0.45f, 0.65f}, Rgb{0.90f, 0.12f, 0.10f},
+                                      L.summer / std::max(0.01f, L.spring + L.summer));
+                rect(wx - 0.5f, wy, 3, 1, mix(lit(h.wall, 0.1f), lit(bloom, 0.1f), flowers));
+            }
         rect(h.x + h.w / 2 - 1, QuayTop - 4, 2, 4, lit({0.16f, 0.12f, 0.10f}, 0.1f));  // door
     }
     // The quay: cobbles on top, a stone wall down to the water, lamps and bollards.
@@ -146,6 +157,39 @@ void HarbourScene::build_backdrop()
     rect(LighthouseX - 2, LampY - 1, 4, 5, lit({0.30f, 0.34f, 0.36f}, 0.15f));  // lantern room
     rect(LighthouseX - 2.5f, LampY - 3, 5, 2, lit({0.20f, 0.22f, 0.24f}, 0.15f));
     rect(LighthouseX - 0.5f, LampY - 5, 1, 2, lit({0.20f, 0.22f, 0.24f}, 0.15f));
+
+    // Surfaces carry the weather: wet stone shines with the sky in rain,
+    // frost rims the quay and pier edges in winter, and petals or leaves lie
+    // under the tree on the pier.
+    {
+        const float wetness = std::clamp(L.rain, 0.0f, 1.0f), frost = std::clamp(L.winter - 0.5f * L.snow_cover, 0.0f, 1.0f);
+        const Rgb sheen = from_env(L.sky(0.4f)), rime = lit({0.86f, 0.90f, 0.98f}, 0.1f);
+        const auto tint = [&](float x0, float x1, float y0, float y1, Rgb c, float a) {
+            for (int y = static_cast<int>(y0 * sy); y < static_cast<int>(y1 * sy); ++y)
+                for (int x = static_cast<int>(x0 * sx); x < static_cast<int>(x1 * sx); ++x) bg.blend(x, y, c, a);
+        };
+        if (wetness > 0.02f) {
+            tint(0, QuayEnd, QuayTop, QuayWater, {0.0f, 0.0f, 0.0f}, 0.18f * wetness);  // darker wet stone
+            tint(PierStart, 128, PierTop, PierWater, {0.0f, 0.0f, 0.0f}, 0.18f * wetness);
+            for (float x = 0; x < QuayEnd; x += 1.0f)
+                tint(x, x + 1, QuayTop, QuayTop + 1, sheen, (0.25f + 0.2f * hash01(static_cast<uint32_t>(x) * 13u)) * wetness);
+            for (float x = PierStart; x < 128; x += 1.0f)
+                tint(x, x + 1, PierTop, PierTop + 1, sheen, (0.25f + 0.2f * hash01(static_cast<uint32_t>(x) * 17u)) * wetness);
+        }
+        if (frost > 0.02f) {
+            tint(0, QuayEnd, QuayTop, QuayTop + 1, rime, 0.65f * frost);
+            tint(PierStart, 128, PierTop, PierTop + 1, rime, 0.65f * frost);
+            tint(0, QuayEnd, QuayWater - 1, QuayWater, rime, 0.35f * frost);
+        }
+        const float litter = std::clamp(std::max(L.spring, L.autumn) - L.snow_cover, 0.0f, 1.0f);
+        if (litter > 0.05f)
+            for (uint32_t i = 0; i < 14; ++i) {
+                const float x = 80.0f + 15.0f * hash01(i * 3u + 1u), y = PierTop + (hash01(i * 3u + 2u) > 0.5f ? 1.0f : 0.0f);
+                const Rgb c = L.autumn > L.spring ? (i % 3 ? Rgb{0.85f, 0.42f, 0.12f} : Rgb{0.70f, 0.22f, 0.10f})
+                                                  : (i % 3 ? Rgb{1.0f, 0.68f, 0.80f} : Rgb{1.0f, 0.86f, 0.90f});
+                tint(x, x + 1, y, y + 1, lit(c, 0.15f), 0.9f * litter);
+            }
+    }
 
     // Masks: open sky, open water and the pier.
     const auto same = [&](const std::vector<float>& stage, size_t i) {
@@ -201,6 +245,16 @@ void HarbourScene::draw_water(float raw_dt)
             if (wet(col, row))
                 cv_.add(col, row, color, alpha);
     };
+    // A point spread over the two pixels it falls between, for sub-pixel motion.
+    const auto soft = [&](float x, float y, Rgb color, float alpha) {
+        const float fx = x * sx - 0.5f;
+        const int col = static_cast<int>(std::floor(fx)), row = static_cast<int>(y * sy);
+        const float u = fx - static_cast<float>(col);
+        if (wet(col, row))
+            cv_.add(col, row, color, alpha * (1.0f - u));
+        if (wet(col + 1, row))
+            cv_.add(col + 1, row, color, alpha * u);
+    };
     const float rough = 1.0f + 1.5f * L.storm + 0.6f * std::fabs(L.wind);
     // Swell lines catch the sky, longer and slower far out.
     const Rgb sheen = mix(from_env(L.sky(0.6f)), {0.85f, 0.9f, 1.0f}, 0.25f);
@@ -218,15 +272,18 @@ void HarbourScene::draw_water(float raw_dt)
                           (1.0f - 0.9f * L.overcast) * (1.0f - 0.8f * L.fog);
     if (pathVis > 0.02f) {
         const Rgb pathColor = moon ? Rgb{0.78f, 0.85f, 1.0f} : mix(from_env(L.sun_color), {1.0f, 0.9f, 0.7f}, 0.4f);
-        const uint32_t frame = static_cast<uint32_t>(t_ * 5.0f);
+        // Each glint swells and fades on its own and slides sub-pixel, so the
+        // path shimmers without stepping.
         for (int y = static_cast<int>(Horizon) + 1; y < 128; y += 2) {
             const float d = (y - Horizon) / (128 - Horizon);
             const float half = 2 + 10 * d;
             const float wobble = 1.5f * std::sin(y * 0.7f + t_ * 1.3f);
-            for (float x = lightX - half; x < lightX + half; x += 1.0f) {
+            for (int j = 0; j < static_cast<int>(2 * half); ++j) {
+                const float x = lightX - half + j + 0.5f;
                 const float fall = 1 - std::fabs(x - lightX) / half;
-                const float glint = hash01(static_cast<uint32_t>(y * 977 + static_cast<int>(x) * 131) + frame * 2654435761u);
-                streak(x + wobble, static_cast<float>(y), 1, pathColor, pathVis * fall * (glint > 0.7f ? 0.34f : 0.07f));
+                const uint32_t id = static_cast<uint32_t>(y * 977 + j * 131);
+                const float tw = 0.5f + 0.5f * std::sin(t_ * (1.0f + 1.6f * hash01(id)) + kTau * hash01(id + 7u));
+                soft(x + wobble, static_cast<float>(y), pathColor, pathVis * fall * (0.06f + 0.30f * tw * tw * tw));
             }
         }
     }
@@ -236,12 +293,13 @@ void HarbourScene::draw_water(float raw_dt)
         for (float x : {14.5f, 32.5f, 4.0f, 21.0f, 38.0f, 47.0f, 54.5f}) {
             const uint32_t id = static_cast<uint32_t>(x * 10);
             for (int y = static_cast<int>(QuayWater) + 1; y < 124; y += 2) {
-                const float flicker = hash01(id * 131u + static_cast<uint32_t>(y) * 17u + static_cast<uint32_t>(t_ * 4.0f) * 7919u);
-                if (flicker < 0.5f)
-                    continue;
+                const uint32_t h = id * 131u + static_cast<uint32_t>(y) * 17u;
+                const float tw = 0.5f + 0.5f * std::sin(t_ * (1.5f + 2.0f * hash01(h)) + kTau * hash01(h + 3u));
                 const float fade = 1 - (y - QuayWater) / 30.0f;
-                streak(x + 1.5f * std::sin(y * 0.8f + t_ * 1.6f + x), static_cast<float>(y), 1 + (flicker > 0.85f), {1.0f, 0.70f, 0.36f},
-                       0.14f * lamp * std::max(0.0f, fade));
+                const float cx = x + 1.5f * std::sin(y * 0.8f + t_ * 1.6f + x);
+                for (float o : {0.0f, 1.0f})
+                    soft(cx + o, static_cast<float>(y), {1.0f, 0.70f, 0.36f},
+                         0.16f * lamp * std::max(0.0f, fade) * tw * (o > 0.0f ? tw : 1.0f));
             }
         }
     // Rain rings the water.
@@ -336,7 +394,7 @@ void HarbourScene::draw_boats(float dt)
     else if (voyage_ < 70.0f) {
         u = 0.0f;
         const float c = -std::cos(kPi * ease((voyage_ - 60.0f) / 10.0f));
-        face = (c < 0.0f ? -1.0f : 1.0f) * std::max(0.3f, std::fabs(c));
+        face = (c < 0.0f ? -1.0f : 1.0f) * std::max(0.45f, std::fabs(c));
     }
     else if (voyage_ < 98.0f) {
         u = ease((voyage_ - 70.0f) / 28.0f);
@@ -360,7 +418,7 @@ void HarbourScene::draw_boats(float dt)
                 const int px = static_cast<int>((x - face * (7.0f * s + back)) * sx),
                           py = static_cast<int>((wl + side * spread * 0.4f + 0.5f) * sy);
                 if (px >= 0 && py >= 0 && px < cv_.w && py < cv_.h && water_[static_cast<size_t>(py * cv_.w + px)])
-                    cv_.add(px, py, {0.85f, 0.9f, 0.95f}, 0.28f * (1.0f - i / 10.0f) * (1.0f - L.fog * 0.5f));
+                    cv_.add(px, py, {0.85f, 0.9f, 0.95f}, 0.28f * (s / 0.95f) * (1.0f - i / 10.0f) * (1.0f - L.fog * 0.5f));
             }
         }
     }
@@ -453,6 +511,13 @@ bool HarbourScene::render(rgb_matrix::FrameCanvas* canvas)
         for (float x : {14.5f, 32.5f}) {
             cv_.glow(x * sx, 77.5f * sy, 5.0f * k, {1.0f, 0.72f, 0.38f}, 0.35f * L.lamp());
             cv_.set(static_cast<int>(x * sx), static_cast<int>(77.5f * sy), {1.0f, 0.85f, 0.55f});
+        }
+    // Winter mornings are cold: a cool cast over everything.
+    if (L.winter > 0.02f)
+        for (size_t i = 0; i < cv_.px.size(); i += 3) {
+            cv_.px[i] *= 1.0f - 0.10f * L.winter;
+            cv_.px[i + 1] *= 1.0f - 0.02f * L.winter;
+            cv_.px[i + 2] *= 1.0f + 0.10f * L.winter;
         }
     // A lightning strike lifts the whole harbour a little, not just the boats.
     if (L.flash > 0.0f)
