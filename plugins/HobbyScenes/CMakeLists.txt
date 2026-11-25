@@ -1,6 +1,7 @@
 register_plugin(HobbyScenes
         matrix/HobbyScenes.cpp
         matrix/HobbyScenes.h
+        matrix/scenes/Backdrop.h
         matrix/scenes/Draw.h
         matrix/scenes/FigureDraw.h
         matrix/scenes/HorseDraw.h

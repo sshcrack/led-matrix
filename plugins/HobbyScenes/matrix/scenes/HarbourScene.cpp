@@ -1,5 +1,7 @@
 #include "HarbourScene.h"
 
+#include "Backdrop.h"
+
 namespace Hobbies {
 namespace {
 
@@ -53,12 +55,8 @@ void HarbourScene::build_backdrop()
     bg.resize(cv_.w, cv_.h);
     const float sx = bg.w / 128.0f, sy = bg.h / 128.0f, k = std::min(sx, sy), W = static_cast<float>(bg.w);
     const Environment::Surface s{bg.px.data(), bg.w, bg.h, 1.0f};
-    const auto rect = [&](float x, float y, float w, float h, Rgb c) {
-        const int x0 = std::max(0, static_cast<int>(std::lround(x * sx))), x1 = std::min(bg.w, static_cast<int>(std::lround((x + w) * sx)));
-        const int y0 = std::max(0, static_cast<int>(std::lround(y * sy))), y1 = std::min(bg.h, static_cast<int>(std::lround((y + h) * sy)));
-        for (int row = y0; row < y1; ++row)
-            for (int col = x0; col < x1; ++col) bg.set(col, row, c);
-    };
+    const Artwork art(bg);
+    const auto rect = [&](float x, float y, float w, float h, Rgb c) { art.rect(x, y, w, h, c); };
 
     // Sky, stars, sun and moon over the open sea.
     Environment::paint_sky(s, L, Horizon * sy);
@@ -222,9 +220,6 @@ void HarbourScene::build_backdrop()
     }
 
     // Masks: open sky, open water and the pier.
-    const auto same = [&](const std::vector<float>& stage, size_t i) {
-        return bg.px[i * 3] == stage[i * 3] && bg.px[i * 3 + 1] == stage[i * 3 + 1] && bg.px[i * 3 + 2] == stage[i * 3 + 2];
-    };
     const size_t n = static_cast<size_t>(bg.w * bg.h);
     sky_.assign(n, 0);
     water_.assign(n, 0);
@@ -234,9 +229,9 @@ void HarbourScene::build_backdrop()
             const size_t i = static_cast<size_t>(y * bg.w + x);
             const float dy = (y + 0.5f) / sy;  // design units
             if (dy < Horizon)
-                sky_[i] = same(skyStage, i);
+                sky_[i] = unchanged(bg, skyStage, i);
             else
-                water_[i] = same(seaStage, i);
+                water_[i] = unchanged(bg, seaStage, i);
         }
     // Out in the bay, a boat passes behind everything that is not open sky or
     // water: the pier, the lighthouse and the headland.
@@ -273,23 +268,9 @@ void HarbourScene::draw_water(float raw_dt)
 {
     const auto& L = env();
     const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f, W = static_cast<float>(cv_.w);
-    const auto wet = [&](int x, int y) { return x >= 0 && y >= 0 && x < cv_.w && y < cv_.h && water_[static_cast<size_t>(y * cv_.w + x)]; };
-    const auto streak = [&](float x, float y, float length, Rgb color, float alpha) {
-        const int row = static_cast<int>(y * sy);
-        for (int col = static_cast<int>(x * sx); col < static_cast<int>((x + length) * sx); ++col)
-            if (wet(col, row))
-                cv_.add(col, row, color, alpha);
-    };
-    // A point spread over the two pixels it falls between, for sub-pixel motion.
-    const auto soft = [&](float x, float y, Rgb color, float alpha) {
-        const float fx = x * sx - 0.5f;
-        const int col = static_cast<int>(std::floor(fx)), row = static_cast<int>(y * sy);
-        const float u = fx - static_cast<float>(col);
-        if (wet(col, row))
-            cv_.add(col, row, color, alpha * (1.0f - u));
-        if (wet(col + 1, row))
-            cv_.add(col + 1, row, color, alpha * u);
-    };
+    const MaskedLight water(cv_, water_);
+    const auto streak = [&](float x, float y, float length, Rgb color, float alpha) { water.streak(x, y, length, color, alpha); };
+    const auto soft = [&](float x, float y, Rgb color, float alpha) { water.soft(x, y, color, alpha); };
     const float rough = 1.0f + 1.5f * L.storm + 0.6f * std::fabs(L.wind);
     // Swell lines catch the sky, longer and slower far out.
     const Rgb sheen = mix(from_env(L.sky(0.6f)), {0.85f, 0.9f, 1.0f}, 0.25f);
@@ -305,23 +286,8 @@ void HarbourScene::draw_water(float raw_dt)
     const float lightX = (moon ? Environment::moon_point(L, W, Horizon * sy).x : Environment::sun_point(L, W, Horizon * sy).x) / sx;
     const float pathVis = (moon ? 0.7f * L.moon_light + 0.2f * L.night : std::clamp((L.sun_elevation + 3.0f) / 5.0f, 0.0f, 1.0f)) *
                           (1.0f - 0.9f * L.overcast) * (1.0f - 0.8f * L.fog);
-    if (pathVis > 0.02f) {
-        const Rgb pathColor = moon ? Rgb{0.78f, 0.85f, 1.0f} : mix(from_env(L.sun_color), {1.0f, 0.9f, 0.7f}, 0.4f);
-        // Each glint swells and fades on its own and slides sub-pixel, so the
-        // path shimmers without stepping.
-        for (int y = static_cast<int>(Horizon) + 1; y < 128; y += 2) {
-            const float d = (y - Horizon) / (128 - Horizon);
-            const float half = 2 + 10 * d;
-            const float wobble = 1.5f * std::sin(y * 0.7f + t_ * 1.3f);
-            for (int j = 0; j < static_cast<int>(2 * half); ++j) {
-                const float x = lightX - half + j + 0.5f;
-                const float fall = 1 - std::fabs(x - lightX) / half;
-                const uint32_t id = static_cast<uint32_t>(y * 977 + j * 131);
-                const float tw = 0.5f + 0.5f * std::sin(t_ * (1.0f + 1.6f * hash01(id)) + kTau * hash01(id + 7u));
-                soft(x + wobble, static_cast<float>(y), pathColor, pathVis * fall * (0.06f + 0.30f * tw * tw * tw));
-            }
-        }
-    }
+    const Rgb pathColor = moon ? Rgb{0.78f, 0.85f, 1.0f} : mix(from_env(L.sun_color), {1.0f, 0.9f, 0.7f}, 0.4f);
+    water.light_path(t_, lightX, Horizon, static_cast<int>(Horizon) + 1, 2.0f, 12.0f, pathColor, pathVis);
     // Lit windows and quay lamps leave wavering streaks below the quay.
     const float lamp = quay_lamp();
     if (lamp > 0.03f)
@@ -573,13 +539,7 @@ bool HarbourScene::render(rgb_matrix::FrameCanvas* canvas)
         build_backdrop();
     cv_.px = backdrop_;
 
-    if (L.clouds > 0.03f || L.overcast > 0.03f) {
-        const int skyRows = std::min(cv_.h, static_cast<int>(std::ceil(Horizon * sy)));
-        Environment::paint_clouds({cv_.px.data(), cv_.w, skyRows, 1.0f}, L, t_, 4 * sy, 50 * sy, 0.0f, 5);
-        for (size_t i = 0; i < static_cast<size_t>(skyRows * cv_.w); ++i)
-            if (!sky_[i])
-                std::copy_n(&backdrop_[i * 3], 3, &cv_.px[i * 3]);
-    }
+    paint_clouds_behind(cv_, backdrop_, sky_, L, t_, Horizon * sy, 4 * sy, 50 * sy, 5);
     beam_ += dt * 0.7f;
     draw_lighthouse();
     draw_water(raw);

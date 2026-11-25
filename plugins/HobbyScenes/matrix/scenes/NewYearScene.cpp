@@ -4,6 +4,8 @@
 #include <ctime>
 #include <limits>
 
+#include "Backdrop.h"
+
 namespace Hobbies {
 namespace {
 
@@ -161,12 +163,8 @@ void NewYearRooftopScene::build_backdrop()
     bg.resize(cv_.w, cv_.h);
     const float sx = bg.w / 128.0f, sy = bg.h / 128.0f, k = std::min(sx, sy);
     const Environment::Surface s{bg.px.data(), bg.w, bg.h, 1.0f};
-    const auto rect = [&](float x, float y, float w, float h, Rgb c) {
-        const int x0 = std::max(0, static_cast<int>(std::lround(x * sx))), x1 = std::min(bg.w, static_cast<int>(std::lround((x + w) * sx)));
-        const int y0 = std::max(0, static_cast<int>(std::lround(y * sy))), y1 = std::min(bg.h, static_cast<int>(std::lround((y + h) * sy)));
-        for (int row = y0; row < y1; ++row)
-            for (int col = x0; col < x1; ++col) bg.set(col, row, c);
-    };
+    const Artwork art(bg);
+    const auto rect = [&](float x, float y, float w, float h, Rgb c) { art.rect(x, y, w, h, c); };
 
     Environment::paint_sky(s, L, Horizon * sy);
     Environment::paint_stars(s, L, 70 * sy, 1.7f, 41, 70);
