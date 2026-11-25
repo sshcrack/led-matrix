@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "id": "harmonix-aligned-long-form-pilot-v1",
+  "tracks": [
+    {
+      "id": "0511_theonlyexception",
+      "title": "The Only Exception",
+      "artist": "Paramore",
+      "kind": "real",
+      "split": "held_out",
+      "tags": [
+        "rock",
+        "acoustic_intro",
+        "compound_meter"
+      ],
+      "wav": "aligned/0511_theonlyexception.wav",
+      "sha256": "b9c52cb6b93024f8e94621f7b832b90ac74fe3dd710e94997aba367c127a7406",
+      "source": {
+        "youtube_id": "-J7J_IWUhls",
+        "offset_s": 1.11,
+        "duration_s": 265.09,
+        "jams": "0511_theonlyexception.jams",
+        "downbeats": true,
+        "jams_sha256": "e48654c44da2a786ec45031522fa45395ac0d8034513033ab603d82194eccd7d"
+      },
+      "annotations": {
+        "provenance": "HarmonixSet manual beat-grid annotations, revision 64abeb509429e73d74559fb98e621dac866efea1. Local audio offset from reference-onset and excerpt-phase checks; exact edit equivalence is unverified.",
+        "timing_uncertainty_s": null,
+        "beats_file": "aligned/0511_theonlyexception.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0.175,
+            "end_s": 30.175,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "0630_crushcrushcrush",
+      "title": "crushcrushcrush",
+      "artist": "Paramore",
+      "kind": "real",
+      "split": "held_out",
+      "tags": [
+        "rock",
+        "dense_guitars"
+      ],
+      "wav": "aligned/0630_crushcrushcrush.wav",
+      "sha256": "c423f15bd8f683bda479f454984225d339a2e76a54e91b7c1a124fc3e94ae77f",
+      "source": {
+        "youtube_id": "ei8hPkyJ0bU",
+        "offset_s": 4.74,
+        "duration_s": 179.622,
+        "jams": "0630_crushcrushcrush.jams",
+        "downbeats": false,
+        "jams_sha256": "3bf5781b5db4d353084f03c0d555d50874ee1fa7190ea7365ae76e8659df76a5"
+      },
+      "annotations": {
+        "provenance": "HarmonixSet manual beat-grid annotations, revision 64abeb509429e73d74559fb98e621dac866efea1. Local audio offset from reference-onset and excerpt-phase checks; exact edit equivalence is unverified.",
+        "timing_uncertainty_s": null,
+        "beats_file": "aligned/0630_crushcrushcrush.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0.93,
+            "end_s": 30.93,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "0736_igotafeeling",
+      "title": "I Gotta Feeling",
+      "artist": "Black Eyed Peas",
+      "kind": "real",
+      "split": "held_out",
+      "tags": [
+        "party",
+        "pop",
+        "steady_tempo"
+      ],
+      "wav": "aligned/0736_igotafeeling.wav",
+      "sha256": "863f487cbbd3f8afca57ddbb85031200a55577b2c1c407b312081814ca3df434",
+      "source": {
+        "youtube_id": "g6BJ918VY9Q",
+        "offset_s": 0.19,
+        "duration_s": 243.991,
+        "jams": "0736_igotafeeling.jams",
+        "downbeats": false,
+        "jams_sha256": "4ceca4ac851f7f89fd22f922555eacc80bbef639d2b6b55b695b5eba8404511b"
+      },
+      "annotations": {
+        "provenance": "HarmonixSet manual beat-grid annotations, revision 64abeb509429e73d74559fb98e621dac866efea1. Local audio offset from reference-onset and excerpt-phase checks; exact edit equivalence is unverified.",
+        "timing_uncertainty_s": null,
+        "beats_file": "aligned/0736_igotafeeling.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0.037,
+            "end_s": 30.037,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    }
+  ]
+}
