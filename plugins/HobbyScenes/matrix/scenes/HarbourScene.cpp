@@ -163,7 +163,7 @@ void HarbourScene::build_backdrop()
     // under the tree on the pier.
     {
         const float wetness = std::clamp(L.rain, 0.0f, 1.0f), frost = std::clamp(L.winter - 0.5f * L.snow_cover, 0.0f, 1.0f);
-        const Rgb sheen = from_env(L.sky(0.4f)), rime = lit({0.86f, 0.90f, 0.98f}, 0.1f);
+        const Rgb sheen = mix(from_env(L.sky(0.4f)), {0.70f, 0.80f, 0.95f}, 0.5f), rime = lit({0.86f, 0.90f, 0.98f}, 0.1f);
         const auto tint = [&](float x0, float x1, float y0, float y1, Rgb c, float a) {
             for (int y = static_cast<int>(y0 * sy); y < static_cast<int>(y1 * sy); ++y)
                 for (int x = static_cast<int>(x0 * sx); x < static_cast<int>(x1 * sx); ++x) bg.blend(x, y, c, a);
@@ -172,9 +172,9 @@ void HarbourScene::build_backdrop()
             tint(0, QuayEnd, QuayTop, QuayWater, {0.0f, 0.0f, 0.0f}, 0.18f * wetness);  // darker wet stone
             tint(PierStart, 128, PierTop, PierWater, {0.0f, 0.0f, 0.0f}, 0.18f * wetness);
             for (float x = 0; x < QuayEnd; x += 1.0f)
-                tint(x, x + 1, QuayTop, QuayTop + 2, sheen, (0.40f + 0.3f * hash01(static_cast<uint32_t>(x) * 13u)) * wetness);
+                tint(x, x + 1, QuayTop, QuayTop + 2, sheen, (0.55f + 0.35f * hash01(static_cast<uint32_t>(x) * 13u)) * wetness);
             for (float x = PierStart; x < 128; x += 1.0f)
-                tint(x, x + 1, PierTop, PierTop + 2, sheen, (0.40f + 0.3f * hash01(static_cast<uint32_t>(x) * 17u)) * wetness);
+                tint(x, x + 1, PierTop, PierTop + 2, sheen, (0.55f + 0.35f * hash01(static_cast<uint32_t>(x) * 17u)) * wetness);
         }
         if (frost > 0.02f) {
             tint(0, QuayEnd, QuayTop, QuayTop + 1, rime, 0.65f * frost);
@@ -206,6 +206,12 @@ void HarbourScene::build_backdrop()
                                                       : (i % 2 ? Rgb{1.0f, 0.62f, 0.78f} : Rgb{1.0f, 0.86f, 0.90f});
                     tint(x, x + 1, y, y + 1, lit(c, 0.1f), 0.95f * litter);
                 }
+        // A planter of blossom by the harbour office in spring.
+        if (L.spring > 0.05f) {
+            tint(48, 52, QuayTop - 1, QuayTop, lit({0.40f, 0.26f, 0.18f}, 0.1f), L.spring);
+            tint(48, 52, QuayTop - 3, QuayTop - 1, lit({1.0f, 0.58f, 0.74f}, 0.1f), L.spring);
+            tint(49, 51, QuayTop - 4, QuayTop - 3, lit({1.0f, 0.78f, 0.86f}, 0.1f), L.spring);
+        }
         if (litter > 0.05f)
             for (uint32_t i = 0; i < 14; ++i) {
                 const float x = 80.0f + 15.0f * hash01(i * 3u + 1u), y = PierTop + (hash01(i * 3u + 2u) > 0.5f ? 1.0f : 0.0f);
@@ -331,10 +337,16 @@ void HarbourScene::draw_water(float raw_dt)
     std::erase_if(ripples_, [](const Ripple& r) { return r.life <= 0.0f; });
     if (rnd() < raw_dt * 30.0f * L.rain && ripples_.size() < 40)
         ripples_.push_back({128.0f * rnd(), QuayWater + 2 + 30 * rnd(), 1.0f});
+    // More around the moored boats, where the eye rests.
+    if (rnd() < raw_dt * 14.0f * L.rain && ripples_.size() < 48)
+        ripples_.push_back({6.0f + 46.0f * rnd(), 100.0f + 14.0f * rnd(), 1.0f});
+    const Rgb ring = mix(sheen, {0.85f, 0.92f, 1.0f}, 0.4f);
     for (const auto& r : ripples_) {
         const float rr = 0.5f + (1.0f - r.life) * 3.0f;
-        streak(r.x - rr - 1, r.y, 1.5f, sheen, 0.3f * r.life);
-        streak(r.x + rr, r.y, 1.5f, sheen, 0.3f * r.life);
+        if (r.life > 0.85f)
+            soft(r.x, r.y, ring, 0.5f);  // the drop's impact glint
+        streak(r.x - rr - 1, r.y, 1.5f, ring, 0.42f * r.life);
+        streak(r.x + rr, r.y, 1.5f, ring, 0.42f * r.life);
     }
 }
 
@@ -451,13 +463,20 @@ void HarbourScene::draw_boats(float dt)
     // A V-shaped wake spreads behind a boat under way.
     if (moving && u > 0.02f && u < 0.95f) {
         const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f;
+        // Foam strongest at the stern, breaking up into uneven flecks behind.
         for (int i = 1; i < 10; ++i) {
-            const float back = i * 2.2f * s, spread = i * 0.55f * s;
+            const float spread = i * 0.55f * s;
             for (float side : {-1.0f, 1.0f}) {
+                const uint32_t h = static_cast<uint32_t>(i * 7 + (side > 0 ? 3 : 0));
+                const float flicker = 0.5f + 0.5f * std::sin(t_ * (2.0f + hash01(h)) + kTau * hash01(h + 1u));
+                if (i > 2 && hash01(h + 2u) < 0.3f)
+                    continue;
+                const float back = (i + 0.8f * (hash01(h + 3u) - 0.5f)) * 2.2f * s;
                 const int px = static_cast<int>((x - face * (7.0f * s + back)) * sx),
                           py = static_cast<int>((wl + side * spread * 0.4f + 0.5f) * sy);
+                const float fade = (1.0f - i / 10.0f) * (1.0f - i / 10.0f);
                 if (px >= 0 && py >= 0 && px < cv_.w && py < cv_.h && water_[static_cast<size_t>(py * cv_.w + px)])
-                    cv_.add(px, py, {0.85f, 0.9f, 0.95f}, 0.28f * (s / 0.95f) * (1.0f - i / 10.0f) * (1.0f - L.fog * 0.5f));
+                    cv_.add(px, py, {0.85f, 0.9f, 0.95f}, 0.30f * (s / 0.95f) * fade * (i <= 2 ? 1.0f : flicker) * (1.0f - L.fog * 0.5f));
             }
         }
     }
@@ -545,6 +564,11 @@ bool HarbourScene::render(rgb_matrix::FrameCanvas* canvas)
     draw_gulls(dt);
     // A tree at the root of the pier shows the season up close.
     Environment::paint_tree(surface(), L, 87.0f * sx, PierTop * sy, 19.0f * sy, 23, t_, 0.1f);
+    // In spring a few clusters of blossom read at a glance.
+    if (L.spring > 0.05f)
+        for (const auto& [bx, by] : {std::pair{84.5f, 68.0f}, std::pair{89.5f, 71.0f}, std::pair{86.5f, 74.0f}})
+            Environment::soft_ellipse(surface(), bx * sx, by * sy, 1.6f * k, 1.3f * k, to_env(lit({1.0f, 0.66f, 0.80f}, 0.1f)),
+                                      0.85f * L.spring);
     // Quay lamps.
     if (L.lamp() > 0.03f)
         for (float x : {14.5f, 32.5f}) {
