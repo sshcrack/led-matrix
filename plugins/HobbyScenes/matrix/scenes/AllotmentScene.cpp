@@ -679,8 +679,8 @@ void AllotmentScene::draw_tractor(float dt)
             cv_.glow((x + 3.0f - i * 2.2f) * sx, (y - 0.8f - 0.4f * i) * sy, (1.2f + 0.5f * i) * k,
                      from_env(L.lit({0.72f, 0.62f, 0.46f}, 0.4f)), 0.10f * (1.0f - age / 4.0f));
         }
-    const float far = 0.35f + 0.5f * L.fog;
-    const Rgb body = lit({0.20f, 0.46f, 0.22f}, far), tyre = lit({0.10f, 0.10f, 0.10f}, far), cab = lit({0.70f, 0.74f, 0.76f}, far);
+    const float depth = 0.35f + 0.5f * L.fog;
+    const Rgb body = lit({0.20f, 0.46f, 0.22f}, depth), tyre = lit({0.10f, 0.10f, 0.10f}, depth), cab = lit({0.70f, 0.74f, 0.76f}, depth);
     const float bump = 0.15f * std::sin(t_ * 9.0f);
     cap(x + 1.5f, y - 2.6f + bump, 1.2f, x - 2.5f, y - 2.2f + bump, 1.0f, body);    // bonnet and body
     cv_.ellipse((x + 1.8f) * sx, (y - 1.6f) * sy, 1.8f * k, 1.8f * k, 0.0f, tyre);  // big rear wheel
