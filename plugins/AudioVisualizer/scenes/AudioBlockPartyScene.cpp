@@ -124,10 +124,11 @@ void AudioBlockPartyScene::init_world()
     for (int i = 0; i < 6; ++i)
         people_.push_back(
             {14.0f + i * 20.0f + (rnd() - 0.5f) * 6.0f, rnd() * Tau, 0.8f + rnd() * 0.1f, 0.85f + rnd() * 0.35f, 0, (i * 3 + 1) % 4});
-    constexpr int FrontStyles[] = {2, 3, 0, 2};
-    for (int i = 0; i < 4; ++i)
-        people_.push_back(
-            {16.0f + i * 32.0f + (rnd() - 0.5f) * 6.0f, i * 1.7f, 1.3f + rnd() * 0.15f, 0.85f + rnd() * 0.35f, 1, FrontStyles[i]});
+    // Three big dancers up front: both hands high, a sideways lean, a fist pump.
+    constexpr int FrontStyles[] = {2, 3, 1};
+    constexpr float FrontWidth[] = {1.2f, 0.9f, 1.3f};
+    for (int i = 0; i < 3; ++i)
+        people_.push_back({20.0f + i * 44.0f + (rnd() - 0.5f) * 6.0f, i * 2.1f, 1.5f + rnd() * 0.1f, FrontWidth[i], 1, FrontStyles[i]});
     water_.clear();
 }
 
@@ -154,28 +155,31 @@ void AudioBlockPartyScene::draw_person(const Person& p, float bob, int arms)
             blob(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, r, r);
         }
     };
-    const float sway = p.style == 3 ? std::sin(time_ * 2.0f + p.phase) * 1.2f : 0.0f;
+    const float sway = p.style == 3 ? std::sin(time_ * 2.0f + p.phase) * 3.0f : 0.0f;  // leans from the hips
     const float hx = p.x + sway;
-    blob(hx, headY, 2.9f * s, 3.3f * s);              // head
-    blob(p.x, headY + 4.0f * s, 1.6f * s, 1.5f * s);  // neck
+    blob(hx, headY, 2.9f * s, 3.3f * s);                             // head
+    blob(p.x + sway * 0.85f, headY + 4.0f * s, 1.6f * s, 1.5f * s);  // neck
     // Shoulders and body to the bottom of the frame.
     for (float y = headY + 4.5f * s; y < 130.0f; y += 0.5f) {
         const float t = std::min(1.0f, (y - headY - 4.5f * s) / (2.2f * s));
         const float half = (2.2f + 4.6f * p.width * std::sqrt(t)) * s;
-        blob(p.x, y, half, 0.6f);
+        blob(p.x + sway * std::max(0.0f, 1.0f - (y - headY) / (24.0f * s)), y, half, 0.6f);
     }
     // Hands in the air: pumping with the tempo, each dancer a little out of
     // step; the swaying dancers wave one hand side to side instead.
     const float pump = 3.5f * std::max(0.0f, std::sin(pumpClock_ + p.phase));
     const float wave = p.style == 3 ? 3.0f * std::sin(time_ * 3.0f + p.phase) : 0.0f;
     const float shoulder = 4.0f + 2.0f * p.width;
+    const float reach = p.style == 2 ? 10.5f : 7.0f;  // the both-hands dancer reaches high above the crowd
     if (arms >= 1) {
-        limb(p.x + shoulder * s, headY + 6.5f * s, p.x + (shoulder + 2.5f) * s + wave, headY - 7.0f * s + pump, 1.3f * s);
-        blob(p.x + (shoulder + 2.5f) * s + wave, headY - 7.5f * s + pump, 1.8f * s, 1.8f * s);
+        const float bx = p.x + sway * 0.7f + shoulder * s;
+        limb(bx, headY + 6.5f * s, bx + 2.5f * s + wave, headY - reach * s + pump, 1.3f * s);
+        blob(bx + 2.5f * s + wave, headY - (reach + 0.5f) * s + pump, 1.8f * s, 1.8f * s);
     }
     if (arms >= 2) {
-        limb(p.x - shoulder * s, headY + 6.5f * s, p.x - (shoulder + 2.5f) * s, headY - 6.5f * s + pump, 1.3f * s);
-        blob(p.x - (shoulder + 2.5f) * s, headY - 7.0f * s + pump, 1.8f * s, 1.8f * s);
+        const float bx = p.x + sway * 0.7f - shoulder * s;
+        limb(bx, headY + 6.5f * s, bx - 2.5f * s, headY - (reach - 0.5f) * s + pump, 1.3f * s);
+        blob(bx - 2.5f * s, headY - reach * s + pump, 1.8f * s, 1.8f * s);
     }
 }
 
@@ -276,11 +280,14 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
     for (int cab = 0; cab < 2; ++cab) {
         const float top = 56.0f + cab * 17.0f;
         R(2.0f, top, 24.0f, top + 16.0f, RGB{18, 16, 20});
+        // Cabinet edges catch a flash of the party light on every kick.
+        R(2.0f, top, 2.8f, top + 16.0f, hsv(palette_.value, 0.6f, 1.0f) * (0.15f + 0.7f * kick_.v));
+        R(23.2f, top, 24.0f, top + 16.0f, hsv(palette_.value, 0.6f, 1.0f) * (0.15f + 0.7f * kick_.v));
         R(2.0f, top, 24.0f, top + 1.0f, RGB{50, 46, 50});
         for (int s = 0; s < 2; ++s) {
             const float cx = 8.0f + s * 10.0f, cy = top + 8.5f;
             const float push = std::clamp(cone_ * 5.0f, -0.5f, 1.4f);
-            const float r = 3.8f + push * 0.5f;
+            const float r = 3.8f + push * 1.0f;
             for (int y = static_cast<int>((cy - r - 1) * sy); y <= static_cast<int>((cy + r + 1) * sy); ++y)
                 for (int x = static_cast<int>((cx - r - 1) * sx); x <= static_cast<int>((cx + r + 1) * sx); ++x) {
                     const float d = len((x + 0.5f) / sx - cx, (y + 0.5f) / sy - cy) / r;
@@ -301,7 +308,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
 
     // DJ behind the table: nodding head, headphones, one hand up on drops.
     {
-        glow(buf_, 36.0f * sx, 68.0f * sy, 14.0f * sx, RGB{255, 150, 70} * (0.45f + 0.35f * beat_.v));  // warm backlight
+        glow(buf_, 36.0f * sx, 70.0f * sy, 22.0f * sx, RGB{255, 150, 70} * (0.55f + 0.35f * beat_.v));  // warm backlight
         const float nod = beat_.v * 1.4f;
         const float dx = 36.0f;
         R(dx - 5.0f, 69.0f + nod * 0.4f, dx + 5.0f, 80.0f, RGB{16, 12, 20});

@@ -93,7 +93,8 @@ void AudioTurntableScene::init_world()
     R(7.0f, 88.0f, 14.0f, 93.0f, RGB{110, 110, 118});
     // Mixer: fader slots, crossfader slot.
     for (float cx : ChannelX) R(cx - 0.5f, 58.0f, cx + 1.0f, 86.0f, RGB{8, 8, 10});
-    R(96.0f, 90.5f, 121.0f, 92.0f, RGB{8, 8, 10});
+    R(94.0f, 90.0f, 123.0f, 92.5f, RGB{8, 8, 10});
+    R(94.0f, 92.5f, 123.0f, 93.0f, RGB{70, 70, 80});  // lit lower lip of the slot
     // Headphones lying on the booth: a band and two cups.
     for (float a = 0.0f; a <= Pi; a += 0.05f) {
         const float hx = 34.0f + std::cos(a) * 15.0f, hy = 116.0f - std::sin(a) * 11.0f;
@@ -112,6 +113,7 @@ void AudioTurntableScene::init_world()
         R(cx, cy, cx + 1.0f, cy + 1.0f, RGB{12, 12, 14});
     }
     vu_.assign(2, 0.0f);
+    vuPeak_.assign(2, 0.0f);
 }
 
 void AudioTurntableScene::draw_hand(float x, float y, float angle, float lift, float scale)
@@ -179,12 +181,12 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
     // A scratch on strong onsets: push the record forward and drag it back.
     if (scratching_->get() && events_.onsetHit && scratch_ >= 1.0f && (onset > 0.45f || snare > 0.5f)) {
         scratch_ = 0.0f;
-        scratchAmp_ = 4.0f + 5.0f * std::max(onset, snare);
+        scratchAmp_ = 8.0f + 8.0f * std::max(onset, snare);
     }
     // Crossfader cuts on snares and hats while scratching, otherwise it rests open.
     if (events_.onsetHit && (snare > 0.4f || hihat > 0.55f)) {
         ++cut_;
-        faderTarget_ = cut_ % 2 ? 0.12f : 0.88f;
+        faderTarget_ = cut_ % 2 ? 0.04f : 0.96f;
     }
     else if (scratch_ >= 1.0f && beat_.v < 0.1f) {
         faderTarget_ = 0.5f;
@@ -193,7 +195,7 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
     kick_.decay(dt, 0.12f);
     drop_.decay(dt, 1.8f);
     palette_.update(dt, 1.5f);
-    fader_ += (faderTarget_ - fader_) * (1.0f - std::exp(-dt / 0.03f));
+    fader_ += (faderTarget_ - fader_) * (1.0f - std::exp(-dt / 0.015f));  // a sharp snap
     sweep_ += dt * (0.25f + 0.2f * spectrum_.level);
 
     // Record motion: 33 1/3 rpm, except while the hand holds and drags it.
@@ -304,12 +306,18 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
             const float capY = 84.0f - 22.0f * (0.6f + 0.3f * lvl[ch]);
             capsule(buf_, sx, sy, cx - 2.0f, capY, cx + 2.5f, capY, 1.3f, RGB{190, 190, 200});
             // VU: a column of LEDs between the knobs and the fader.
-            const float vx = 106.0f + ch * 3.5f;
+            auto& peak = vuPeak_[static_cast<size_t>(ch)];
+            peak = std::max(v, peak - dt * 0.35f);
+            const int peakSeg = std::min(11, static_cast<int>(peak * 12.0f));
+            const float vx = 104.5f + ch * 5.0f;
             for (int s = 0; s < 12; ++s) {
                 const float sy0 = 54.0f - s * 3.5f;
                 const RGB on = s < 8 ? RGB{60, 230, 90} : (s < 10 ? RGB{240, 210, 40} : RGB{255, 50, 40});
                 const bool lit = v * 12.0f > s;
-                capsule(buf_, sx, sy, vx, sy0, vx + 1.0f, sy0, 0.8f, lit ? on : on * 0.12f);
+                RGB c = lit ? on : on * 0.12f;
+                if (s == peakSeg && peak > 0.1f)
+                    c = RGB{255, 170, 40};  // amber peak hold
+                capsule(buf_, sx, sy, vx, sy0, vx + 2.5f, sy0, 1.0f, c);
             }
         }
     }
@@ -323,11 +331,11 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
         const float lift = scratching_->get() ? (1.0f - press_.v) : 1.5f;
         draw_hand(hx - 2.0f, hy, 0.15f + along * 0.6f, lift, 1.1f);
         // Fader hand from the lower right on the crossfader.
-        const float fx = 97.0f + 23.0f * fader_;
+        const float fx = 96.5f + 24.0f * fader_;
         draw_hand(fx + 3.5f, 100.0f, -Pi * 0.62f, 0.3f, 1.0f);
         // Crossfader cap with a bright edge, pinched by the fingertips below it.
-        capsule(buf_, sx, sy, fx, 89.0f, fx, 93.5f, 2.2f, RGB{255, 255, 255});
-        capsule(buf_, sx, sy, fx, 89.5f, fx, 93.0f, 1.4f, hsv(palette_.value, 0.5f, 0.9f));
+        capsule(buf_, sx, sy, fx, 88.5f, fx, 94.0f, 2.8f, RGB{255, 255, 255});
+        capsule(buf_, sx, sy, fx, 89.0f, fx, 93.5f, 1.9f, hsv(palette_.value, 0.5f, 0.9f));
     }
 
     // Shift the booth down a little and run an LED strip along the far edge

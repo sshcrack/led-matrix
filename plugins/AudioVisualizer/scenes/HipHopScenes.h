@@ -149,7 +149,7 @@ class AudioTurntableScene final : public AmbientMusicScene {
     std::vector<AudioKit::RGB> booth_;   // static booth, plinth and mixer
     std::vector<float> radius_, angle_;  // polar coordinates around the platter
     std::vector<float> sheen_;           // static highlight on the vinyl
-    std::vector<float> vu_;
+    std::vector<float> vu_, vuPeak_;
     float recordAngle_ = 0.0f;
     float scratch_ = 1.0f;  // 0..1 progress of the current scratch, 1 = idle
     float scratchAmp_ = 0.0f;

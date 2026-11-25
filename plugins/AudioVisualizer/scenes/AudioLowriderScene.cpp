@@ -170,11 +170,14 @@ bool AudioLowriderScene::render(rgb_matrix::FrameCanvas* canvas)
         kick_.hit(kick);
     if (events_.dropHit) {
         drop_.hit();
-        hit(front_, 17.0f);  // the big front hop
+        hit(front_, 23.0f);  // the big front hop: the front wheels leave the road
         paint_.next();
     }
     beat_.decay(dt, 0.2f);
     kick_.decay(dt, 0.14f);
+    // Underglow pool: quick bloom on the bass, longer fade.
+    glowPulse_.hit(std::max(bass * 0.8f, kick_.v));
+    glowPulse_.decay(dt, 0.35f);
     drop_.decay(dt, 1.6f);
     paint_.update(dt, 2.5f);
     const float sit = 0.2f + bass * 2.0f * bounce_->get();
@@ -253,14 +256,15 @@ bool AudioLowriderScene::render(rgb_matrix::FrameCanvas* canvas)
         }
     }
     const RGB glowC = hsv(paint_.value + 150.0f, 0.85f, 1.0f);  // contrasts with the paint
-    const float glowLevel = underglow_->get() ? 0.35f + 0.65f * std::max(bass, kick_.v) : 0.0f;
+    const float glowLevel = underglow_->get() ? 0.2f + 0.8f * glowPulse_.v : 0.0f;
     const float liftMid = (front_.lift + rear_.lift) * 0.5f;
     if (glowLevel > 0.0f)
         for (int y = static_cast<int>((GroundY - 6.0f) * sy); y < std::min(H, static_cast<int>((GroundY + 10.0f) * sy)); ++y)
             for (int x = static_cast<int>(16 * sx); x < static_cast<int>(112 * sx); ++x) {
                 const float gx = (x + 0.5f) / sx, gy = (y + 0.5f) / sy;
-                const float u = (gx - 64.0f) / 46.0f;
-                const float a = std::exp(-u * u * u * u * 3.0f) * std::exp(-std::fabs(gy - GroundY) / (2.5f + liftMid * 0.3f));
+                const float u = (gx - 64.0f) / (34.0f + 22.0f * glowPulse_.v);
+                const float a =
+                    std::exp(-u * u * u * u * 3.0f) * std::exp(-std::fabs(gy - GroundY) / (2.0f + 3.0f * glowPulse_.v + liftMid * 0.3f));
                 buf_.add(x, y, glowC * (0.9f * a * glowLevel));
             }
 

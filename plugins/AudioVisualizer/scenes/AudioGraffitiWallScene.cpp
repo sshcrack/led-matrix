@@ -203,7 +203,7 @@ bool AudioGraffitiWallScene::clip(size_t i, Layer layer) const
     const float d = dist_[i];
     switch (layer) {
         case Layer::Cloud:
-            return d >= 0.6f && d < cloud_[i];
+            return d >= 0.9f && shadow_[i] >= 0.0f && d < cloud_[i];
         case Layer::Fill:
             return d < 0.0f;
         case Layer::Shadow:
@@ -263,17 +263,7 @@ void AudioGraffitiWallScene::build_strokes()
         return path;
     };
 
-    // 1. Cloud: broad horizontal passes behind the piece.
-    {
-        bool flip = false;
-        for (float y = top_ + 2.0f; y < bottom_; y += 4.5f * k) {
-            std::vector<Point> path;
-            for (float x = left_; x < right_; x += 0.8f) path.push_back({flip ? right_ - (x - left_) : x, y});
-            flip = !flip;
-            add_path(path, Layer::Cloud, 3.4f * k);
-        }
-    }
-    // 2. Fill: a zig-zag along every form.
+    // 1. Fill first: big patches of colour show up early.
     for (const auto& c : capsules_) {
         std::vector<Point> path;
         const float vx = c.bx - c.ax, vy = c.by - c.ay;
@@ -286,9 +276,19 @@ void AudioGraffitiWallScene::build_strokes()
         }
         add_path(path, Layer::Fill, 2.4f * k);
     }
-    // 3. 3D block, 4. outline, 5. highlights.
+    // 2. 3D block, 3. outline (4. cloud follows), 5. highlights.
     for (const auto& c : capsules_) add_path(perimeter(c, 1.4f * k, 1.6f * k), Layer::Shadow, 2.1f * k);
     for (const auto& c : capsules_) add_path(perimeter(c, 0.0f, 0.0f), Layer::Outline, 1.5f * k);
+    // 4. Cloud: broad horizontal passes behind the finished outline.
+    {
+        bool flip = false;
+        for (float y = top_ + 2.0f; y < bottom_; y += 4.5f * k) {
+            std::vector<Point> path;
+            for (float x = left_; x < right_; x += 0.8f) path.push_back({flip ? right_ - (x - left_) : x, y});
+            flip = !flip;
+            add_path(path, Layer::Cloud, 4.2f * k);
+        }
+    }
     for (const auto& c : capsules_) {
         const float vx = c.bx - c.ax, vy = c.by - c.ay;
         const float l = len(vx, vy);
@@ -386,7 +386,7 @@ void AudioGraffitiWallScene::advance(float distance)
             continue;
         }
         const Point& p = s.pts[point_];
-        spray(p.x, p.y, s.radius, s.layer, s.layer == Layer::Cloud ? 0.55f : 0.75f);
+        spray(p.x, p.y, s.radius, s.layer, s.layer == Layer::Cloud ? 0.8f : 0.75f);
         canX_ = p.x;
         canY_ = p.y;
         sub_ -= s.layer == Layer::Highlight ? 1.2f : 0.6f;
@@ -479,8 +479,7 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
             if (events_.onsetHit && snare > 0.4f && drips_.size() < 24 && !capsules_.empty()) {
                 const auto& cap = capsules_[static_cast<size_t>(rnd() * capsules_.size()) % capsules_.size()];
                 const float bx = cap.ay > cap.by ? cap.ax : cap.bx, by = std::max(cap.ay, cap.by) + cap.r - 0.5f;
-                drips_.push_back({bx, by, 0.0f, (4.0f + rnd() * 6.0f) * k, (5.0f + rnd() * 4.0f) * k,
-                                  layer_color(static_cast<int>(bx), static_cast<int>(by), Layer::Fill)});
+                drips_.push_back({bx, by, 0.0f, (8.0f + rnd() * 8.0f) * k, (6.0f + rnd() * 4.0f) * k, colors_.outline});
             }
             if (hold_ > HoldSeconds && (events_.sectionHit || events_.beatHit || hold_ > HoldSeconds * 1.5f)) {
                 // Plan the next piece, then roll a patch over the old one and its space.
@@ -573,8 +572,11 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
     if (phase_ == Phase::Paint) {
         const RGB paintC = layer_color(static_cast<int>(canX_), static_cast<int>(canY_), layer);
         // Mist where the paint lands.
-        if (spray_.v > 0.05f)
+        if (spray_.v > 0.05f) {
             glow(buf_, canX_, canY_, 6.5f * k, paintC * (0.45f * spray_.v));
+            // Bright spray head right where the paint lands.
+            buf_.disc(canX_, canY_, 1.3f * k, lerp(paintC, RGB{255, 255, 255}, 0.5f) * std::min(1.0f, 0.4f + spray_.v), true);
+        }
         // The can, held just right of and below the spray point; it shakes on the beat between strokes.
         const float jig = traveling_ ? std::sin(time_ * 40.0f) * shake_ * 1.2f * k : 0.0f;
         const float cx = canX_ + 2.5f * k, cy = canY_ + 1.0f * k + jig;
@@ -590,10 +592,17 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
     }
     if (phase_ == Phase::Buff) {
         const float rx = buffLeft_ + roller_;
-        for (int y = buffTop_; y < buffBottom_; ++y) buf_.set(static_cast<int>(rx), y, RGB{150, 144, 136});
+        // Wet edge just behind the roller, a wide roller head and its pole.
+        for (int y = buffTop_; y < buffBottom_; ++y)
+            for (int w = 1; w <= static_cast<int>(3 * k); ++w)
+                buf_.add(static_cast<int>(rx) - w, y, RGB{40, 36, 34} * (1.0f - w / (4.0f * k)));
+        const float mid = (buffTop_ + buffBottom_) * 0.5f, half = std::min(14.0f * k, (buffBottom_ - buffTop_) * 0.5f);
+        rect(buf_, static_cast<int>(rx), static_cast<int>(mid - half), static_cast<int>(rx + 3 * k), static_cast<int>(mid + half),
+             RGB{170, 162, 150});
+        rect(buf_, static_cast<int>(rx + 3 * k), static_cast<int>(mid - half), static_cast<int>(rx + 4 * k), static_cast<int>(mid + half),
+             RGB{60, 56, 52});
         const float gy = Ground * H / 128.0f;
-        const float mid = (buffTop_ + buffBottom_) * 0.5f;
-        line(buf_, rx + 1.0f, mid, rx + 10.0f * k, gy + 8.0f * k, RGB{90, 70, 50} * 0.8f);
+        for (int t = 0; t < 2; ++t) line(buf_, rx + 4.0f * k + t, mid, rx + 16.0f * k + t, gy + 10.0f * k, RGB{140, 100, 60});
     }
 
     buf_.blit(canvas);
