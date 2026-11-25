@@ -27,6 +27,7 @@ class HarbourScene final : public HobbySceneBase {
 
     void build_backdrop();
     [[nodiscard]] Rgb boat_color(Rgb albedo) const;
+    [[nodiscard]] float quay_lamp() const;
     void draw_water(float raw_dt);
     void draw_boat(float x, float waterline, float scale, float face, float roll, Rgb hull, Rgb trim, bool lights,
                    const std::vector<uint8_t>* mask);

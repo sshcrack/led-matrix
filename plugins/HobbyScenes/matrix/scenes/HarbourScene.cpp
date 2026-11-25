@@ -187,7 +187,7 @@ void HarbourScene::build_backdrop()
             const Rgb ivy = mix(plant({0.22f, 0.42f, 0.16f}), lit({0.72f, 0.16f, 0.10f}, 0.1f), std::clamp(L.autumn * 1.3f, 0.0f, 1.0f));
             const float leaves = 1.0f - std::clamp(L.winter * 1.3f, 0.0f, 1.0f);
             for (int y = 70; y < static_cast<int>(QuayTop); ++y)
-                for (int x = 26; x < 34; ++x) {
+                for (int x : {9, 10, 11, 12, 13, 14, 15, 16, 26, 27, 28, 29, 30, 31, 32, 33}) {
                     const float reach = 1.0f - (y - 70) / 16.0f;  // thins out upwards
                     const float h = hash01(static_cast<uint32_t>(x * 53 + y * 977));
                     if (h < 0.15f + 0.55f * reach + 0.3f * std::sin(x * 1.3f))
@@ -258,7 +258,12 @@ void HarbourScene::build_backdrop()
             const size_t j = static_cast<size_t>(srcY * bg.w + srcX);
             if (water_[j] || sky_[j])
                 continue;
-            const float fade = 0.55f * (1.0f - std::clamp((y - line) / (40.0f * sy), 0.0f, 1.0f)) * (1.0f - 0.7f * L.fog);
+            // Feather the reflection where the quay and pier end, with a ragged
+            // edge, instead of cutting it off in a straight line.
+            const float xd = (x + 0.5f) / sx, rag = 1.5f * std::sin(y * 0.9f) + hash01(static_cast<uint32_t>(y) * 71u);
+            const float edge = xd < PierStart ? std::clamp((QuayEnd - xd + rag) / 6.0f, 0.0f, 1.0f)
+                                              : std::clamp((xd - PierStart + rag) / 6.0f, 0.0f, 1.0f);
+            const float fade = 0.55f * edge * (1.0f - std::clamp((y - line) / (40.0f * sy), 0.0f, 1.0f)) * (1.0f - 0.7f * L.fog);
             for (int c = 0; c < 3; ++c) bg.px[i * 3 + c] = before[i * 3 + c] + (before[j * 3 + c] * 0.6f - before[i * 3 + c]) * fade;
         }
     backdrop_ = std::move(bg.px);
@@ -318,7 +323,7 @@ void HarbourScene::draw_water(float raw_dt)
         }
     }
     // Lit windows and quay lamps leave wavering streaks below the quay.
-    const float lamp = L.lamp();
+    const float lamp = quay_lamp();
     if (lamp > 0.03f)
         for (float x : {14.5f, 32.5f, 4.0f, 21.0f, 38.0f, 47.0f, 54.5f}) {
             const uint32_t id = static_cast<uint32_t>(x * 10);
@@ -331,6 +336,16 @@ void HarbourScene::draw_water(float raw_dt)
                     soft(cx + o, static_cast<float>(y), {1.0f, 0.70f, 0.36f},
                          0.16f * lamp * std::max(0.0f, fade) * tw * (o > 0.0f ? tw : 1.0f));
             }
+        }
+    // Leaves in autumn and petals in spring float on the harbour water.
+    const float drift = std::clamp(std::max(L.spring, L.autumn) - L.snow_cover, 0.0f, 1.0f);
+    if (drift > 0.05f)
+        for (uint32_t i = 0; i < 16; ++i) {
+            const float y = QuayWater + 3.0f + 28.0f * hash01(i * 5u + 1u);
+            const float x = std::fmod(128.0f * hash01(i * 5u) + t_ * (0.4f + 0.5f * hash01(i * 5u + 2u)) * (0.6f + L.wind), 132.0f) - 2.0f;
+            const Rgb c = L.autumn > L.spring ? (i % 3 ? Rgb{0.90f, 0.46f, 0.12f} : Rgb{0.74f, 0.24f, 0.10f})
+                                              : (i % 2 ? Rgb{1.0f, 0.66f, 0.80f} : Rgb{1.0f, 0.86f, 0.90f});
+            soft(x, y + 0.4f * std::sin(t_ * 0.8f + i), boat_color(c), 0.75f * drift);
         }
     // Rain rings the water.
     for (auto& r : ripples_) r.life -= raw_dt * 1.2f;
@@ -348,6 +363,14 @@ void HarbourScene::draw_water(float raw_dt)
         streak(r.x - rr - 1, r.y, 1.5f, ring, 0.42f * r.life);
         streak(r.x + rr, r.y, 1.5f, ring, 0.42f * r.life);
     }
+}
+
+float HarbourScene::quay_lamp() const
+{
+    // The quay lamps come on at dusk already (not at dawn), so evening reads
+    // apart from morning.
+    const auto& L = env();
+    return std::max(L.lamp(), L.morning ? 0.0f : 0.8f * L.twilight);
 }
 
 Rgb HarbourScene::boat_color(Rgb albedo) const
@@ -570,9 +593,9 @@ bool HarbourScene::render(rgb_matrix::FrameCanvas* canvas)
             Environment::soft_ellipse(surface(), bx * sx, by * sy, 1.6f * k, 1.3f * k, to_env(lit({1.0f, 0.66f, 0.80f}, 0.1f)),
                                       0.85f * L.spring);
     // Quay lamps.
-    if (L.lamp() > 0.03f)
+    if (quay_lamp() > 0.03f)
         for (float x : {14.5f, 32.5f}) {
-            cv_.glow(x * sx, 77.5f * sy, 5.0f * k, {1.0f, 0.72f, 0.38f}, 0.35f * L.lamp());
+            cv_.glow(x * sx, 77.5f * sy, 5.0f * k, {1.0f, 0.72f, 0.38f}, 0.35f * quay_lamp());
             cv_.set(static_cast<int>(x * sx), static_cast<int>(77.5f * sy), {1.0f, 0.85f, 0.55f});
         }
     // Morning mist lies on the water and lifts as the sun climbs. The moored
