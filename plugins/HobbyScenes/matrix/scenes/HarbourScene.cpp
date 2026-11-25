@@ -95,7 +95,15 @@ void HarbourScene::build_backdrop()
         rect(h.x, h.top, h.w, QuayTop - h.top, lit(h.wall, 0.1f));
         rect(h.x + h.w - 1, h.top, 1, QuayTop - h.top, lit(scale(h.wall, 0.75f), 0.1f));  // shaded side
         const Rgb roof = terrain(i % 2 ? Rgb{0.30f, 0.26f, 0.26f} : Rgb{0.52f, 0.22f, 0.16f}, 0.1f, 1.0f);
-        for (int r = 0; r < static_cast<int>(h.w / 2) + 1; ++r) rect(h.x + r, h.top - 1 - r, h.w - 2 * r, 1, roof);
+        // Snow settles on the roof faces; the eave and gable edges stay dark so
+        // the gable keeps its shape against a pale sky.
+        const Rgb edge = lit(scale(i % 2 ? Rgb{0.30f, 0.26f, 0.26f} : Rgb{0.52f, 0.22f, 0.16f}, 0.6f), 0.1f);
+        for (int r = 0; r < static_cast<int>(h.w / 2) + 1; ++r) {
+            const float w = h.w - 2 * r;
+            rect(h.x + r, h.top - 1 - r, w, 1, r == 0 ? edge : roof);
+            rect(h.x + r, h.top - 1 - r, 1, 1, edge);
+            rect(h.x + r + w - 1, h.top - 1 - r, 1, 1, edge);
+        }
         for (int row = 0; row < 3; ++row)
             for (int col = 0; col < 2; ++col) {
                 const float wx = h.x + 1.5f + col * (h.w - 4.0f), wy = h.top + 3.0f + row * 6.0f;
@@ -248,13 +256,24 @@ void HarbourScene::draw_water(float raw_dt)
     }
 }
 
-void HarbourScene::draw_boat(float x, float waterline, float s, float roll, Rgb hull, Rgb trim, bool lights,
+Rgb HarbourScene::boat_color(Rgb albedo) const
+{
+    // Lightning lifts the whole harbour evenly (see render()), so the boats
+    // drop the stronger flash Look::lit() gives a foreground subject.
+    const Rgb c = subject(albedo);
+    const float f = env().flash * 0.6f;
+    return {std::max(0.0f, c.r - 0.55f * f), std::max(0.0f, c.g - 0.58f * f), std::max(0.0f, c.b - 0.70f * f)};
+}
+
+void HarbourScene::draw_boat(float x, float waterline, float s, float face, float roll, Rgb hull, Rgb trim, bool lights,
                              const std::vector<uint8_t>* mask)
 {
     const auto& L = env();
     const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f;
+    // The boat is drawn bow to the right and mirrored (and foreshortened while
+    // it swings round) by `face`: 1 heading right, -1 heading left.
     const auto put = [&](float px, float py, Rgb c, float a = 1.0f) {
-        const int ix = static_cast<int>(px * sx), iy = static_cast<int>(py * sy);
+        const int ix = static_cast<int>((x + (px - x) * face) * sx), iy = static_cast<int>(py * sy);
         if (ix < 0 || iy < 0 || ix >= cv_.w || iy >= cv_.h || (mask && (*mask)[static_cast<size_t>(iy * cv_.w + ix)]))
             return;
         cv_.blend(ix, iy, c, a);
@@ -273,17 +292,17 @@ void HarbourScene::draw_boat(float x, float waterline, float s, float roll, Rgb 
     box(x + len / 2 - 2.5f * s, waterline - depth - 1.2f * s, 2.5f * s, 1.2f * s, hull);  // bow
     // Wheelhouse, mast with a cross-tree, and a pennant.
     const float top = waterline - depth;
-    const Rgb house = subject({0.90f, 0.88f, 0.84f});
+    const Rgb house = boat_color({0.90f, 0.88f, 0.84f});
     box(x - 2.0f * s + roll, top - 5.0f * s, 5.5f * s, 5.0f * s, house);
     box(x - 1.0f * s + roll, top - 4.0f * s, 3.5f * s, std::max(1.0f / sy, 1.4f * s),
-        mix(subject({0.2f, 0.26f, 0.32f}), {1.0f, 0.8f, 0.45f}, lights ? L.lamp() : 0.0f));
+        mix(boat_color({0.2f, 0.26f, 0.32f}), {1.0f, 0.8f, 0.45f}, lights ? L.lamp() : 0.0f));
     const float mastX = x - 5.0f * s, mastTop = top - 13.0f * s;
     for (float yy = mastTop; yy < top; yy += 1.0f / sy)
-        put(mastX + roll * (top - yy) / (13.0f * s) * 1.5f, yy, subject({0.30f, 0.26f, 0.22f}));
-    box(mastX - 2.0f * s + roll * 1.2f, mastTop + 3.0f * s, 4.0f * s, 1.0f / sy, subject({0.30f, 0.26f, 0.22f}));
-    box(mastX + roll * 1.5f, mastTop, 2.5f * s, std::max(1.0f / sy, 1.0f * s), subject({0.85f, 0.25f, 0.2f}));
+        put(mastX + roll * (top - yy) / (13.0f * s) * 1.5f, yy, boat_color({0.30f, 0.26f, 0.22f}));
+    box(mastX - 2.0f * s + roll * 1.2f, mastTop + 3.0f * s, 4.0f * s, 1.0f / sy, boat_color({0.30f, 0.26f, 0.22f}));
+    box(mastX + roll * 1.5f, mastTop, 2.5f * s, std::max(1.0f / sy, 1.0f * s), boat_color({0.85f, 0.25f, 0.2f}));
     if (lights && L.lamp() > 0.05f) {
-        const int ix = static_cast<int>((mastX + roll * 1.5f) * sx), iy = static_cast<int>(mastTop * sy);
+        const int ix = static_cast<int>((x + (mastX + roll * 1.5f - x) * face) * sx), iy = static_cast<int>(mastTop * sy);
         if (!mask || !(*mask)[static_cast<size_t>(std::clamp(iy, 0, cv_.h - 1) * cv_.w + std::clamp(ix, 0, cv_.w - 1))])
             cv_.glow(ix + 0.5f, iy + 0.5f, 3.0f * sx, {1.0f, 0.92f, 0.75f}, 0.5f * L.lamp());
     }
@@ -303,21 +322,33 @@ void HarbourScene::draw_boats(float dt)
         const float x = i == 0 ? 18.0f : 40.0f, wl = i == 0 ? 108.0f : 104.0f;
         const float bob = 0.6f * swell * std::sin(t_ * (0.9f + 0.2f * i) + i * 2.0f);
         const float roll = 0.8f * swell * std::sin(t_ * (0.7f + 0.15f * i) + i);
-        draw_boat(x, wl + bob, i == 0 ? 1.15f : 1.0f, roll, subject(i == 0 ? Rgb{0.16f, 0.26f, 0.46f} : Rgb{0.24f, 0.46f, 0.36f}),
-                  subject({0.90f, 0.88f, 0.84f}), true, nullptr);
+        draw_boat(x, wl + bob, i == 0 ? 1.15f : 1.0f, 1.0f, roll, boat_color(i == 0 ? Rgb{0.16f, 0.26f, 0.46f} : Rgb{0.24f, 0.46f, 0.36f}),
+                  boat_color({0.90f, 0.88f, 0.84f}), true, nullptr);
     }
     // The third boat comes in, moors, then heads out to sea and back again.
     voyage_ = std::fmod(voyage_ + dt, Cycle);
-    float u;  // 0 at its mooring .. 1 on the horizon
-    if (voyage_ < 28.0f)
+    float u;            // 0 at its mooring .. 1 on the horizon
+    float face = 1.0f;  // bow direction: comes in heading left, swings round at the quay, leaves heading right
+    if (voyage_ < 28.0f) {
         u = 1.0f - ease(voyage_ / 28.0f);
-    else if (voyage_ < 70.0f)
+        face = -1.0f;
+    }
+    else if (voyage_ < 70.0f) {
         u = 0.0f;
-    else if (voyage_ < 98.0f)
+        const float c = -std::cos(kPi * ease((voyage_ - 60.0f) / 10.0f));
+        face = (c < 0.0f ? -1.0f : 1.0f) * std::max(0.3f, std::fabs(c));
+    }
+    else if (voyage_ < 98.0f) {
         u = ease((voyage_ - 70.0f) / 28.0f);
-    else
+    }
+    else {
         return;
-    const float x = 66.0f + 48.0f * u, wl = 101.0f - 27.5f * std::sqrt(u), s = 0.95f * (1.0f - 0.78f * u);
+    }
+    // Out through the harbour mouth first, then along the horizon behind the
+    // pier, so the hull never crosses the pier wall.
+    const float wl = 101.0f - 27.5f * (1.0f - std::pow(1.0f - u, 3.0f));
+    const float x = 66.0f + 48.0f * std::pow(u, 2.5f);
+    const float s = 0.95f * (1.0f - 0.78f * (101.0f - wl) / 27.5f);
     const float bob = (u < 0.05f ? 0.6f : 0.3f) * swell * std::sin(t_ * 1.1f + 4.0f) * s;
     const bool moving = (voyage_ < 28.0f) || (voyage_ >= 70.0f && voyage_ < 98.0f);
     // A V-shaped wake spreads behind a boat under way.
@@ -326,7 +357,8 @@ void HarbourScene::draw_boats(float dt)
         for (int i = 1; i < 10; ++i) {
             const float back = i * 2.2f * s, spread = i * 0.55f * s;
             for (float side : {-1.0f, 1.0f}) {
-                const int px = static_cast<int>((x - 7.0f * s - back) * sx), py = static_cast<int>((wl + side * spread * 0.4f + 0.5f) * sy);
+                const int px = static_cast<int>((x - face * (7.0f * s + back)) * sx),
+                          py = static_cast<int>((wl + side * spread * 0.4f + 0.5f) * sy);
                 if (px >= 0 && py >= 0 && px < cv_.w && py < cv_.h && water_[static_cast<size_t>(py * cv_.w + px)])
                     cv_.add(px, py, {0.85f, 0.9f, 0.95f}, 0.28f * (1.0f - i / 10.0f) * (1.0f - L.fog * 0.5f));
             }
@@ -334,8 +366,8 @@ void HarbourScene::draw_boats(float dt)
     }
     const float fade = 1.0f - smoothstep(0.82f, 1.0f, u);
     if (fade > 0.02f)
-        draw_boat(x, wl + bob, s, 0.4f * swell * std::sin(t_ * 0.8f), mix(from_env(L.haze), subject({0.62f, 0.18f, 0.16f}), fade),
-                  mix(from_env(L.haze), subject({0.92f, 0.90f, 0.86f}), fade), true, wl < QuayWater - 1.0f ? &pier_ : nullptr);
+        draw_boat(x, wl + bob, s, face, 0.4f * swell * std::sin(t_ * 0.8f), mix(from_env(L.haze), boat_color({0.62f, 0.18f, 0.16f}), fade),
+                  mix(from_env(L.haze), boat_color({0.92f, 0.90f, 0.86f}), fade), true, wl < QuayWater - 1.0f ? &pier_ : nullptr);
 }
 
 void HarbourScene::draw_gulls(float dt)
@@ -414,16 +446,27 @@ bool HarbourScene::render(rgb_matrix::FrameCanvas* canvas)
     draw_water(raw);
     draw_boats(dt);
     draw_gulls(dt);
+    // A tree at the root of the pier shows the season up close.
+    Environment::paint_tree(surface(), L, 87.0f * sx, PierTop * sy, 19.0f * sy, 23, t_, 0.1f);
     // Quay lamps.
     if (L.lamp() > 0.03f)
         for (float x : {14.5f, 32.5f}) {
             cv_.glow(x * sx, 77.5f * sy, 5.0f * k, {1.0f, 0.72f, 0.38f}, 0.35f * L.lamp());
             cv_.set(static_cast<int>(x * sx), static_cast<int>(77.5f * sy), {1.0f, 0.85f, 0.55f});
         }
+    // A lightning strike lifts the whole harbour a little, not just the boats.
+    if (L.flash > 0.0f)
+        for (size_t i = 0; i < cv_.px.size(); i += 3) {
+            cv_.px[i] += 0.55f * 0.25f * L.flash;
+            cv_.px[i + 1] += 0.58f * 0.25f * L.flash;
+            cv_.px[i + 2] += 0.70f * 0.25f * L.flash;
+        }
     // Morning mist lies on the water and lifts as the sun climbs.
     const float mist = 0.30f * L.twilight * (L.morning ? 1.0f : 0.35f);
-    Environment::paint_fog(surface(), L, t_, 58.0f * sy, 112.0f * sy, mist);
-    paint_weather(raw, Horizon * sy, [&](float x) { return water_line(x / sx) * sy; });
+    Environment::paint_fog(surface(), L, t_, 58.0f * sy, static_cast<float>(cv_.h), mist);
+    // Rain falls into the water (the rings show it), so no splashes line the
+    // quay and pier.
+    paint_weather(raw, Horizon * sy, [&](float) { return cv_.h + 6.0f; });  // below the frame
     present(canvas);
     wait_until_next_frame();
     return true;
