@@ -118,9 +118,13 @@ void KoiPondScene::build_backdrop()
                     c = mix(c, lit({0.45f, 0.42f, 0.36f}), 0.35f * (1.0f - d * 4.0f));
                 bg.set(x, y, c);
                 // Ice grows inward from the rim, thinner where the water is deep.
-                const float iceWidth = 3.0f + 16.0f * freeze;
+                // Uneven shelves rather than an even band, leaving open water for the koi.
+                const float a = std::atan2(dy / sy - CY, dx / sx - CX);
+                const float shelf =
+                    2.0f +
+                    9.0f * freeze * (0.55f + 0.45f * std::sin(3.0f * a + 1.1f) * std::sin(5.0f * a + 0.3f) + 0.25f * std::sin(11.0f * a));
                 if (freeze > 0.02f)
-                    ice_[i] = std::clamp((iceWidth - in) / 3.0f, 0.0f, 1.0f) * std::min(1.0f, freeze * 2.0f);
+                    ice_[i] = std::clamp((shelf - in) / 2.5f, 0.0f, 1.0f) * std::min(1.0f, freeze * 2.0f);
             }
             else {
                 const float n = hash01(static_cast<uint32_t>(x * 73 + y * 9973));
@@ -136,11 +140,11 @@ void KoiPondScene::build_backdrop()
         const float a = kTau * (s + 0.3f * hash01(s * 17u)) / 46.0f, r = rim(a) + 2.5f;
         const float x = CX + std::cos(a) * r, y = CY + std::sin(a) * r;
         const float size = 2.6f + 1.6f * hash01(s * 7u + 1u);
-        const Rgb stone = lit(mix({0.42f, 0.41f, 0.40f}, {0.58f, 0.55f, 0.50f}, hash01(s * 3u + 2u)));
+        const Rgb stone = lit(mix({0.38f, 0.37f, 0.36f}, {0.48f, 0.46f, 0.43f}, hash01(s * 3u + 2u)));
         bg.ellipse((x + 0.6f) * sx, (y + 0.8f) * sy, size * k, size * 0.8f * k, a, scale(stone, 0.4f), 0.6f);
         bg.ellipse(x * sx, y * sy, size * k, size * 0.8f * k, a, stone);
         bg.ellipse((x - 0.6f) * sx, (y - 0.6f) * sy, size * 0.55f * k, size * 0.4f * k, a,
-                   terrain(mix(stone, {0.8f, 0.78f, 0.74f}, 0.3f), 0.0f, 1.0f), 0.8f);
+                   terrain(mix(stone, {0.8f, 0.78f, 0.74f}, 0.2f), 0.0f, 1.0f), 0.45f);
     }
 
     // A stone lantern on the lawn (lit at night, see render()).
@@ -177,11 +181,16 @@ void KoiPondScene::build_backdrop()
     const float blooms = std::clamp(L.spring + L.summer - L.snow_cover, 0.0f, 1.0f);
     if (blooms > 0.05f) {
         const std::array<Rgb, 4> petals{{{1.0f, 0.95f, 0.6f}, {0.95f, 0.45f, 0.65f}, {0.75f, 0.6f, 1.0f}, {1.0f, 1.0f, 0.95f}}};
-        for (uint32_t i = 0; i < 110; ++i) {
-            const float x = 128.0f * hash01(i * 7u + 3u), y = 128.0f * hash01(i * 7u + 4u);
-            if (inside(x, y) > -6.0f || std::hypot(x - Lantern.x, y - Lantern.y) < 9.0f || x + y < 40.0f)
+        // A few tufts of flowers, each in one colour.
+        for (uint32_t tuft = 0; tuft < 14; ++tuft) {
+            const float tx = 128.0f * hash01(tuft * 7u + 3u), ty = 128.0f * hash01(tuft * 7u + 4u);
+            if (inside(tx, ty) > -7.0f || std::hypot(tx - Lantern.x, ty - Lantern.y) < 10.0f || tx + ty < 44.0f)
                 continue;
-            bg.blend(static_cast<int>(x * sx), static_cast<int>(y * sy), lit(petals[i % petals.size()]), 0.85f * blooms);
+            const Rgb c = lit(petals[tuft % petals.size()]);
+            for (uint32_t i = 0; i < 6; ++i) {
+                const float x = tx + 3.0f * (hash01(tuft * 31u + i * 2u) - 0.5f), y = ty + 3.0f * (hash01(tuft * 31u + i * 2u + 1u) - 0.5f);
+                bg.blend(static_cast<int>(x * sx), static_cast<int>(y * sy), c, 0.8f * blooms);
+            }
         }
     }
 
@@ -254,12 +263,12 @@ void KoiPondScene::update_koi(float dt)
             if (m == n)
                 continue;
             const float dx = koi_[m].spine[2].x - ahead.x, dy = koi_[m].spine[2].y - ahead.y;
-            if (dx * dx + dy * dy < 30.0f)
+            if (dx * dx + dy * dy < 60.0f)
                 steer += std::remainder(std::atan2(dy, dx) - k.heading, kTau) > 0 ? -0.9f : 0.9f;
         }
         k.turn += (steer - k.turn) * std::min(1.0f, dt * 1.2f);
         const float speed = k.speed * chill * (0.75f + 0.25f * std::sin(k.wander * 2.1f + n));
-        k.heading += k.turn * 0.55f * dt;
+        k.heading += std::clamp(k.turn, -1.6f, 1.6f) * 0.5f * dt;
         // A swimming fish swings its head a little from side to side.
         const float swing = 0.32f * std::sin(t_ * (2.2f + 0.3f * n) + n);
         k.spine[0].x += std::cos(k.heading + swing) * speed * dt;
@@ -317,16 +326,29 @@ void KoiPondScene::draw_water(float dt)
                     cv_.add(x + ox, y + oy, c, 0.2f * sun * on * on);
         }
     }
-    if (L.night > 0.3f && L.moon_light > 0.05f)
-        for (int ring = 0; ring < 3; ++ring) {
-            const float r = 2.5f + ring * 1.6f + 0.4f * std::sin(t_ * 0.8f + ring);
-            cv_.ellipse((CX + 14) * sx, (CY - 16) * sy, r * sx, r * sy, 0.0f, {0.8f, 0.86f, 1.0f}, 0.10f * L.moon_light * (3 - ring));
+    // The moon (at night) or the low sun (at dawn and dusk) shows as a few
+    // short, wavering streaks on the water.
+    const float moonA = L.night > 0.3f ? 0.35f * L.moon_light : 0.0f, warmA = 0.22f * L.twilight * (1.0f - 0.8f * L.overcast);
+    for (int pass = 0; pass < 2; ++pass) {
+        const float a = pass == 0 ? moonA : warmA;
+        if (a < 0.01f)
+            continue;
+        const Point at = pass == 0 ? Point{CX + 14.0f, CY - 16.0f} : Point{CX + 22.0f - 44.0f * L.sun_x, CY - 22.0f};
+        const Rgb c = pass == 0 ? Rgb{0.82f, 0.88f, 1.0f} : mix(from_env(L.sun_color), {1.0f, 0.75f, 0.5f}, 0.3f);
+        for (int i = 0; i < 4; ++i) {
+            const float y = at.y + (i - 1.5f) * 1.6f, len = 6.0f - std::fabs(i - 1.5f) * 2.0f;
+            const float x = at.x - len / 2 + 0.8f * std::sin(t_ * 1.1f + i * 1.7f);
+            const int row = static_cast<int>(y * sy);
+            for (int c2 = static_cast<int>(x * sx); c2 < static_cast<int>((x + len) * sx); ++c2)
+                if (wet(c2, row))
+                    cv_.add(c2, row, c, a * (0.7f + 0.3f * std::sin(t_ * 2.0f + i + c2)));
         }
+    }
 
     // Rain rings the surface; koi make the odd ring of their own.
-    if (rnd() < dt * 28.0f * L.rain && ripples_.size() < 60) {
+    if (rnd() < dt * 14.0f * L.rain && ripples_.size() < 40) {
         const float a = rnd() * kTau, r = Radius * std::sqrt(rnd());
-        ripples_.push_back({CX + std::cos(a) * r, CY + std::sin(a) * r, 0.3f, 1.0f, 1.0f});
+        ripples_.push_back({CX + std::cos(a) * r, CY + std::sin(a) * r, 1.2f, 1.0f, 0.8f});
     }
     for (auto& r : ripples_) {
         r.r += dt * 4.5f;
@@ -335,12 +357,19 @@ void KoiPondScene::draw_water(float dt)
     std::erase_if(ripples_, [](const Ripple& r) { return r.life <= 0.0f; });
     const Rgb ring = mix(sheen, {1, 1, 1}, 0.3f);
     for (const auto& r : ripples_) {
-        const int steps = std::max(8, static_cast<int>(r.r * 4.0f));
+        // Rings fade in, then widen and fade out; each point is spread over
+        // its neighbouring pixels so small rings stay round.
+        const float alpha = 0.16f * r.strength * std::min(1.0f, (1.0f - r.life) * 5.0f) * r.life;
+        const int steps = std::max(10, static_cast<int>(r.r * 5.0f));
         for (int i = 0; i < steps; ++i) {
             const float a = kTau * i / steps;
-            const int x = static_cast<int>((r.x + std::cos(a) * r.r) * sx), y = static_cast<int>((r.y + std::sin(a) * r.r) * sy);
-            if (wet(x, y))
-                cv_.add(x, y, ring, 0.22f * r.life * r.strength);
+            const float fx = (r.x + std::cos(a) * r.r) * sx - 0.5f, fy = (r.y + std::sin(a) * r.r) * sy - 0.5f;
+            const int x0 = static_cast<int>(std::floor(fx)), y0 = static_cast<int>(std::floor(fy));
+            const float ux = fx - x0, uy = fy - y0;
+            const float wts[4] = {(1 - ux) * (1 - uy), ux * (1 - uy), (1 - ux) * uy, ux * uy};
+            for (int q = 0; q < 4; ++q)
+                if (wet(x0 + (q & 1), y0 + (q >> 1)))
+                    cv_.add(x0 + (q & 1), y0 + (q >> 1), ring, alpha * wts[q] * 10.0f / steps * r.r);
         }
     }
 }
@@ -365,7 +394,7 @@ void KoiPondScene::draw_koi()
 
     for (size_t n = 0; n < koi_.size(); ++n) {
         const auto& f = koi_[n];
-        const float under = std::clamp(0.20f + 0.25f * depthAt(f.spine[2]) + 0.3f * chill, 0.0f, 0.75f);
+        const float under = std::clamp(0.18f + 0.22f * depthAt(f.spine[2]) + 0.15f * chill, 0.0f, 0.6f);
         const auto tone = [&](Rgb c) { return mix(subject(c), water, under); };
         const auto& sp = f.spine;
         // Tail fins fan out behind the last spine point and flick as it swims.
@@ -398,7 +427,7 @@ void KoiPondScene::draw_pads()
     const float present = std::clamp(1.0f - L.winter * 1.3f, 0.0f, 1.0f);
     if (present <= 0.02f)
         return;
-    const Rgb padA = plant({0.20f, 0.44f, 0.16f}, 0.0f, 0.0f, 0.6f), padB = plant({0.30f, 0.54f, 0.20f}, 0.0f, 0.0f, 0.6f);
+    const Rgb padA = plant({0.16f, 0.40f, 0.14f}, 0.0f, 0.0f, 0.3f), padB = plant({0.26f, 0.50f, 0.18f}, 0.0f, 0.0f, 0.3f);
     const float bloom = std::clamp((L.summer - 0.3f) * 2.0f, 0.0f, 1.0f);
     for (auto& p : pads_) {
         const float x0 = (p.x - p.r - 1) * sx, x1 = (p.x + p.r + 1) * sx, y0 = (p.y - p.r - 1) * sy, y1 = (p.y + p.r + 1) * sy;
@@ -489,7 +518,7 @@ void KoiPondScene::draw_dragonfly(float dt)
     if (fly_.life <= 0.0f) {
         fly_.wait -= dt;
         if (fly_.wait <= 0.0f && season) {
-            fly_ = {rnd() < 0.5f ? -4.0f : 132.0f, 20.0f + 80.0f * rnd(), CX, CY, 0.0f, 18.0f + 10.0f * rnd()};
+            fly_ = {rnd() < 0.5f ? -4.0f : 132.0f, 20.0f + 80.0f * rnd(), CX, CY, 0.0f, 8.0f + 4.0f * rnd()};
             fly_.tx = CX + (rnd() - 0.5f) * 60.0f;
             fly_.ty = CY + (rnd() - 0.5f) * 60.0f;
         }
@@ -514,7 +543,7 @@ void KoiPondScene::draw_dragonfly(float dt)
         }
     }
     if (fly_.life <= 0.0f)
-        fly_.wait = 20.0f + 30.0f * rnd();
+        fly_.wait = 40.0f + 40.0f * rnd();
     const float a = d > 0.5f ? std::atan2(dy, dx) : 0.3f * std::sin(t_);
     const float ca = std::cos(a), sa = std::sin(a);
     const float flutter = 0.4f + 0.6f * std::fabs(std::sin(t_ * 40.0f));
@@ -549,19 +578,29 @@ bool KoiPondScene::render(rgb_matrix::FrameCanvas* canvas)
     for (size_t i = 0; i < ice_.size(); ++i)
         if (ice_[i] > 0.0f) {
             const int x = static_cast<int>(i % static_cast<size_t>(cv_.w)), y = static_cast<int>(i / static_cast<size_t>(cv_.w));
-            cv_.blend(x, y, hash01(static_cast<uint32_t>(i) * 747796405u) > 0.93f ? iceDark : ice, 0.85f * ice_[i]);
+            cv_.blend(x, y, hash01(static_cast<uint32_t>(i) * 747796405u) > 0.97f ? iceDark : ice, 0.75f * ice_[i]);
         }
 
-    // The maple crown hangs over everything, swaying a touch in the wind.
-    const int shift = static_cast<int>(std::lround((0.6f + std::fabs(L.wind)) * std::sin(t_ * 0.5f) * sx));
+    // The maple crown hangs over everything, swaying a touch in the wind
+    // (sub-pixel, so it glides instead of stepping; bare branches barely move).
+    const float leafy = 1.0f - std::clamp(L.winter * 1.2f, 0.0f, 1.0f);
+    const float shift = (0.15f + 0.85f * leafy) * (0.6f + std::fabs(L.wind)) * std::sin(t_ * 0.5f) * sx;
+    const int whole = static_cast<int>(std::floor(shift));
+    const float frac = shift - static_cast<float>(whole);
     for (int y = 0; y < cv_.h; ++y)
         for (int x = 0; x < cv_.w; ++x) {
-            const int src = x - shift;
-            if (src < 0 || src >= cv_.w)
-                continue;
-            const float* c = &canopy_[static_cast<size_t>(y * cv_.w + src) * 4];
-            if (c[3] > 0.0f)
-                cv_.blend(x, y, {c[0], c[1], c[2]}, c[3]);
+            float px[4] = {0, 0, 0, 0};
+            for (int tap = 0; tap < 2; ++tap) {
+                const int src = x - whole - tap;
+                const float w = tap == 0 ? 1.0f - frac : frac;
+                if (src < 0 || src >= cv_.w || w <= 0.0f)
+                    continue;
+                const float* c = &canopy_[static_cast<size_t>(y * cv_.w + src) * 4];
+                for (int ch = 0; ch < 3; ++ch) px[ch] += c[ch] * c[3] * w;
+                px[3] += c[3] * w;
+            }
+            if (px[3] > 0.001f)
+                cv_.blend(x, y, {px[0] / px[3], px[1] / px[3], px[2] / px[3]}, px[3]);
         }
 
     // The lantern glows after dusk and its light falls on the water.
