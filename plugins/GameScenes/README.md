@@ -1,23 +1,13 @@
 # Game Scenes Plugin
 
-This plugin adds interactive game visualizations to your LED Matrix.
+This plugin adds a self-playing game to your LED Matrix: nothing needs input, the AI plays on its own.
 
 ## Included Scenes
-
-### Ping Pong Game
-A classic Pong-style game visualization with AI players.
-
-The game simulates two paddles bouncing a ball back and forth across the display.
 
 ### Tetris
 An automated Tetris game with AI playing.
 
 The plugin includes a neural network that makes decisions about piece placement, rotation, and movement. The AI tries to maximize score by completing lines while building efficiently. The scene shows the current score plus a high score that survives game resets and matrix-service restarts; the current high score is also carried into desktop-offloaded rendering sessions.
-
-### Maze Game
-A maze generation and solving visualization.
-
-This scene generates random mazes using the Hunt-and-Kill algorithm and then solves them using the A* pathfinding algorithm. The scene shows both the maze generation process and the solution path.
 
 ## Installation
 If this plugin is not deleted from the plugins directory, install is automatic!

@@ -85,6 +85,29 @@ int main() {
         expect(round.value("variant", "") == "night", "failed scene keeps its variant");
     }
 
+    // A preset that still names a scene removed from the catalogue (e.g. the
+    // old snake_game) keeps loading; the entry survives a save unchanged.
+    {
+        const nlohmann::json removed = {{"type", "snake_game"}, {"arguments", {{"speed", 2}}}, {"uuid", "uuid-removed"}};
+        std::shared_ptr<ConfigData::Preset> old;
+        bool failed = false;
+        try {
+            ConfigData::from_json(nlohmann::json{{"scenes", nlohmann::json::array({good, removed})}}, old);
+        }
+        catch (const std::exception& e) {
+            failed = true;
+            std::cerr << "unexpected: " << e.what() << "\n";
+        }
+        expect(!failed, "a removed scene type does not stop preset loading");
+        expect(old && old->scenes.size() == 2, "the removed scene stays in the preset");
+        if (old && old->scenes.size() == 2) {
+            nlohmann::json saved;
+            ConfigData::to_json(saved, old);
+            expect(saved.at("scenes").at(1).at("type") == "snake_game", "removed scene keeps its type on save");
+            expect(saved.at("scenes").at(1).at("arguments") == removed.at("arguments"), "removed scene keeps its arguments on save");
+        }
+    }
+
     pm->delete_references();
     if (failures == 0) std::cout << "scene_load_failure_smoke: all checks passed\n";
     return failures == 0 ? 0 : 1;
