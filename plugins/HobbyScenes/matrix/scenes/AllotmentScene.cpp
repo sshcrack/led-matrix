@@ -48,7 +48,7 @@ void AllotmentScene::initialize(int width, int height)
     drift_.reset();
     for (auto& c : crows_) c = {};
     crowWait_ = 2.0f;
-    tractor_ = TractorCycle - 7.0f;  // the field is quiet for a moment, then the tractor comes
+    tractor_ = TractorCycle - 2.0f;  // the field is quiet for a moment, then the tractor comes
 }
 
 void AllotmentScene::build_backdrop()
@@ -156,7 +156,7 @@ void AllotmentScene::build_backdrop()
 
     // The beds: raised wooden edges round dark soil; the crops change through
     // the year.
-    const Rgb soil = scale(frosted(terrain({0.30f, 0.21f, 0.15f}, 0.0f, 0.8f), 1.2f), 1.0f - 0.3f * wet), soilDark = scale(soil, 0.75f);
+    const Rgb soil = scale(frosted(terrain({0.30f, 0.21f, 0.15f}, 0.0f, 0.8f), 1.2f), 1.0f - 0.45f * wet), soilDark = scale(soil, 0.75f);
     const Rgb edge = frosted(lit({0.44f, 0.34f, 0.24f}), 1.0f);
     for (const auto& b : Beds) {
         // Each bed narrows a little away from the viewer, its ends slanting
@@ -182,8 +182,10 @@ void AllotmentScene::build_backdrop()
                 for (float x = b.x0 + 3.0f; x < b.x1 - 2.0f; x += 3.2f) {
                     const uint32_t id = static_cast<uint32_t>(x * 13 + y * 71);
                     // Clumps of different sizes with irregular bare earth between.
-                    const float n = std::sin(x * 0.19f + b.top * 0.7f) * std::sin(x * 0.07f + y * 0.9f + b.top * 0.3f);
-                    if (n < -0.2f || hash01(id) < 0.15f)
+                    // Short rows: a run sown, then a gap of bare earth.
+                    const float run = std::fmod(x - b.x0 + 7.0f * hash01(static_cast<uint32_t>(y * 3 + b.top)), 22.0f);
+                    const float n = 0.5f;
+                    if (run > 14.0f || hash01(id) < 0.08f)
                         continue;
                     const float jx = x + 2.0f * (hash01(id + 1u) - 0.5f), size = 0.4f + 0.9f * hash01(id + 2u) * (0.6f + 0.4f * n);
                     const Rgb shoot = plant({0.40f, 0.62f, 0.26f}, 0.0f, 0.2f, 0.3f);
@@ -415,6 +417,14 @@ void AllotmentScene::build_backdrop()
         }
     }
 
+    // Snow banked unevenly along the trodden path.
+    if (L.snow_cover > 0.2f)
+        for (int i = 0; i < 12; ++i) {
+            const float y = FenceY + 4.0f + 4.2f * i + 1.5f * hash01(i * 7u), t = (y - FenceY) / (128 - FenceY);
+            art.oval(33.0f - t + 0.6f, y, 1.2f + 1.0f * hash01(i * 7u + 1u), 0.8f, lit({0.92f, 0.95f, 1.0f}), 0.9f * L.snow_cover);
+            art.oval(33.0f - t - 0.4f, y + 0.7f, 0.9f, 0.3f, lit({0.56f, 0.62f, 0.76f}), 0.6f * L.snow_cover);
+        }
+
     // A low sun lights the garden from its side: warm on the near side, the
     // far side falling into cool shadow, and a rim on the shed's sunward edge.
     const float low = std::clamp(L.twilight * 2.0f, 0.0f, 1.0f) * (1.0f - 0.6f * L.night) * (1.0f - 0.7f * L.overcast);
@@ -473,7 +483,7 @@ void AllotmentScene::build_backdrop()
         }
         dot(7.0f, 72.0f, rim, 0.8f * low);  // a catchlight on the window
         const float edgeX = sunX < 0.5f ? 3.0f : 26.0f;
-        art.rect(edgeX, 66.0f, 1.0f, 26.0f, mix(lit({0.38f, 0.48f, 0.42f}), warm, 0.55f * low));
+        art.rect(edgeX, 66.0f, 1.0f, 26.0f, mix(lit({0.38f, 0.48f, 0.42f}), warm, 0.8f * low));
         for (float x = 36.0f; x < 128.0f; x += 8.0f) {
             art.rect(sunX < 0.5f ? x : x + 0.6f, FenceY - 8.0f, 0.5f, 8.0f, mix(lit({0.30f, 0.23f, 0.17f}), warm, 0.2f * low));
             // Long soft shadows away from the low sun across the grass.
@@ -516,7 +526,7 @@ void AllotmentScene::build_backdrop()
     backdrop_ = std::move(bg.px);
 }
 
-void AllotmentScene::draw_scarecrow()
+void AllotmentScene::draw_scarecrow(float alpha)
 {
     const auto& L = env();
     const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f, k = std::min(sx, sy);
@@ -525,10 +535,10 @@ void AllotmentScene::draw_scarecrow()
     const auto X = [&](float x) { return (ScarecrowAtX + (x - ScarecrowX) * S) * sx; };
     const auto Y = [&](float y) { return (ScarecrowAtBase + (y - ScarecrowBase) * S) * sy; };
     const auto cap = [&](float x0, float y0, float r0, float x1, float y1, float r1, Rgb c, float a = 1.0f) {
-        cv_.capsule(X(x0), Y(y0), r0 * S * k, X(x1), Y(y1), r1 * S * k, c, a);
+        cv_.capsule(X(x0), Y(y0), r0 * S * k, X(x1), Y(y1), r1 * S * k, c, a * alpha);
     };
     const auto oval = [&](float x, float y, float rx, float ry, Rgb c, float a = 1.0f) {
-        cv_.ellipse(X(x), Y(y), rx * S * k, ry * S * k, 0.0f, c, a);
+        cv_.ellipse(X(x), Y(y), rx * S * k, ry * S * k, 0.0f, c, a * alpha);
     };
     const float wind = 0.4f + std::fabs(L.wind) + 0.8f * L.storm;
     const float flap = std::sin(t_ * (2.0f + wind)) * wind;
@@ -553,7 +563,8 @@ void AllotmentScene::draw_scarecrow()
     // Sleeves to the elbows, straw poking out of the cuffs.
     for (float side : {-1.0f, 1.0f}) {
         const float hang = side > 0 ? 2.2f : 0.4f;  // the right sleeve sags off the bar
-        cap(x + side * 2.5f, ArmY, 1.1f, x + side * 5.4f, ArmY + hang + 0.3f * flap * side, 0.9f, coat);
+        cap(x + side * 2.5f, ArmY, 1.1f, x + side * 5.4f, ArmY + hang + 0.3f * flap * side, 0.9f,
+            side < 0 ? prop({0.52f, 0.48f, 0.34f}) : coat);  // a patched, paler sleeve
         for (int s = 0; s < 3; ++s)
             cap(x + side * 6.2f, ArmY, 0.3f, x + side * (7.6f + 0.4f * s), ArmY - 1.0f + s * 1.0f + 0.3f * flap, 0.25f, straw);
     }
@@ -562,7 +573,7 @@ void AllotmentScene::draw_scarecrow()
     // Sack head with a stitched face and a straw hat.
     oval(x, 76.5f, 2.6f, 2.9f, sack);
     oval(x, 74.8f, 2.5f, 1.2f, scale(sack, 0.6f), 0.8f);  // shade under the brim
-    cap(x - 4.5f, 73.6f, 0.5f, x + 4.5f, 73.6f + 0.3f * flap, 0.5f, hat);
+    cap(x - 5.6f, 73.8f, 0.55f, x + 5.6f, 73.8f + 0.3f * flap, 0.55f, hat);
     oval(x, 72.2f, 2.4f, 1.6f, hat);
 }
 
@@ -596,10 +607,13 @@ void AllotmentScene::draw_sunflowers()
         const float h = (11.0f + 3.0f * hash01(i * 7u + 1u)) * (0.35f + 0.65f * std::clamp(su + au, 0.0f, 1.0f));
         const float tx = x + lean * h * 0.35f, ty = base - h * (1.0f - 0.03f * std::fabs(lean));
         const Rgb stem = calm(plant({0.30f, 0.50f, 0.18f}, 0.0f, 0.3f, 0.6f));
-        cap(x, base, 0.5f - 0.15f * au, tx, ty, 0.4f - 0.12f * au, stem, sunflowers);
+        // The stem bends: the foot stays put, most of the lean is near the top.
+        const float mx = x + (tx - x) * 0.25f, my = base - h * 0.5f;
+        cap(x, base, 0.5f - 0.15f * au, mx, my, 0.45f - 0.12f * au, stem, sunflowers);
+        cap(mx, my, 0.45f - 0.12f * au, tx, ty, 0.4f - 0.12f * au, stem, sunflowers);
         // A pale edge on the stem so it reads against the dark hedge.
-        cap(x + 0.35f, base - 1.0f, 0.15f, tx + 0.35f, ty + 1.0f, 0.15f, calm(mix(stem, lit({0.75f, 0.85f, 0.55f}), 0.45f)),
-            0.6f * sunflowers);
+        cap(mx + 0.35f, my, 0.15f, tx + 0.35f, ty + 1.0f, 0.15f, calm(mix(stem, lit({0.75f, 0.85f, 0.55f}), 0.45f)), 0.6f * sunflowers);
+        cap(x + 0.35f, base - 1.0f, 0.15f, mx + 0.35f, my, 0.15f, calm(mix(stem, lit({0.75f, 0.85f, 0.55f}), 0.45f)), 0.6f * sunflowers);
         for (int leaf = 0; leaf < 2; ++leaf) {
             const float f = 0.35f + 0.3f * leaf, side = leaf ? 1.0f : -1.0f;
             cv_.ellipse((x + (tx - x) * f + side * 1.8f) * sx, (base - h * f) * sy, 1.8f * k, 0.9f * k, side * 0.5f + 0.3f * lean, stem,
@@ -631,34 +645,35 @@ void AllotmentScene::draw_tractor(float dt)
     if (tractor_ > crossing || L.daylight < 0.25f || L.snow_cover > 0.5f || L.storm > 0.3f)
         return;
     const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f, k = std::min(sx, sy);
-    const float x = -12.0f + 152.0f * (tractor_ / crossing), y = TractorY;
+    // It comes in from the open right-hand side, heading left.
+    const float x = 140.0f - 152.0f * (tractor_ / crossing), y = TractorY;
     const auto cap = [&](float x0, float y0, float r0, float x1, float y1, float r1, Rgb c) {
         cv_.capsule(x0 * sx, y0 * sy, r0 * k, x1 * sx, y1 * sy, r1 * k, c);
     };
     // A fresh, darker track behind the wheels.
     for (float back = 3.0f; back < 26.0f; back += 1.0f / sx)
-        cv_.blend(static_cast<int>((x - back) * sx), static_cast<int>((y - 0.3f) * sy), lit({0.24f, 0.20f, 0.14f}, 0.4f),
+        cv_.blend(static_cast<int>((x + back) * sx), static_cast<int>((y - 0.3f) * sy), lit({0.24f, 0.20f, 0.14f}, 0.4f),
                   0.35f * (1.0f - back / 26.0f));
     // Dust in dry weather, drifting behind.
     if (L.rain < 0.1f && L.snow_cover < 0.1f && L.wetness < 0.3f)
         for (int i = 1; i < 6; ++i) {
             const float age = i * 0.6f;
-            cv_.glow((x - 3.0f - i * 2.2f) * sx, (y - 0.8f - 0.4f * i) * sy, (1.2f + 0.5f * i) * k,
+            cv_.glow((x + 3.0f - i * 2.2f) * sx, (y - 0.8f - 0.4f * i) * sy, (1.2f + 0.5f * i) * k,
                      from_env(L.lit({0.72f, 0.62f, 0.46f}, 0.4f)), 0.10f * (1.0f - age / 4.0f));
         }
     const float far = 0.35f + 0.5f * L.fog;
     const Rgb body = lit({0.20f, 0.46f, 0.22f}, far), tyre = lit({0.10f, 0.10f, 0.10f}, far), cab = lit({0.70f, 0.74f, 0.76f}, far);
     const float bump = 0.15f * std::sin(t_ * 9.0f);
-    cap(x - 1.5f, y - 2.6f + bump, 1.2f, x + 2.5f, y - 2.2f + bump, 1.0f, body);    // bonnet and body
-    cv_.ellipse((x - 1.8f) * sx, (y - 1.6f) * sy, 1.8f * k, 1.8f * k, 0.0f, tyre);  // big rear wheel
-    cv_.ellipse((x + 2.8f) * sx, (y - 0.9f) * sy, 1.0f * k, 1.0f * k, 0.0f, tyre);
-    cv_.set(static_cast<int>((x - 1.8f) * sx), static_cast<int>((y - 1.6f) * sy), lit({0.85f, 0.70f, 0.20f}, 0.35f));  // wheel hub
+    cap(x + 1.5f, y - 2.6f + bump, 1.2f, x - 2.5f, y - 2.2f + bump, 1.0f, body);    // bonnet and body
+    cv_.ellipse((x + 1.8f) * sx, (y - 1.6f) * sy, 1.8f * k, 1.8f * k, 0.0f, tyre);  // big rear wheel
+    cv_.ellipse((x - 2.8f) * sx, (y - 0.9f) * sy, 1.0f * k, 1.0f * k, 0.0f, tyre);
+    cv_.set(static_cast<int>((x + 1.8f) * sx), static_cast<int>((y - 1.6f) * sy), lit({0.85f, 0.70f, 0.20f}, 0.35f));  // wheel hub
     for (float yy = y - 6.0f; yy < y - 3.0f; yy += 1.0f / sy)
-        cv_.blend(static_cast<int>((x - 2.4f) * sx), static_cast<int>(yy * sy), cab, 0.9f);
-    cap(x - 3.0f, y - 6.2f + bump, 0.3f, x - 0.3f, y - 6.2f + bump, 0.3f, body);  // cab roof
-    cap(x + 1.6f, y - 3.4f, 0.2f, x + 1.6f, y - 5.0f, 0.2f, tyre);                // exhaust
+        cv_.blend(static_cast<int>((x + 2.4f) * sx), static_cast<int>(yy * sy), cab, 0.9f);
+    cap(x + 3.0f, y - 6.2f + bump, 0.3f, x + 0.3f, y - 6.2f + bump, 0.3f, body);  // cab roof
+    cap(x - 1.6f, y - 3.4f, 0.2f, x - 1.6f, y - 5.0f, 0.2f, tyre);                // exhaust
     if (L.lamp() > 0.1f)
-        cv_.glow((x + 3.6f) * sx, (y - 2.4f) * sy, 2.5f * k, {1.0f, 0.92f, 0.7f}, 0.6f * L.lamp());
+        cv_.glow((x - 3.6f) * sx, (y - 2.4f) * sy, 2.5f * k, {1.0f, 0.92f, 0.7f}, 0.6f * L.lamp());
     // The hedge, the shed, the tree and the sunflowers stand in front of it.
     const int y0 = std::max(0, static_cast<int>((y - 10.0f) * sy)), y1 = std::min(cv_.h, static_cast<int>(std::ceil(HedgeY * sy)));
     for (int row = y0; row < y1; ++row)
@@ -873,7 +888,7 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
                 const float dx = (x / sx - 14.0f - 0.6f * (y / sy - 92.0f)) / 16.0f, dy = (y / sy - 92.0f) / 18.0f;
                 const float f = std::max(0.0f, 1.0f - dx * dx - dy * dy);
                 if (f > 0.0f)
-                    cv_.add(x, y, {1.0f, 0.62f, 0.30f}, 0.16f * L.lamp() * f * f);
+                    cv_.add(x, y, {1.0f, 0.62f, 0.30f}, 0.24f * L.lamp() * f * f);
             }
     }
 
@@ -923,6 +938,8 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
                 cv_.blend(static_cast<int>(16.0f * sx), y, dark, 0.6f * L.fog);
         }
     }
+    if (L.fog > 0.02f)
+        draw_scarecrow(0.45f * L.fog);  // the nearer landmark keeps some contrast in the mist
     precip_.set_max(static_cast<int>(200 * render_quality_scale()));
     paint_weather(raw, Horizon * sy, [&](float) { return cv_.h + 6.0f; });
     present(canvas);

@@ -32,7 +32,7 @@ class AllotmentScene final : public HobbySceneBase {
     Environment::SeasonalDrift drift_;
 
     void build_backdrop();
-    void draw_scarecrow();
+    void draw_scarecrow(float alpha = 1.0f);
     void draw_sunflowers();
     void draw_tractor(float dt);
     void update_crows(float dt);
