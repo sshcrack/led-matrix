@@ -63,7 +63,11 @@ Clock local_clock()
 {
     const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     std::tm tm{};
+#ifdef _WIN32
+    localtime_s(&tm, &now);
+#else
     localtime_r(&now, &tm);
+#endif
     return {tm.tm_hour * 60 + tm.tm_min, tm.tm_mon == 11 && tm.tm_mday == 31, tm.tm_mon == 0 && tm.tm_mday == 1};
 }
 
@@ -419,9 +423,9 @@ void NewYearRooftopScene::draw_sky_effects()
         for (int y = std::max(0, static_cast<int>(fy - reach)); y < std::min(rows, static_cast<int>(fy + reach) + 1); ++y)
             for (int x = std::max(0, static_cast<int>(fx - reach)); x < std::min(cv_.w, static_cast<int>(fx + reach) + 1); ++x) {
                 const float dx = x - fx, dy = y - fy;
-                const float near = 1.0f - std::sqrt(dx * dx + dy * dy) * inv;
-                if (near > 0.0f)
-                    cv_.add(x, y, b.color, l * (sky_[static_cast<size_t>(y * cv_.w + x)] ? 0.18f * near * near : 0.05f * near));
+                const float close = 1.0f - std::sqrt(dx * dx + dy * dy) * inv;
+                if (close > 0.0f)
+                    cv_.add(x, y, b.color, l * (sky_[static_cast<size_t>(y * cv_.w + x)] ? 0.18f * close * close : 0.05f * close));
             }
     }
     // Smoke from earlier rockets hangs over the city, lit by the bursts.
