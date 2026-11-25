@@ -1,0 +1,339 @@
+{
+  "schema": 1,
+  "id": "gtzan-giantsteps-pilot-v1",
+  "tracks": [
+    {
+      "id": "gtzan_hiphop_00000",
+      "wav": "gtzan/genres/hiphop/hiphop.00000.wav",
+      "sha256": "02ee70a0d91a1625b967fd081bfcf4cf9ffadbc5e6f547f818c426015e6371f4",
+      "kind": "real",
+      "split": "calibration",
+      "tags": [
+        "hiphop"
+      ],
+      "annotations": {
+        "provenance": "GTZAN Rhythm beat/downbeat annotations distributed by Beat This!, commit fd9fcc0896cb78730bae735102c8753ef3a3badd.",
+        "timing_uncertainty_s": null,
+        "beats_file": "annotations/gtzan/annotations/beats/gtzan_hiphop_00000.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 29,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "gtzan_rock_00000",
+      "wav": "gtzan/genres/rock/rock.00000.wav",
+      "sha256": "779d7cccda20237e3bc7da0092bffd6917dbc4e1d1d455366327fce91487b6f9",
+      "kind": "real",
+      "split": "calibration",
+      "tags": [
+        "rock"
+      ],
+      "annotations": {
+        "provenance": "GTZAN Rhythm beat/downbeat annotations distributed by Beat This!, commit fd9fcc0896cb78730bae735102c8753ef3a3badd.",
+        "timing_uncertainty_s": null,
+        "beats_file": "annotations/gtzan/annotations/beats/gtzan_rock_00000.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 29,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "gtzan_disco_00000",
+      "wav": "gtzan/genres/disco/disco.00000.wav",
+      "sha256": "c26556f754a48fb226edf887beae321ac3eff804e0fb5a28fd93441f41b116f2",
+      "kind": "real",
+      "split": "calibration",
+      "tags": [
+        "party",
+        "disco"
+      ],
+      "annotations": {
+        "provenance": "GTZAN Rhythm beat/downbeat annotations distributed by Beat This!, commit fd9fcc0896cb78730bae735102c8753ef3a3badd.",
+        "timing_uncertainty_s": null,
+        "beats_file": "annotations/gtzan/annotations/beats/gtzan_disco_00000.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 29,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "gtzan_country_00000",
+      "wav": "gtzan/genres/country/country.00000.wav",
+      "sha256": "4fb9f2f74ad041b9135e5f6b04f8cfa0093eec0ed4674c66f10babe988e9652d",
+      "kind": "real",
+      "split": "calibration",
+      "tags": [
+        "country"
+      ],
+      "annotations": {
+        "provenance": "GTZAN Rhythm beat/downbeat annotations distributed by Beat This!, commit fd9fcc0896cb78730bae735102c8753ef3a3badd.",
+        "timing_uncertainty_s": null,
+        "beats_file": "annotations/gtzan/annotations/beats/gtzan_country_00000.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 29,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "gtzan_hiphop_00015",
+      "wav": "gtzan/genres/hiphop/hiphop.00015.wav",
+      "sha256": "e768b30b74f64722f4def4a7361181009c363c7ff23d6c3e11744ab5dce14b19",
+      "kind": "real",
+      "split": "held_out",
+      "tags": [
+        "hiphop"
+      ],
+      "annotations": {
+        "provenance": "GTZAN Rhythm beat/downbeat annotations distributed by Beat This!, commit fd9fcc0896cb78730bae735102c8753ef3a3badd.",
+        "timing_uncertainty_s": null,
+        "beats_file": "annotations/gtzan/annotations/beats/gtzan_hiphop_00015.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 29,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "gtzan_rock_00015",
+      "wav": "gtzan/genres/rock/rock.00015.wav",
+      "sha256": "dceb3265caac1d42784dcd774ab4950ad6976300e344490a0736f643620ebcfa",
+      "kind": "real",
+      "split": "held_out",
+      "tags": [
+        "rock"
+      ],
+      "annotations": {
+        "provenance": "GTZAN Rhythm beat/downbeat annotations distributed by Beat This!, commit fd9fcc0896cb78730bae735102c8753ef3a3badd.",
+        "timing_uncertainty_s": null,
+        "beats_file": "annotations/gtzan/annotations/beats/gtzan_rock_00015.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 29,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "gtzan_disco_00015",
+      "wav": "gtzan/genres/disco/disco.00015.wav",
+      "sha256": "beb8da503c437f012b8d6e5e7d835a723769eda1f55b7790186292b4f9936da5",
+      "kind": "real",
+      "split": "held_out",
+      "tags": [
+        "party",
+        "disco"
+      ],
+      "annotations": {
+        "provenance": "GTZAN Rhythm beat/downbeat annotations distributed by Beat This!, commit fd9fcc0896cb78730bae735102c8753ef3a3badd.",
+        "timing_uncertainty_s": null,
+        "beats_file": "annotations/gtzan/annotations/beats/gtzan_disco_00015.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 29,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "gtzan_country_00015",
+      "wav": "gtzan/genres/country/country.00015.wav",
+      "sha256": "ab5f47e29af9f1857b0ad1008cc0653314868f3fd2874cd5f8e655c16ccd2647",
+      "kind": "real",
+      "split": "held_out",
+      "tags": [
+        "country"
+      ],
+      "annotations": {
+        "provenance": "GTZAN Rhythm beat/downbeat annotations distributed by Beat This!, commit fd9fcc0896cb78730bae735102c8753ef3a3badd.",
+        "timing_uncertainty_s": null,
+        "beats_file": "annotations/gtzan/annotations/beats/gtzan_country_00015.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 29,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "gtzan_classical_00007",
+      "wav": "gtzan/genres/classical/classical.00007.wav",
+      "sha256": "a7cedfc74748c1a91919b716379be6d32545454a5f22f6d9456857e8330ed76b",
+      "kind": "real",
+      "split": "held_out",
+      "tags": [
+        "acoustic",
+        "variable_tempo"
+      ],
+      "annotations": {
+        "provenance": "GTZAN Rhythm beat/downbeat annotations distributed by Beat This!, commit fd9fcc0896cb78730bae735102c8753ef3a3badd.",
+        "timing_uncertainty_s": null,
+        "beats_file": "annotations/gtzan/annotations/beats/gtzan_classical_00007.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 29,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "gtzan_jazz_00006",
+      "wav": "gtzan/genres/jazz/jazz.00006.wav",
+      "sha256": "5cf9bbaf0292e930f74759936cef990eb447f71109d9075f8a2c010eea0eaa89",
+      "kind": "real",
+      "split": "held_out",
+      "tags": [
+        "acoustic",
+        "jazz",
+        "swing"
+      ],
+      "annotations": {
+        "provenance": "GTZAN Rhythm beat/downbeat annotations distributed by Beat This!, commit fd9fcc0896cb78730bae735102c8753ef3a3badd.",
+        "timing_uncertainty_s": null,
+        "beats_file": "annotations/gtzan/annotations/beats/gtzan_jazz_00006.beats",
+        "tempo_from_beats": true,
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 29,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "giantsteps_1030011",
+      "wav": "edm/1030011.wav",
+      "sha256": "bc9e446155585bac3a1f2d64beaa535ca17e2df781f0298517e217c7097040d1",
+      "kind": "real",
+      "split": "calibration",
+      "tags": [
+        "edm",
+        "electronica"
+      ],
+      "annotations": {
+        "provenance": "GiantSteps v2 crowdsourced whole-preview tempo, 1030011.LOFI.bpm, commit d51ab2422e76abacfaa86616a57054bc222ec9fd. First 30 seconds evaluated.",
+        "timing_uncertainty_s": null,
+        "tempo": [
+          {
+            "start_s": 0,
+            "end_s": 30,
+            "bpm": 127.0
+          }
+        ],
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 30,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "giantsteps_5377710",
+      "wav": "edm/5377710.wav",
+      "sha256": "1023d78f6c14902faf78ac3228fe2b2ca7b74cc9b7e677bd20d99beaa467872e",
+      "kind": "real",
+      "split": "held_out",
+      "tags": [
+        "edm",
+        "electro-house",
+        "party"
+      ],
+      "annotations": {
+        "provenance": "GiantSteps v2 crowdsourced whole-preview tempo, 5377710.LOFI.bpm, commit d51ab2422e76abacfaa86616a57054bc222ec9fd. First 30 seconds evaluated.",
+        "timing_uncertainty_s": null,
+        "tempo": [
+          {
+            "start_s": 0,
+            "end_s": 30,
+            "bpm": 129.0
+          }
+        ],
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 30,
+            "kind": "acquisition"
+          }
+        ]
+      }
+    },
+    {
+      "id": "giantsteps_172384",
+      "wav": "edm/172384.wav",
+      "sha256": "945b6d677d291532fa2fe83bd18e65683c06206db5136c67e045a32d09a62259",
+      "kind": "real",
+      "split": "held_out",
+      "tags": [
+        "chill-out",
+        "ambiguous_tempo"
+      ],
+      "annotations": {
+        "provenance": "GiantSteps v2 crowdsourced whole-preview tempo, 172384.LOFI.bpm, commit d51ab2422e76abacfaa86616a57054bc222ec9fd. First 30 seconds evaluated. Alternative tempi from the companion v2 JAMS file.",
+        "timing_uncertainty_s": null,
+        "tempo": [
+          {
+            "start_s": 0,
+            "end_s": 30,
+            "bpm": 84.0
+          }
+        ],
+        "locks": [
+          {
+            "start_s": 0,
+            "end_s": 30,
+            "kind": "acquisition"
+          }
+        ],
+        "tempo_alternatives": [
+          {
+            "bpm": 84,
+            "weight": 0.7333
+          },
+          {
+            "bpm": 170,
+            "weight": 0.2667
+          }
+        ]
+      }
+    }
+  ]
+}

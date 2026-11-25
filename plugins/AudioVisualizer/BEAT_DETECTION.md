@@ -53,7 +53,7 @@ The matrix `/diagnostics` endpoint also exposes BPM, beat confidence, tempo stab
 
 ## Regression benchmark
 
-Desktop builds provide `audio_analyzer_benchmark`, which links the same `MusicAnalyzer.cpp` used by the plugin.
+Desktop and emulator builds provide `audio_analyzer_benchmark`, which links the same `MusicAnalyzer.cpp` used by the plugin. The [annotated-track benchmark](../../docs/audio-benchmark.md) documents the corpus, machine-readable reports, and baseline results.
 
 With no arguments it validates synthetic drum material across slow and fast tempos, silence rejection, beat-event cadence, and stale-tempo decay:
 

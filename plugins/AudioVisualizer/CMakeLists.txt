@@ -135,6 +135,42 @@ if(ENABLE_EMULATOR)
         install(TARGETS audio_analysis_dump RUNTIME DESTINATION bin)
 endif()
 
+if(ENABLE_EMULATOR OR ENABLE_DESKTOP)
+        find_package(FFTW3f CONFIG REQUIRED)
+        # Deterministic regression/validation executable for the exact music
+        # analyzer used by the desktop plugin. With no arguments it exercises
+        # synthetic regression tracks. --observe exports per-frame data for
+        # the separately annotated WAV corpus.
+        add_executable(audio_analyzer_benchmark
+                ${CMAKE_SOURCE_DIR}/tests/audio_analyzer_benchmark.cpp
+                desktop/MusicAnalyzer.cpp
+        )
+        target_compile_features(audio_analyzer_benchmark PRIVATE cxx_std_23)
+        target_include_directories(audio_analyzer_benchmark PRIVATE
+                ${LED_MATRIX_GENERATED_DIR}
+                ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/portaudio/include
+        )
+        target_link_libraries(audio_analyzer_benchmark PRIVATE
+                SharedToolsCommon
+                FFTW3::fftw3f
+        )
+        if(NOT WIN32)
+            # Build-tree binaries get the install RPATH (CMAKE_BUILD_WITH_INSTALL_RPATH),
+            # which does not find libSharedToolsCommon.so before installing.
+            set_target_properties(audio_analyzer_benchmark PROPERTIES
+                    BUILD_WITH_INSTALL_RPATH FALSE
+                    BUILD_RPATH "$<TARGET_FILE_DIR:SharedToolsCommon>"
+            )
+        endif()
+        add_test(NAME audio_analyzer_benchmark COMMAND audio_analyzer_benchmark)
+        if(ENABLE_EMULATOR)
+            find_package(Python3 COMPONENTS Interpreter REQUIRED)
+            add_test(NAME audio_benchmark_report
+                    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/audio_benchmark_test.py
+                            $<TARGET_FILE:audio_analyzer_benchmark>)
+        endif()
+endif()
+
 if(ENABLE_DESKTOP)
         set(PA_BUILD_SHARED OFF CACHE BOOL "" FORCE)
         set(PA_BUILD_STATIC ON CACHE BOOL "" FORCE)
@@ -174,32 +210,6 @@ if(ENABLE_DESKTOP)
 
 
         target_include_directories(AudioVisualizer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty)
-
-        # Deterministic regression/validation executable for the exact music
-        # analyzer used by the desktop plugin. With no arguments it exercises
-        # slow/fast tempos, silence/noise rejection, tempo changes and stale
-        # lock decay; pass a PCM16 WAV and optional expected BPM for real audio.
-        add_executable(audio_analyzer_benchmark
-                ${CMAKE_SOURCE_DIR}/tests/audio_analyzer_benchmark.cpp
-                desktop/MusicAnalyzer.cpp
-        )
-        target_compile_features(audio_analyzer_benchmark PRIVATE cxx_std_23)
-        target_include_directories(audio_analyzer_benchmark PRIVATE
-                ${CMAKE_CURRENT_SOURCE_DIR}/desktop
-        )
-        target_link_libraries(audio_analyzer_benchmark PRIVATE
-                SharedToolsCommon
-                FFTW3::fftw3f
-        )
-        if(NOT WIN32)
-            # Build-tree binaries get the install RPATH (CMAKE_BUILD_WITH_INSTALL_RPATH),
-            # which does not find libSharedToolsCommon.so before installing.
-            set_target_properties(audio_analyzer_benchmark PROPERTIES
-                    BUILD_WITH_INSTALL_RPATH FALSE
-                    BUILD_RPATH "$<TARGET_FILE_DIR:SharedToolsCommon>"
-            )
-        endif()
-        add_test(NAME audio_analyzer_benchmark COMMAND audio_analyzer_benchmark)
 
         if(NOT WIN32)
             # Regression for a desktop-only flicker where render() used to skip an
