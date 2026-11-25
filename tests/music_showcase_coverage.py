@@ -14,7 +14,7 @@ import sys
 
 STYLES = ["chill", "edm", "party", "rock", "hiphop", "acoustic"]
 MINIMUM = {style: 3 for style in STYLES}
-MINIMUM.update({"hiphop": 5, "rock": 5, "party": 5})
+MINIMUM.update({"hiphop": 10, "rock": 5, "party": 5})
 
 
 def main(path: str) -> int:

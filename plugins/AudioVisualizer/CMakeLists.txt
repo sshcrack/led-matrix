@@ -37,6 +37,11 @@ register_plugin(AudioVisualizer
         scenes/AudioMarinaSunsetScene.cpp
         scenes/AudioStringLightsScene.cpp
         scenes/AudioCassetteScene.cpp
+        scenes/HipHopScenes.h
+        scenes/AudioGraffitiWallScene.cpp
+        scenes/AudioLowriderScene.cpp
+        scenes/AudioBlockPartyScene.cpp
+        scenes/AudioTurntableScene.cpp
         scenes/GenreVistaScenes.h
         scenes/kit/GenreVistaKit.h
         DESKTOP
