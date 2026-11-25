@@ -197,7 +197,8 @@ void AudioGraffitiWallScene::new_piece()
             }
             dist_[i] = d;
             shadow_[i] = ds;
-            cloud_[i] = (5.0f + 1.8f * std::sin(px * 0.31f) * std::sin(py * 0.27f + 1.3f)) * std::min(sx, sy);
+            // Bubbly lobes: wide in places, almost touching the piece in others.
+            cloud_[i] = (5.5f + 4.0f * std::sin(px * 0.13f + 0.7f) * std::sin(py * 0.17f + 1.3f)) * std::min(sx, sy);
         }
     // Sparkles sit on the top edge of a few forms.
     stars_.clear();
@@ -471,7 +472,8 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
         }
         case Phase::Paint: {
             // Spray bursts land on the beat; the mix keeps the can moving between them.
-            const float speed = 150.0f * k * paintSpeed_->get() * (0.35f + 0.8f * energy + 1.4f * beat_.v + 0.8f * drop_.v);
+            const float speed = 150.0f * k * paintSpeed_->get() *
+                                (0.15f + 0.5f * energy + 3.0f * beat_.v + 0.8f * drop_.v);  // most paint lands in beat bursts
             const size_t before = stroke_;
             const bool wasTraveling = traveling_;
             advance(speed * dt);
@@ -544,16 +546,16 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
         }
 
     // Shine sweep and bright heads on running drips.
-    shine_ += dt * 150.0f * k;
-    shineEnv_.decay(dt, 0.5f);
+    shine_ += dt * 90.0f * k;
+    shineEnv_.decay(dt, 0.9f);
     if (phase_ == Phase::Hold && shineEnv_.v > 0.05f)
         for (int y = top_; y < bottom_; ++y)
             for (int x = std::max(left_, static_cast<int>(shine_ - 40.0f * k)); x < std::min(right_, static_cast<int>(shine_ + 4.0f * k));
                  ++x) {
                 const size_t i = static_cast<size_t>(y * W + x);
                 const float band = std::fabs(x - shine_ + (y - top_) * 0.6f);
-                if (dist_[i] < 0.0f && band < 2.5f * k)
-                    buf_.add(x, y, RGB{255, 255, 255} * (0.5f * shineEnv_.v * (1.0f - band / (2.5f * k))));
+                if (dist_[i] < 0.0f && band < 3.5f * k)
+                    buf_.add(x, y, RGB{255, 255, 255} * (0.6f * shineEnv_.v * (1.0f - band / (3.5f * k))));
             }
     for (const auto& d : drips_)
         if (d.length < d.max)
@@ -638,9 +640,13 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int y = buffTop_; y < buffBottom_; ++y)
             for (int w = 1; w <= static_cast<int>(7 * k); ++w)
                 buf_.add(static_cast<int>(rx) - w, y, RGB{90, 84, 76} * (1.0f - w / (8.0f * k)));
-        const float mid = (buffTop_ + buffBottom_) * 0.5f, half = std::min(14.0f * k, (buffBottom_ - buffTop_) * 0.5f);
+        const float mid = (buffTop_ + buffBottom_) * 0.5f, half = (buffBottom_ - buffTop_) * 0.5f;
+        // Flecks thrown off the wet roller.
+        for (int f = 0; f < 3; ++f)
+            buf_.set(static_cast<int>(rx + (2.0f + rnd() * 8.0f) * k), static_cast<int>(buffTop_ + rnd() * (buffBottom_ - buffTop_)),
+                     BuffPaint * 1.3f);
         rect(buf_, static_cast<int>(rx), static_cast<int>(mid - half), static_cast<int>(rx + 7 * k), static_cast<int>(mid + half),
-             RGB{185, 176, 162});
+             RGB{150, 140, 128});
         rect(buf_, static_cast<int>(rx + 7 * k), static_cast<int>(mid - half), static_cast<int>(rx + 8 * k), static_cast<int>(mid + half),
              RGB{60, 56, 52});
         const float gy = Ground * H / 128.0f;

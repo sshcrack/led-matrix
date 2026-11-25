@@ -247,8 +247,8 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
                 if (window_dancer(c, r)) {
                     const float bob = beat_.v * 1.5f;
                     const float hx = x0 + WindowW * 0.5f + std::sin(time_ * 1.7f + c) * 1.5f;
-                    buf_.disc(hx * sx, (y0 + WindowH - 6.0f + bob) * sy, 2.4f * sx, RGB{40, 20, 20}, false);
-                    R(hx - 3.5f, y0 + WindowH - 3.0f + bob, hx + 3.5f, y0 + WindowH, RGB{40, 20, 20});
+                    buf_.disc(hx * sx, (y0 + WindowH - 7.0f + bob) * sy, 3.0f * sx, RGB{40, 20, 20}, false);
+                    R(hx - 4.5f, y0 + WindowH - 3.5f + bob, hx + 4.5f, y0 + WindowH, RGB{40, 20, 20});
                 }
             }
             else {
@@ -289,7 +289,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int s = 0; s < 2; ++s) {
             const float cx = 8.0f + s * 10.0f, cy = top + 8.5f;
             const float push = std::clamp(cone_ * 5.0f, -0.5f, 1.4f);
-            const float r = 3.8f + push * 1.0f;
+            const float r = 3.8f + push * 1.6f;
             for (int y = static_cast<int>((cy - r - 1) * sy); y <= static_cast<int>((cy + r + 1) * sy); ++y)
                 for (int x = static_cast<int>((cx - r - 1) * sx); x <= static_cast<int>((cx + r + 1) * sx); ++x) {
                     const float d = len((x + 0.5f) / sx - cx, (y + 0.5f) / sy - cy) / r;
@@ -329,7 +329,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
             line(buf_, (dx + 5.5f) * sx, 71.0f * sy, (dx + 9.5f) * sx, (60.0f - 2.0f * drop_.v) * sy, RGB{16, 12, 20});
         }
         // Table with a cloth skirt, two little decks and a mixer glow.
-        const RGB cloth = hsv(palette_.value + 180.0f, 0.6f, 0.45f);
+        const RGB cloth = hsv(palette_.value + 180.0f, 0.35f, 0.22f);  // subdued, the performer is the focus
         R(25.0f, 79.0f, 48.0f, 81.0f, RGB{60, 56, 62});
         R(26.0f, 81.0f, 47.0f, 91.0f, cloth);
         for (float x = 26.0f; x < 47.0f; x += 3.0f) R(x, 81.0f, x + 0.6f, 91.0f, cloth * 0.7f);
@@ -346,6 +346,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
         line(buf_, (dx - 4.0f) * sx, 71.0f * sy, hand * sx, 77.5f * sy, RGB{16, 12, 20});
         line(buf_, (dx - 4.0f) * sx, 72.0f * sy, hand * sx, 78.0f * sy, RGB{16, 12, 20});
         buf_.disc(hand * sx, 77.8f * sy, 1.2f * sx, RGB{20, 14, 24}, false);
+        glow(buf_, hand * sx, 78.0f * sy, 4.0f * sx, RGB{255, 180, 110} * (0.35f + 0.4f * beat_.v));  // deck light on the hands
         glow(buf_, 36.0f * sx, 79.0f * sy, 4.0f * sx, hsv(palette_.value, 0.7f, 1.0f) * (0.3f + 0.4f * beat_.v));
     }
 
@@ -408,7 +409,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
             float bob = 0.0f;
             // Front dancers dip their shoulders in a staggered groove with the tempo.
             if (p.row == 1)
-                bob = p.style == 1   ? 3.5f * std::fabs(std::sin(pumpClock_ + p.phase)) - 1.0f         // head bob on every beat
+                bob = p.style == 1   ? 5.0f * std::fabs(std::sin(pumpClock_ + p.phase)) - 2.0f         // head bob on every beat
                       : p.style == 2 ? 4.0f * std::fabs(std::sin(pumpClock_ * 0.5f + p.phase)) - 1.5f  // deep dip every other beat
                                      : 1.5f * std::sin(pumpClock_ * 0.5f + p.phase);
             else
@@ -430,9 +431,9 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
             int arms = 0;
             if (p.style == 2)
                 arms = 2;
-            else if (p.style == 3 || (p.style == 1 && energy > 0.3f))
-                arms = 1;
-            if (drop_.v > 0.5f && p.style != 3)
+            else if (p.style == 3 || (p.style == 1 && p.row == 0 && energy > 0.5f))
+                arms = 1;  // the front fist-pumper keeps its arms down and dips its shoulders instead
+            if (drop_.v > 0.5f && p.style != 3 && p.row == 1)
                 arms = 2;
             draw_person(p, bob, arms);
         }
