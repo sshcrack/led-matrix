@@ -261,8 +261,10 @@ void KoiPondScene::build_backdrop()
                         if (d > 0.7f && speck > 0.6f)
                             continue;
                         // Spring blossom shows as pink flecks among the leaves.
-                        const bool blossom = speck > 1.0f - 0.22f * L.spring;
-                        put(x, y, blossom ? lit({1.0f, 0.66f, 0.78f}) : scale(c, shade * (0.85f + 0.3f * speck)),
+                        // In a few clusters, softer than the drifting petals.
+                        const bool blossom = hash01(static_cast<uint32_t>(i) * 61u + 5u) > 1.0f - 0.35f * L.spring && speck > 0.45f;
+                        const Rgb leafC = scale(c, shade * (0.85f + 0.3f * speck));
+                        put(x, y, blossom ? mix(leafC, lit({0.92f, 0.62f, 0.72f}), 0.75f) : leafC,
                             leafy * std::clamp((1.0f - d) * 3.0f, 0.0f, 1.0f));
                     }
             }
@@ -280,11 +282,6 @@ void KoiPondScene::update_koi(float dt)
         // Gentle wandering, plus a firm turn back towards open water near the edge.
         float steer = 0.6f * std::sin(k.wander * 1.7f + n) + 0.4f * std::sin(k.wander * 0.63f + n * 2.3f);
         const Point ahead{k.spine[0].x + std::cos(k.heading) * 9.0f, k.spine[0].y + std::sin(k.heading) * 9.0f};
-        if (inside(ahead.x, ahead.y) < 7.0f) {
-            const float toCenter = std::atan2(CY - k.spine[0].y, CX - k.spine[0].x);
-            const float diff = std::remainder(toCenter - k.heading, kTau);
-            steer = diff > 0 ? 2.2f : -2.2f;
-        }
         // Keep clear of the other fish: look at their whole body, not only the
         // head, and ease away early, harder the closer they are.
         for (size_t m = 0; m < koi_.size(); ++m) {
@@ -298,6 +295,12 @@ void KoiPondScene::update_koi(float dt)
                 }
             }
         }
+        // Near the bank, turning back to open water beats everything else.
+        if (inside(ahead.x, ahead.y) < 9.0f) {
+            const float toCenter = std::atan2(CY - k.spine[0].y, CX - k.spine[0].x);
+            const float diff = std::remainder(toCenter - k.heading, kTau);
+            steer = diff > 0 ? 2.2f : -2.2f;
+        }
         k.turn += (steer - k.turn) * std::min(1.0f, dt * 1.2f);
         const float speed = k.speed * chill * (0.75f + 0.25f * std::sin(k.wander * 2.1f + n));
         k.heading += std::clamp(k.turn, -2.2f, 2.2f) * 0.5f * dt;
@@ -305,6 +308,12 @@ void KoiPondScene::update_koi(float dt)
         const float swing = 0.32f * std::sin(t_ * (2.2f + 0.3f * n) + n);
         k.spine[0].x += std::cos(k.heading + swing) * speed * dt;
         k.spine[0].y += std::sin(k.heading + swing) * speed * dt;
+        // Never let the head cross onto the stones: keep it a body width in.
+        if (const float in = inside(k.spine[0].x, k.spine[0].y); in < 4.0f) {
+            const float dx = CX - k.spine[0].x, dy = CY - k.spine[0].y, len = std::max(0.01f, std::sqrt(dx * dx + dy * dy));
+            k.spine[0].x += dx / len * (4.0f - in);
+            k.spine[0].y += dy / len * (4.0f - in);
+        }
         const float gap = SpineGap * k.size;
         for (size_t s = 1; s < k.spine.size(); ++s) {
             const float dx = k.spine[s - 1].x - k.spine[s].x, dy = k.spine[s - 1].y - k.spine[s].y;
@@ -360,18 +369,23 @@ void KoiPondScene::draw_water(float dt)
     }
     // The moon (at night) or the low sun (at dawn and dusk) shows as a few
     // short, wavering streaks on the water.
-    const float moonA = L.night > 0.3f ? 0.35f * L.moon_light : 0.0f, warmA = 0.22f * L.twilight * (1.0f - 0.8f * L.overcast);
+    const float moonA = L.night > 0.3f ? 0.35f * L.moon_light : 0.0f,
+                warmA = (L.morning ? 0.70f : 0.26f) * L.twilight * (1.0f - 0.8f * L.overcast);
     for (int pass = 0; pass < 2; ++pass) {
         const float a = pass == 0 ? moonA : warmA;
         if (a < 0.01f)
             continue;
         const Point at = pass == 0 ? Point{CX + 14.0f, CY - 16.0f} : Point{CX + 22.0f - 44.0f * L.sun_x, CY - 22.0f};
-        const Rgb c = pass == 0 ? Rgb{0.82f, 0.88f, 1.0f} : mix(from_env(L.sun_color), {1.0f, 0.75f, 0.5f}, 0.3f);
+        const Rgb c = pass == 0 ? Rgb{0.82f, 0.88f, 1.0f}
+                                : (L.morning ? Rgb{1.0f, 0.74f, 0.70f} : mix(from_env(L.sun_color), {1.0f, 0.75f, 0.5f}, 0.3f));
         // A soft, vertically stretched smear: each row fades out to both
         // sides and sways on its own, brightest in the middle.
-        for (int i = -6; i <= 6; ++i) {
-            const float y = at.y + i * 1.0f, fall = 1.0f - std::fabs(static_cast<float>(i)) / 7.0f;
-            const float half = 1.5f + 3.0f * fall, cx = at.x + 0.9f * std::sin(t_ * 0.9f + i * 0.8f);
+        // The low dawn sun lays a longer, wider band than the moon.
+        const int rows = pass == 1 && L.morning ? 10 : 6;
+        const float wide = pass == 1 && L.morning ? 1.6f : 1.0f;
+        for (int i = -rows; i <= rows; ++i) {
+            const float y = at.y + i * 1.0f, fall = 1.0f - std::fabs(static_cast<float>(i)) / (rows + 1.0f);
+            const float half = (1.5f + 3.0f * fall) * wide, cx = at.x + 0.9f * std::sin(t_ * 0.9f + i * 0.8f);
             const float shimmer = 0.75f + 0.25f * std::sin(t_ * 1.3f + i * 1.9f);
             const int row = static_cast<int>(y * sy);
             for (int c2 = static_cast<int>((cx - half) * sx); c2 <= static_cast<int>((cx + half) * sx); ++c2) {
@@ -645,6 +659,8 @@ bool KoiPondScene::render(rgb_matrix::FrameCanvas* canvas)
     if (L.lamp() > 0.02f) {
         const float flicker = 0.9f + 0.1f * std::sin(t_ * 7.0f) * std::sin(t_ * 3.1f);
         cv_.glow(Lantern.x * sx, Lantern.y * sy, 24.0f * k, {1.0f, 0.62f, 0.28f}, (0.30f + 0.12f * L.twilight) * L.lamp() * flicker);
+        // A brighter pool on the lawn and stones right around it.
+        cv_.glow(Lantern.x * sx, Lantern.y * sy, 11.0f * k, {1.0f, 0.70f, 0.36f}, 0.45f * L.lamp() * flicker);
         cv_.ellipse(Lantern.x * sx, Lantern.y * sy, 1.5f * k, 1.5f * k, 0.0f, {1.0f, 0.82f, 0.5f}, L.lamp());
     }
     // Fireflies over the water on summer nights.
