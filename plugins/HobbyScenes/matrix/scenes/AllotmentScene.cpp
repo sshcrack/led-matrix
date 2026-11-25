@@ -130,16 +130,17 @@ void AllotmentScene::build_backdrop()
     }
     // After rain, puddles in the low spots of the path mirror the sky.
     if (wet > 0.05f)
-        for (const auto [px, py, pr] : {std::array<float, 3>{28.5f, 115.5f, 3.8f}, std::array<float, 3>{29.6f, 101.0f, 1.6f}}) {
+        for (const auto [px, py, pr] : {std::array<float, 3>{28.0f, 117.0f, 4.6f}, std::array<float, 3>{29.6f, 101.0f, 1.6f}}) {
             const Rgb skyC = from_env(L.sky(0.4f)), mud = scale(terrain({0.30f, 0.26f, 0.20f}), 0.6f);
             const Rgb water = mix(skyC, {1, 1, 1}, 0.12f);
+            art.oval(px, py, pr * 1.5f, pr * 0.7f, scale(terrain({0.30f, 0.24f, 0.18f}), 0.7f), 0.5f * wet);  // damp ground round it
             // Three overlapping, flat lobes sunk into the mud: a dark far lip
             // (the bank's shadow) and the sky's reflection, broken by mud.
             for (int lobe = 0; lobe < 3; ++lobe) {
                 const float ox = (lobe - 1) * pr * 0.55f, oy = (lobe == 1 ? -0.2f : 0.2f) * (1 + lobe % 2),
                             r = pr * (0.55f + 0.2f * (lobe % 2));
-                art.oval(px + ox * 0.7f, py + oy * 0.5f - 0.4f, r, std::max(0.7f, r * 0.42f), mud, 0.9f * wet);
-                art.oval(px + ox * 0.7f, py + oy * 0.5f, r * 0.85f, std::max(0.6f, r * 0.38f), water, 0.9f * wet);
+                art.oval(px + ox * 0.7f, py + oy - 0.4f, r, std::max(0.7f, r * 0.55f), mud, 0.9f * wet);
+                art.oval(px + ox * 0.7f, py + oy, r * 0.85f, std::max(0.6f, r * 0.48f), water, 0.9f * wet);
             }
             for (int i = 0; i < 4; ++i)
                 dot(px - pr + 2.0f * pr * hash01(static_cast<uint32_t>(px) * 7u + i), py + 0.4f * (hash01(i * 3u + 1u) - 0.5f), mud,
@@ -394,6 +395,17 @@ void AllotmentScene::build_backdrop()
                 if (hash01(static_cast<uint32_t>(x * 3 + b.top)) > 0.3f)
                     art.rect(x, b.top + b.height + 1.1f, 2.5f + 1.5f * hash01(static_cast<uint32_t>(x * 5 + b.top)), 0.7f,
                              lit({0.56f, 0.62f, 0.76f}));
+            // A few rounded drifts bury stretches of the edging.
+            for (int d = 0; d < 3; ++d) {
+                const float x = b.x0 + 8.0f + (b.x1 - b.x0 - 16.0f) * (d + hash01(static_cast<uint32_t>(b.top) * 3u + d)) / 3.0f;
+                art.oval(x, b.top + b.height + 0.6f, 4.0f + 2.0f * hash01(d * 7u + 1u), 1.9f, lit({0.90f, 0.93f, 0.98f}), L.snow_cover);
+            }
+            if (&b == &Beds[1])
+                for (int i = 0; i < 6; ++i) {  // a clump of old stalks
+                    const float x = 70.0f + i * 1.3f, y = b.top + 4.0f + 0.6f * (i % 2);
+                    cap(x, y, 0.25f, x + 0.5f * (i % 3 - 1), y - 3.0f - 1.0f * hash01(i * 3u), 0.18f, lit({0.30f, 0.24f, 0.16f}));
+                    art.oval(x + 0.8f, y + 0.3f, 0.9f, 0.3f, lit({0.56f, 0.62f, 0.76f}), 0.6f);
+                }
             if (&b == &Beds[2]) {
                 // The nearest bed shows its height: a shaded side under the snow.
                 art.rect(b.x0 - 1.0f, b.top + b.height + 0.8f, b.x1 - b.x0 + 2.0f, 1.6f, lit({0.50f, 0.56f, 0.70f}));
@@ -494,7 +506,7 @@ void AllotmentScene::build_backdrop()
 
     // Rain: the wet eave and roof edge pick up a few dull highlights.
     if (wet > 0.1f)
-        for (int i = 0; i < 6; ++i) dot(2.0f + 25.0f * hash01(i * 19u + 3u), 65.0f, lit({0.62f, 0.66f, 0.72f}), 0.5f * wet);
+        for (int i = 0; i < 9; ++i) dot(1.0f + 27.0f * hash01(i * 19u + 3u), 65.2f, lit({0.70f, 0.74f, 0.80f}), 0.8f * wet);
 
     // Moonlight picks out the roof ridge and the top fence rail at night.
     if (L.night > 0.3f) {
@@ -502,10 +514,14 @@ void AllotmentScene::build_backdrop()
         const float a = 0.6f * L.night * std::min(1.0f, 0.3f + L.moon_light * 2.0f);
         cap(1.0f, 65.4f, 0.35f, 15.0f, 56.4f, 0.35f, moon, a);
         cap(15.0f, 56.4f, 0.35f, 29.0f, 65.4f, 0.35f, moon, a * 0.6f);
-        art.rect(36.0f, FenceY - 7.0f, 92.0f, 0.5f, mix(lit({0.46f, 0.36f, 0.26f}), moon, a));
+        for (float x = 36.0f; x < 128.0f; x += 8.0f)
+            if (hash01(static_cast<uint32_t>(x)) > 0.45f)
+                art.rect(x + 1.5f, FenceY - 7.0f, 4.0f, 0.5f, mix(lit({0.46f, 0.36f, 0.26f}), moon, a));
+        art.rect(Beds[2].x0 - 1.0f, Beds[2].top - 0.6f, 6.0f, 0.6f, mix(lit({0.44f, 0.34f, 0.24f}), moon, a));  // nearest bed corner
         for (int y = static_cast<int>(FenceY * sy); y < bg.h; ++y) {
             const float t = (y / sy - FenceY) / (128 - FenceY);
-            bg.blend(static_cast<int>((33.0f - t) * sx), y, moon, a * 0.8f);  // the moonward edge of the path
+            if (hash01(static_cast<uint32_t>(y * 7)) > 0.35f)
+                bg.blend(static_cast<int>((33.0f - t) * sx), y, moon, a * 0.4f);  // the moonward edge of the path
         }
         art.rect(15.5f, 73.5f, 8.0f, 0.5f, mix(lit({0.30f, 0.36f, 0.32f}), moon, a));  // door frame
         for (float x : {36.0f, 44.0f, 52.0f}) art.rect(x + 0.6f, FenceY - 8.0f, 0.4f, 8.0f, mix(lit({0.30f, 0.23f, 0.17f}), moon, a));
@@ -605,7 +621,7 @@ void AllotmentScene::draw_sunflowers()
                            0.04f * std::sin(t_ * 0.9f + i * 1.7f) * (0.3f + L.storm);
         const float x = 41.0f + i * 7.0f + 1.5f * hash01(i * 7u), base = FenceY + 1.0f;
         const float h = (11.0f + 3.0f * hash01(i * 7u + 1u)) * (0.35f + 0.65f * std::clamp(su + au, 0.0f, 1.0f));
-        const float tx = x + lean * h * 0.35f, ty = base - h * (1.0f - 0.03f * std::fabs(lean));
+        const float tx = x + lean * h * (0.35f + 0.25f * L.storm), ty = base - h * (1.0f - 0.03f * std::fabs(lean));
         const Rgb stem = calm(plant({0.30f, 0.50f, 0.18f}, 0.0f, 0.3f, 0.6f));
         // The stem bends: the foot stays put, most of the lean is near the top.
         const float mx = x + (tx - x) * 0.25f, my = base - h * 0.5f;
@@ -826,12 +842,20 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
         // Short stretches of the roof edge and the puddles catch the flash.
         cv_.capsule(6.0f * sx, 62.2f * sy, 0.35f * k, 12.0f * sx, 58.4f * sy, 0.35f * k, {0.85f, 0.88f, 1.0f}, 0.45f * L.flash);
         cv_.capsule(19.0f * sx, 58.9f * sy, 0.35f * k, 23.0f * sx, 61.5f * sy, 0.35f * k, {0.85f, 0.88f, 1.0f}, 0.35f * L.flash);
-        for (const auto [px, py, pr] : {std::array<float, 3>{28.5f, 115.0f, 3.0f}, std::array<float, 3>{29.6f, 101.0f, 1.6f}})
+        for (const auto [px, py, pr] : {std::array<float, 3>{28.0f, 117.0f, 3.8f}, std::array<float, 3>{29.6f, 101.0f, 1.6f}})
             cv_.ellipse(px * sx, py * sy, pr * k, 0.5f * k, 0.0f, {0.80f, 0.84f, 1.0f}, 0.5f * L.flash * L.wetness);
     }
     paint_clouds_behind(cv_, backdrop_, sky_, L, t_, Horizon * sy, 4 * sy, 40 * sy, 21);
 
     draw_tractor(dt);
+    if (L.fog > 0.02f) {
+        // The far field and its furrows go first in the mist.
+        const Rgb haze = from_env(L.haze);
+        for (int y = static_cast<int>((Horizon - 8.0f) * sy); y < static_cast<int>(HedgeY * sy); ++y)
+            for (int x = 0; x < cv_.w; ++x)
+                if (field_[static_cast<size_t>(y * cv_.w + x)])
+                    cv_.blend(x, y, haze, 0.6f * L.fog);
+    }
     draw_sunflowers();
     draw_smoke(dt);
     update_crows(dt);
@@ -863,18 +887,26 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
         const float sway = 2.2f * std::sin(t_ * 0.7f);
         // A sky reflection that stretches and now and then breaks apart.
         const float len = 1.2f + 0.8f * std::sin(t_ * 0.9f), brk = std::max(0.0f, std::sin(t_ * 0.45f)) * 1.2f;
-        cv_.capsule((26.6f + 0.5f * sway) * sx, 115.2f * sy, 0.35f * k, (26.6f + len + 0.5f * sway) * sx, 115.2f * sy, 0.35f * k, shine,
+        cv_.capsule((26.6f + 0.5f * sway) * sx, 117.0f * sy, 0.35f * k, (26.6f + len + 0.5f * sway) * sx, 117.0f * sy, 0.35f * k, shine,
                     0.5f * wet);
-        cv_.capsule((27.6f + len + brk + 0.5f * sway) * sx, 115.2f * sy, 0.3f * k, (28.6f + len + brk + 0.5f * sway) * sx, 115.2f * sy,
+        cv_.capsule((27.6f + len + brk + 0.5f * sway) * sx, 117.0f * sy, 0.3f * k, (28.6f + len + brk + 0.5f * sway) * sx, 117.0f * sy,
                     0.3f * k, shine, 0.35f * wet);
         if (L.rain > 0.1f)
             for (int ring = 0; ring < 2; ++ring) {
                 const float clock = t_ * 1.6f + ring * 0.5f;
                 const float age = std::fmod(clock, 1.0f), rx = 26.0f + 5.0f * hash01(static_cast<uint32_t>(clock) * 3u + ring);
-                cv_.ellipse(rx * sx, 115.6f * sy, (0.5f + 1.4f * age) * k, (0.3f + 0.4f * age) * k, 0.0f, shine,
+                cv_.ellipse(rx * sx, 117.4f * sy, (0.5f + 1.4f * age) * k, (0.3f + 0.4f * age) * k, 0.0f, shine,
                             0.4f * (1.0f - age) * L.rain);
             }
     }
+    // Drips run off the shed's eave in the rain.
+    if (L.rain > 0.1f)
+        for (int i = 0; i < 3; ++i) {
+            const float clock = t_ * 0.9f + i * 0.37f, fall = std::fmod(clock, 1.0f);
+            const float dx = 2.0f + 24.0f * hash01(static_cast<uint32_t>(clock) * 5u + i);
+            cv_.blend(static_cast<int>(dx * sx), static_cast<int>((65.6f + fall * fall * 26.0f) * sy),
+                      mix(from_env(L.sky(0.3f)), {1, 1, 1}, 0.3f), 0.6f * L.rain);
+        }
     // Leaves in autumn, petals in spring, fireflies on summer nights.
     drift_.update(raw, L, cv_.w, cv_.h, [&](float) { return cv_.h + 6.0f; }, 0.4f);
     drift_.draw(surface(), L);
@@ -901,7 +933,7 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
         // The far field, tree and sunflowers sink further into the haze.
         const Rgb haze = from_env(L.haze);
         for (int y = static_cast<int>(40.0f * sy); y < static_cast<int>(80.0f * sy); ++y) {
-            const float a = 0.62f * L.fog * smoothstep(40.0f * sy, 54.0f * sy, static_cast<float>(y)) *
+            const float a = 0.4f * L.fog * smoothstep(40.0f * sy, 54.0f * sy, static_cast<float>(y)) *
                             (1.0f - smoothstep(66.0f * sy, 80.0f * sy, static_cast<float>(y)));
             for (int x = 0; x < cv_.w; ++x) cv_.blend(x, y, haze, a);
         }
