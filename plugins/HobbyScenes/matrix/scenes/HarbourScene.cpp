@@ -143,9 +143,9 @@ void HarbourScene::build_backdrop()
     for (float x : {22.0f, 40.0f, 56.0f}) rect(x, QuayTop - 1, 2, 1, lit({0.12f, 0.12f, 0.13f}, 0.05f));
 
     // The pier with its lighthouse, red and white bands under a lantern room.
-    rect(PierStart, PierTop, 128 - PierStart, 2, terrain({0.56f, 0.53f, 0.48f}, 0.2f, 1.0f));
-    rect(PierStart, PierTop + 2, 128 - PierStart, PierWater - PierTop - 2, lit({0.34f, 0.33f, 0.31f}, 0.2f));
-    for (float x = PierStart + 2; x < 128; x += 6) rect(x, PierTop + 2, 1, PierWater - PierTop - 2, lit({0.24f, 0.23f, 0.22f}, 0.2f));
+    rect(PierStart, PierTop, 128 - PierStart, 2, terrain({0.56f, 0.53f, 0.48f}, 0.4f, 1.0f));
+    rect(PierStart, PierTop + 2, 128 - PierStart, PierWater - PierTop - 2, lit({0.34f, 0.33f, 0.31f}, 0.4f));
+    for (float x = PierStart + 2; x < 128; x += 6) rect(x, PierTop + 2, 1, PierWater - PierTop - 2, lit({0.24f, 0.23f, 0.22f}, 0.4f));
     for (int y = static_cast<int>(LampY) + 5; y < static_cast<int>(PierTop); ++y) {
         const float half = 2.0f + 1.6f * (y - LampY - 5) / (PierTop - LampY - 5);
         const bool red = ((y - static_cast<int>(LampY)) / 6) % 2 == 0;
@@ -172,16 +172,40 @@ void HarbourScene::build_backdrop()
             tint(0, QuayEnd, QuayTop, QuayWater, {0.0f, 0.0f, 0.0f}, 0.18f * wetness);  // darker wet stone
             tint(PierStart, 128, PierTop, PierWater, {0.0f, 0.0f, 0.0f}, 0.18f * wetness);
             for (float x = 0; x < QuayEnd; x += 1.0f)
-                tint(x, x + 1, QuayTop, QuayTop + 1, sheen, (0.25f + 0.2f * hash01(static_cast<uint32_t>(x) * 13u)) * wetness);
+                tint(x, x + 1, QuayTop, QuayTop + 2, sheen, (0.40f + 0.3f * hash01(static_cast<uint32_t>(x) * 13u)) * wetness);
             for (float x = PierStart; x < 128; x += 1.0f)
-                tint(x, x + 1, PierTop, PierTop + 1, sheen, (0.25f + 0.2f * hash01(static_cast<uint32_t>(x) * 17u)) * wetness);
+                tint(x, x + 1, PierTop, PierTop + 2, sheen, (0.40f + 0.3f * hash01(static_cast<uint32_t>(x) * 17u)) * wetness);
         }
         if (frost > 0.02f) {
             tint(0, QuayEnd, QuayTop, QuayTop + 1, rime, 0.65f * frost);
             tint(PierStart, 128, PierTop, PierTop + 1, rime, 0.65f * frost);
             tint(0, QuayEnd, QuayWater - 1, QuayWater, rime, 0.35f * frost);
         }
+        // Climbing ivy on the white house: green through summer, red in autumn,
+        // bare stems in winter.
+        {
+            const Rgb ivy = mix(plant({0.22f, 0.42f, 0.16f}), lit({0.72f, 0.16f, 0.10f}, 0.1f), std::clamp(L.autumn * 1.3f, 0.0f, 1.0f));
+            const float leaves = 1.0f - std::clamp(L.winter * 1.3f, 0.0f, 1.0f);
+            for (int y = 70; y < static_cast<int>(QuayTop); ++y)
+                for (int x = 26; x < 34; ++x) {
+                    const float reach = 1.0f - (y - 70) / 16.0f;  // thins out upwards
+                    const float h = hash01(static_cast<uint32_t>(x * 53 + y * 977));
+                    if (h < 0.15f + 0.55f * reach + 0.3f * std::sin(x * 1.3f))
+                        tint(static_cast<float>(x), x + 1.0f, static_cast<float>(y), y + 1.0f,
+                             leaves > 0.1f ? ivy : lit({0.30f, 0.24f, 0.20f}, 0.1f), leaves > 0.1f ? 0.95f * leaves : 0.5f);
+                }
+        }
         const float litter = std::clamp(std::max(L.spring, L.autumn) - L.snow_cover, 0.0f, 1.0f);
+        // Pots of blossom (spring) or drifts of leaves (autumn) along the quay.
+        if (litter > 0.05f)
+            for (float cx : {6.0f, 21.0f, 37.0f, 49.0f})
+                for (uint32_t i = 0; i < 7; ++i) {
+                    const float x = cx + 4.0f * (hash01(static_cast<uint32_t>(cx) * 7u + i) - 0.5f),
+                                y = QuayTop - (i % 3 == 0 ? 1.0f : 0.0f);
+                    const Rgb c = L.autumn > L.spring ? (i % 2 ? Rgb{0.88f, 0.45f, 0.12f} : Rgb{0.72f, 0.24f, 0.10f})
+                                                      : (i % 2 ? Rgb{1.0f, 0.62f, 0.78f} : Rgb{1.0f, 0.86f, 0.90f});
+                    tint(x, x + 1, y, y + 1, lit(c, 0.1f), 0.95f * litter);
+                }
         if (litter > 0.05f)
             for (uint32_t i = 0; i < 14; ++i) {
                 const float x = 80.0f + 15.0f * hash01(i * 3u + 1u), y = PierTop + (hash01(i * 3u + 2u) > 0.5f ? 1.0f : 0.0f);
@@ -330,11 +354,20 @@ void HarbourScene::draw_boat(float x, float waterline, float s, float face, floa
     const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f;
     // The boat is drawn bow to the right and mirrored (and foreshortened while
     // it swings round) by `face`: 1 heading right, -1 heading left.
+    // Rows are spread over the two pixels they fall between, so bobbing glides
+    // instead of hopping a whole pixel.
     const auto put = [&](float px, float py, Rgb c, float a = 1.0f) {
-        const int ix = static_cast<int>((x + (px - x) * face) * sx), iy = static_cast<int>(py * sy);
-        if (ix < 0 || iy < 0 || ix >= cv_.w || iy >= cv_.h || (mask && (*mask)[static_cast<size_t>(iy * cv_.w + ix)]))
-            return;
-        cv_.blend(ix, iy, c, a);
+        const int ix = static_cast<int>((x + (px - x) * face) * sx);
+        const float fy = py * sy - 0.5f;
+        const int iy0 = static_cast<int>(std::floor(fy));
+        const float f = fy - static_cast<float>(iy0);
+        for (int r = 0; r < 2; ++r) {
+            const int iy = iy0 + r;
+            const float w = r == 0 ? 1.0f - f : f;
+            if (w <= 0.0f || ix < 0 || iy < 0 || ix >= cv_.w || iy >= cv_.h || (mask && (*mask)[static_cast<size_t>(iy * cv_.w + ix)]))
+                continue;
+            cv_.blend(ix, iy, c, a * w);
+        }
     };
     const auto box = [&](float x0, float y0, float w, float h, Rgb c, float a = 1.0f) {
         for (float yy = y0; yy < y0 + h; yy += 1.0f / sy)
@@ -371,7 +404,7 @@ void HarbourScene::draw_boat(float x, float waterline, float s, float face, floa
     }
 }
 
-void HarbourScene::draw_boats(float dt)
+void HarbourScene::draw_moored()
 {
     const auto& L = env();
     const float swell = 0.6f + 1.6f * L.storm + 0.5f * std::fabs(L.wind);
@@ -383,6 +416,12 @@ void HarbourScene::draw_boats(float dt)
         draw_boat(x, wl + bob, i == 0 ? 1.15f : 1.0f, 1.0f, roll, boat_color(i == 0 ? Rgb{0.16f, 0.26f, 0.46f} : Rgb{0.24f, 0.46f, 0.36f}),
                   boat_color({0.90f, 0.88f, 0.84f}), true, nullptr);
     }
+}
+
+void HarbourScene::draw_boats(float dt)
+{
+    const auto& L = env();
+    const float swell = 0.6f + 1.6f * L.storm + 0.5f * std::fabs(L.wind);
     // The third boat comes in, moors, then heads out to sea and back again.
     voyage_ = std::fmod(voyage_ + dt, Cycle);
     float u;            // 0 at its mooring .. 1 on the horizon
@@ -512,6 +551,11 @@ bool HarbourScene::render(rgb_matrix::FrameCanvas* canvas)
             cv_.glow(x * sx, 77.5f * sy, 5.0f * k, {1.0f, 0.72f, 0.38f}, 0.35f * L.lamp());
             cv_.set(static_cast<int>(x * sx), static_cast<int>(77.5f * sy), {1.0f, 0.85f, 0.55f});
         }
+    // Morning mist lies on the water and lifts as the sun climbs. The moored
+    // boats sit in front of it, so fog keeps them clear against the far pier.
+    const float mist = 0.30f * L.twilight * (L.morning ? 1.0f : 0.35f);
+    Environment::paint_fog(surface(), L, t_, 58.0f * sy, static_cast<float>(cv_.h), mist);
+    draw_moored();
     // Winter mornings are cold: a cool cast over everything.
     if (L.winter > 0.02f)
         for (size_t i = 0; i < cv_.px.size(); i += 3) {
@@ -526,9 +570,6 @@ bool HarbourScene::render(rgb_matrix::FrameCanvas* canvas)
             cv_.px[i + 1] += 0.58f * 0.25f * L.flash;
             cv_.px[i + 2] += 0.70f * 0.25f * L.flash;
         }
-    // Morning mist lies on the water and lifts as the sun climbs.
-    const float mist = 0.30f * L.twilight * (L.morning ? 1.0f : 0.35f);
-    Environment::paint_fog(surface(), L, t_, 58.0f * sy, static_cast<float>(cv_.h), mist);
     // Rain falls into the water (the rings show it), so no splashes line the
     // quay and pier.
     paint_weather(raw, Horizon * sy, [&](float) { return cv_.h + 6.0f; });  // below the frame
