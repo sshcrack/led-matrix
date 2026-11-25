@@ -181,7 +181,7 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
     // A scratch on strong onsets: push the record forward and drag it back.
     if (scratching_->get() && events_.onsetHit && scratch_ >= 1.0f && (onset > 0.45f || snare > 0.5f)) {
         scratch_ = 0.0f;
-        scratchAmp_ = 8.0f + 8.0f * std::max(onset, snare);
+        scratchAmp_ = 12.0f + 8.0f * std::max(onset, snare);
     }
     // Crossfader cuts on snares and hats while scratching, otherwise it rests open.
     if (events_.onsetHit && (snare > 0.4f || hihat > 0.55f)) {
@@ -332,10 +332,10 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
         draw_hand(hx - 2.0f, hy, 0.15f + along * 0.6f, lift, 1.1f);
         // Fader hand from the lower right on the crossfader.
         const float fx = 96.5f + 24.0f * fader_;
-        draw_hand(fx + 3.5f, 100.0f, -Pi * 0.62f, 0.3f, 1.0f);
+        draw_hand(fx + 1.0f, 104.0f, -Pi * 0.5f - (fader_ - 0.5f) * 0.7f, 0.3f, 1.0f);  // from below, the wrist turns with the cut
         // Crossfader cap with a bright edge, pinched by the fingertips below it.
-        capsule(buf_, sx, sy, fx, 88.5f, fx, 94.0f, 2.8f, RGB{255, 255, 255});
-        capsule(buf_, sx, sy, fx, 89.0f, fx, 93.5f, 1.9f, hsv(palette_.value, 0.5f, 0.9f));
+        capsule(buf_, sx, sy, fx, 88.0f, fx, 94.5f, 3.2f, RGB{255, 255, 255});
+        capsule(buf_, sx, sy, fx, 88.5f, fx, 94.0f, 2.3f, hsv(palette_.value, 0.5f, 0.9f));
     }
 
     // Shift the booth down a little and run an LED strip along the far edge

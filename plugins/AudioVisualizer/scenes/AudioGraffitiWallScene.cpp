@@ -83,7 +83,7 @@ void AudioGraffitiWallScene::init_world()
             const RGB brick = mortar ? RGB{24, 22, 24} : RGB{70, 34, 26} * tone;
             wall_[i] = brick * (0.28f + 0.95f * light_[i]);
             // Paint follows the brick: mortar joints stay visible through it.
-            texture_[i] = mortar ? 0.7f : 0.9f + 0.12f * tone;
+            texture_[i] = mortar ? 0.84f : 0.95f + 0.06f * tone;
         }
     drips_.clear();
     paletteIndex_ = static_cast<int>(rnd() * ColourwayCount) % ColourwayCount;
@@ -157,7 +157,7 @@ void AudioGraffitiWallScene::new_piece()
     dist_.assign(n, 1e3f);
     shadow_.assign(n, 1e3f);
     cloud_.assign(n, 0.0f);
-    const float off = 2.6f * std::min(sx, sy);
+    const float off = 3.6f * std::min(sx, sy);
     const float wallTop = (WallTop + 3) * sy, wallBottom = (Ground - 1) * sy;
     float minX = 1e9f, maxX = -1e9f, minY = 1e9f, maxY = -1e9f;
     for (const auto& c : capsules_) {
@@ -386,7 +386,7 @@ void AudioGraffitiWallScene::advance(float distance)
             continue;
         }
         const Point& p = s.pts[point_];
-        spray(p.x, p.y, s.radius, s.layer, s.layer == Layer::Cloud ? 0.8f : 0.75f);
+        spray(p.x, p.y, s.radius, s.layer, s.layer == Layer::Cloud ? 0.8f : 0.92f);
         canX_ = p.x;
         canY_ = p.y;
         sub_ -= s.layer == Layer::Highlight ? 1.2f : 0.6f;
@@ -576,6 +576,13 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
             glow(buf_, canX_, canY_, 6.5f * k, paintC * (0.45f * spray_.v));
             // Bright spray head right where the paint lands.
             buf_.disc(canX_, canY_, 1.3f * k, lerp(paintC, RGB{255, 255, 255}, 0.5f) * std::min(1.0f, 0.4f + spray_.v), true);
+            // A fan of bright overspray around the tip, densest on the beat.
+            const int specks = static_cast<int>(4 + 8 * spray_.v);
+            for (int s = 0; s < specks; ++s) {
+                const float a = rnd() * Tau, r = (1.5f + rnd() * 3.5f) * k;
+                buf_.add(static_cast<int>(canX_ + std::cos(a) * r), static_cast<int>(canY_ + std::sin(a) * r),
+                         lerp(paintC, RGB{255, 255, 255}, 0.35f) * (0.6f * spray_.v));
+            }
         }
         // The can, held just right of and below the spray point; it shakes on the beat between strokes.
         const float jig = traveling_ ? std::sin(time_ * 40.0f) * shake_ * 1.2f * k : 0.0f;
@@ -594,15 +601,15 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
         const float rx = buffLeft_ + roller_;
         // Wet edge just behind the roller, a wide roller head and its pole.
         for (int y = buffTop_; y < buffBottom_; ++y)
-            for (int w = 1; w <= static_cast<int>(3 * k); ++w)
-                buf_.add(static_cast<int>(rx) - w, y, RGB{40, 36, 34} * (1.0f - w / (4.0f * k)));
+            for (int w = 1; w <= static_cast<int>(5 * k); ++w)
+                buf_.add(static_cast<int>(rx) - w, y, RGB{70, 64, 58} * (1.0f - w / (6.0f * k)));
         const float mid = (buffTop_ + buffBottom_) * 0.5f, half = std::min(14.0f * k, (buffBottom_ - buffTop_) * 0.5f);
-        rect(buf_, static_cast<int>(rx), static_cast<int>(mid - half), static_cast<int>(rx + 3 * k), static_cast<int>(mid + half),
-             RGB{170, 162, 150});
-        rect(buf_, static_cast<int>(rx + 3 * k), static_cast<int>(mid - half), static_cast<int>(rx + 4 * k), static_cast<int>(mid + half),
+        rect(buf_, static_cast<int>(rx), static_cast<int>(mid - half), static_cast<int>(rx + 5 * k), static_cast<int>(mid + half),
+             RGB{185, 176, 162});
+        rect(buf_, static_cast<int>(rx + 5 * k), static_cast<int>(mid - half), static_cast<int>(rx + 6 * k), static_cast<int>(mid + half),
              RGB{60, 56, 52});
         const float gy = Ground * H / 128.0f;
-        for (int t = 0; t < 2; ++t) line(buf_, rx + 4.0f * k + t, mid, rx + 16.0f * k + t, gy + 10.0f * k, RGB{140, 100, 60});
+        for (int t = 0; t < 2; ++t) line(buf_, rx + 6.0f * k + t, mid, rx + 20.0f * k + t, gy + 10.0f * k, RGB{140, 100, 60});
     }
 
     buf_.blit(canvas);

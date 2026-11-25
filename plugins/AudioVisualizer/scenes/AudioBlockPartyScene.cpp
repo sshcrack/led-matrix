@@ -173,13 +173,13 @@ void AudioBlockPartyScene::draw_person(const Person& p, float bob, int arms)
     const float reach = p.style == 2 ? 10.5f : 7.0f;  // the both-hands dancer reaches high above the crowd
     if (arms >= 1) {
         const float bx = p.x + sway * 0.7f + shoulder * s;
-        limb(bx, headY + 6.5f * s, bx + 2.5f * s + wave, headY - reach * s + pump, 1.3f * s);
-        blob(bx + 2.5f * s + wave, headY - (reach + 0.5f) * s + pump, 1.8f * s, 1.8f * s);
+        limb(bx, headY + 6.5f * s, bx + 5.0f * s + wave, headY - reach * s + pump, 1.3f * s);
+        blob(bx + 5.0f * s + wave, headY - (reach + 0.5f) * s + pump, 1.8f * s, 1.8f * s);
     }
     if (arms >= 2) {
         const float bx = p.x + sway * 0.7f - shoulder * s;
-        limb(bx, headY + 6.5f * s, bx - 2.5f * s, headY - (reach - 0.5f) * s + pump, 1.3f * s);
-        blob(bx - 2.5f * s, headY - reach * s + pump, 1.8f * s, 1.8f * s);
+        limb(bx, headY + 6.5f * s, bx - 5.0f * s, headY - (reach - 0.5f) * s + pump, 1.3f * s);
+        blob(bx - 5.0f * s, headY - reach * s + pump, 1.8f * s, 1.8f * s);
     }
 }
 
@@ -309,6 +309,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
     // DJ behind the table: nodding head, headphones, one hand up on drops.
     {
         glow(buf_, 36.0f * sx, 70.0f * sy, 22.0f * sx, RGB{255, 150, 70} * (0.55f + 0.35f * beat_.v));  // warm backlight
+        glow(buf_, 30.0f * sx, 90.0f * sy, 26.0f * sx, RGB{255, 140, 60} * (0.35f + 0.3f * beat_.v));   // pool on the pavement
         const float nod = beat_.v * 1.4f;
         const float dx = 36.0f;
         R(dx - 5.0f, 69.0f + nod * 0.4f, dx + 5.0f, 80.0f, RGB{16, 12, 20});
@@ -392,24 +393,28 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
             if (p.row != pass)
                 continue;
             float bob = 0.0f;
-            switch (p.style) {
-                case 0:
-                    bob = beat_.v * 1.6f;
-                    break;
-                case 1:
-                    bob = beat_.v * 2.6f * (0.5f + 0.5f * std::sin(p.phase));
-                    break;
-                case 2:
-                    bob = beat_.v * 1.2f;
-                    break;
-                default:
-                    bob = 0.8f * std::sin(time_ * 3.0f + p.phase);
-                    break;
-            }
+            // Front dancers dip their shoulders in a staggered groove with the tempo.
+            if (p.row == 1)
+                bob = 2.8f * std::fabs(std::sin(pumpClock_ * 0.5f + p.phase)) - 1.0f;
+            else
+                switch (p.style) {
+                    case 0:
+                        bob = beat_.v * 1.6f;
+                        break;
+                    case 1:
+                        bob = beat_.v * 2.6f * (0.5f + 0.5f * std::sin(p.phase));
+                        break;
+                    case 2:
+                        bob = beat_.v * 1.2f;
+                        break;
+                    default:
+                        bob = 0.8f * std::sin(time_ * 3.0f + p.phase);
+                        break;
+                }
             bob += drop_.v * 4.0f * std::max(0.0f, std::sin(time_ * 9.0f + p.phase));  // jumping after a drop
             int arms = 0;
             if (p.style == 2)
-                arms = drop_.v > 0.15f || energy > 0.45f ? 2 : 1;
+                arms = 2;
             else if (p.style == 3 || (p.style == 1 && energy > 0.3f))
                 arms = 1;
             if (drop_.v > 0.5f && p.style != 3)
@@ -427,10 +432,12 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
             const bool edgeTop = y == 0 || crowd_[static_cast<size_t>((y - 1) * W + x)] < m;
             const bool edgeSide =
                 (x > 0 && crowd_[static_cast<size_t>(y * W + x - 1)] < m) || (x + 1 < W && crowd_[static_cast<size_t>(y * W + x + 1)] < m);
+            // Dancers near the speakers catch a warm flash on every kick.
+            const float speakerLight = std::exp(-(x / sx) / 45.0f) * kick_.v;
             if (edgeTop)
-                c = c + rimC * (0.5f + 0.3f * beat_.v);
+                c = c + rimC * (0.5f + 0.3f * beat_.v) + RGB{255, 170, 90} * (0.8f * speakerLight);
             else if (edgeSide)
-                c = c + rimC * 0.2f;
+                c = c + rimC * 0.2f + RGB{255, 170, 90} * (0.5f * speakerLight);
             buf_.at(x, y) = c;
         }
 

@@ -256,13 +256,13 @@ bool AudioLowriderScene::render(rgb_matrix::FrameCanvas* canvas)
         }
     }
     const RGB glowC = hsv(paint_.value + 150.0f, 0.85f, 1.0f);  // contrasts with the paint
-    const float glowLevel = underglow_->get() ? 0.2f + 0.8f * glowPulse_.v : 0.0f;
+    const float glowLevel = underglow_->get() ? 0.12f + 0.88f * glowPulse_.v : 0.0f;
     const float liftMid = (front_.lift + rear_.lift) * 0.5f;
     if (glowLevel > 0.0f)
         for (int y = static_cast<int>((GroundY - 6.0f) * sy); y < std::min(H, static_cast<int>((GroundY + 10.0f) * sy)); ++y)
             for (int x = static_cast<int>(16 * sx); x < static_cast<int>(112 * sx); ++x) {
                 const float gx = (x + 0.5f) / sx, gy = (y + 0.5f) / sy;
-                const float u = (gx - 64.0f) / (34.0f + 22.0f * glowPulse_.v);
+                const float u = (gx - 64.0f) / (18.0f + 40.0f * glowPulse_.v);
                 const float a =
                     std::exp(-u * u * u * u * 3.0f) * std::exp(-std::fabs(gy - GroundY) / (2.0f + 3.0f * glowPulse_.v + liftMid * 0.3f));
                 buf_.add(x, y, glowC * (0.9f * a * glowLevel));
