@@ -44,7 +44,7 @@ void AudioPondScene::build_sky()
             c = c + RGB{90, 110, 150} * (0.55f * std::exp(-d / 16.0f));
             if (d < mr + 1) {
                 const float shade = 0.82f + 0.18f * std::clamp(((mx - x) + (my - y)) / (mr * 1.4f), -1.0f, 1.0f);
-                c = lerp(c, RGB{240, 236, 210} * shade, std::clamp(mr - d + 0.5f, 0.0f, 1.0f));
+                c = lerp(c, RGB{215, 212, 192} * shade, std::clamp((mr - d) / 2.5f + 0.4f, 0.0f, 1.0f));  // soft-edged reflection
             }
             const uint32_t id = static_cast<uint32_t>(y * W + x);
             // Reflected stars: few and soft (bright points read as open sky).
@@ -191,9 +191,11 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
             const int sx = std::clamp(static_cast<int>(x + gx * 14.0f + shimmer), 0, W - 1);
             const int sy = std::clamp(static_cast<int>(y + gy * 14.0f), 0, H - 1);
             RGB c = lerp(sky_[static_cast<size_t>(sy * W + sx)], greySky * (0.8f + 0.4f * static_cast<float>(sy) / H), grey);
-            if (c.r > 70.0f) {
-                const float band = 0.5f + 0.5f * std::sin(y * 1.35f + time_ * 2.2f + std::sin(x * 0.3f + time_) * 1.5f);
-                c = c * (0.5f + 0.5f * band);
+            // Bright parts of the reflection waver in soft horizontal bands.
+            const float bright = std::clamp((c.r - 40.0f) / 90.0f, 0.0f, 1.0f);
+            if (bright > 0.0f) {
+                const float band = 0.5f + 0.5f * std::sin(y * 1.1f + time_ * 2.0f + std::sin(x * 0.25f + time_ * 0.8f) * 1.8f);
+                c = c * (1.0f - bright * 0.32f * (1.0f - band));
             }
             const float slope = (-gx - gy) * 2.2f;
             const float spec = std::pow(std::clamp(slope, 0.0f, 1.0f), 1.8f) * 0.6f;
@@ -222,9 +224,12 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
                 ang = std::remainder(ang, Tau);
                 if (std::fabs(ang) < 0.32f)
                     continue;
-                const float a = std::clamp(p.r - d + 0.5f, 0.0f, 1.0f);
+                // Pads die back in winter: fainter, with frost on the rim.
+                const float a = std::clamp(p.r - d + 0.5f, 0.0f, 1.0f) * (1.0f - 0.25f * L.winter);
                 const float vein = 0.85f + 0.15f * std::cos(ang * 9.0f);
                 buf_.mix(x, y, padTone * vein * (0.8f + 0.2f * d / p.r), a);
+                if (d > p.r - 1.2f && L.snow_cover > 0.02f && hash(static_cast<uint32_t>(x * 5 + y * 11)) > 0.5f)  // patchy frost
+                    buf_.mix(x, y, RGB{150, 160, 180}, a * L.snow_cover * 0.35f);
             }
         if (p.r > 7 && bloom > 0.1f)
             buf_.disc(p.x + 1, p.y + bob, 1.6f + tint * 1.4f, RGB{200, 80, 140} * ((0.6f + beat_.v * 0.5f) * bloom), false);
@@ -250,7 +255,7 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int v = -5; v <= 5; ++v)
             for (int u = -7; u <= 7; ++u) {
                 // Wider on one half and towards the tip: reads as a leaf.
-                const float a = u / 3.4f, b = v / (v > 0 ? 2.4f : 1.7f);
+                const float a = u / 3.4f, b = v / (v > 0 ? 3.0f : 2.2f);
                 const float lu = u * 0.85f, lv = v * 0.85f;
                 const float shape = 1.0f - (a * a / 4.0f + b * b * (1.0f + 0.35f * std::fabs(a) - 0.12f * a));
                 if (shape <= 0.0f)
@@ -264,7 +269,7 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
     // Shore banks in the bottom corners (snow lies on them in winter) with
     // reeds that lean, overlap and sway with the mids.
     const float mid = spectrum_.band(0.25f, 0.6f);
-    const RGB bankEarth = lerp(RGB{9, 11, 8}, RGB{6, 7, 6}, L.wetness);
+    const RGB bankEarth = lerp(RGB{16, 20, 13}, RGB{10, 12, 10}, L.wetness);
     const RGB bankSnow = RGB{120, 128, 150};
     const float moonGlow = 1.0f - grey * 0.8f;
     for (int side = 0; side < 2; ++side) {
@@ -279,7 +284,8 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
                 // Cool light on the waterline.
                 if (d >= 1.0f) {
                     // Wet in rain, a thin ice rim when snow lies.
-                    const RGB edge = RGB{30, 45, 70} * moonGlow + RGB{25, 35, 50} * L.wetness + RGB{70, 85, 105} * L.snow_cover;
+                    const RGB edge = RGB{30, 45, 70} * moonGlow + RGB{25, 35, 50} * L.wetness + RGB{70, 85, 105} * L.snow_cover +
+                                     RGB{70, 45, 12} * L.autumn;  // fallen leaves gather at the waterline
                     buf_.add(x, y, edge * ((1.08f - d) / 0.08f));
                     continue;
                 }
@@ -287,9 +293,17 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
                 const float patchy = 0.75f + 0.25f * std::sin(x * 0.7f + y * 1.1f) * std::sin(x * 0.23f - y * 0.4f);
                 const float snowTop =
                     std::clamp((0.35f + (d - 0.2f) * 1.6f) * patchy, 0.0f, 1.0f) * L.snow_cover;  // covers the bank, thickest on top
-                buf_.mix(x, y, lerp(bankEarth, bankSnow * (0.85f + 0.15f * hash(static_cast<uint32_t>(x * 7 + y * 3))), snowTop), rim);
+                const RGB earth = bankEarth * (0.8f + 0.4f * hash(static_cast<uint32_t>(x * 13 + y * 7)));
+                buf_.mix(x, y, lerp(earth, bankSnow * (0.85f + 0.15f * hash(static_cast<uint32_t>(x * 7 + y * 3))), snowTop), rim);
             }
     }
+    // Frost creeps along the near shore between the banks.
+    if (L.snow_cover > 0.02f)
+        for (int x = 0; x < W; ++x) {
+            const float depth = 1.5f + 1.5f * (0.5f + 0.5f * std::sin(x * 0.37f) * std::sin(x * 0.11f + 1.0f));
+            for (int y = H - static_cast<int>(depth) - 1; y < H; ++y)
+                buf_.mix(x, y, RGB{140, 150, 172}, L.snow_cover * std::clamp(depth - (H - 1 - y), 0.0f, 1.0f) * 0.75f);
+        }
     for (int r = 0; r < 14; ++r) {
         const bool left = r < 8;
         const int k = left ? r : r - 8;
@@ -321,7 +335,7 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
 
     // Raindrop rings: a thin circle that widens and fades.
     for (const auto& r : rings_) {
-        const float rad = 0.8f + r.age * 6.0f, a = (1.0f - r.age / 0.7f) * 0.45f;
+        const float rad = 0.8f + r.age * 6.0f, a = (1.0f - r.age / 0.7f) * 0.65f;
         if (r.age < 0.12f)  // the impact itself
             buf_.splat(r.x, r.y, RGB{160, 180, 210} * (1.0f - r.age / 0.12f));
         const int n = 10 + static_cast<int>(rad * 5.0f);

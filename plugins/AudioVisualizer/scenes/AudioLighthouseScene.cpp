@@ -164,9 +164,11 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
                 RGB c = water * (below < 16.0f ? 0.8f + 0.2f * std::exp(-below / 4.0f) : 0.8f);
                 // Moonlight glitter column (negligible beyond 3 widths).
                 const float u = (x - moonX) / (3.0f + (y - horizon) * 0.25f);
-                if (u * u < 9.0f
-                    && hash(static_cast<uint32_t>(x * 73 + y * 977) + static_cast<uint32_t>(time_ * 6.0f) * 131) > 0.80f)
-                    c = c + RGB{120, 120, 110} * (std::exp(-u * u) * 0.8f * moonLight);
+                // Moonlight breaks into short horizontal glints near the crests.
+                const int dash = (x + static_cast<int>(time_ * 3.0f) + y * 2) / 3;
+                if (u * u < 9.0f && below < 7.0f &&
+                    hash(static_cast<uint32_t>(dash * 73 + y * 977) + static_cast<uint32_t>(time_ * 2.5f) * 131) > 0.70f)
+                    c = c + RGB{130, 130, 118} * (std::exp(-u * u) * (1.0f - below / 7.0f) * moonLight);
                 buf_.at(x, y) = c;
             }
             // Foam on crests, brighter when the band is loud.
@@ -190,9 +192,12 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
             const float by = surface[static_cast<size_t>(std::clamp(static_cast<int>(bx), 0, W - 1))];
             for (int i = -4; i <= 4; ++i) buf_.set(static_cast<int>(bx) + i, static_cast<int>(by) - (std::abs(i) < 4 ? 1 : 2), RGB{30, 20, 16});
             for (int i = -3; i <= 3; ++i) buf_.set(static_cast<int>(bx) + i, static_cast<int>(by) - 2, RGB{40, 26, 18});
-            for (int m = 3; m < 12; ++m) buf_.set(static_cast<int>(bx), static_cast<int>(by) - m, RGB{50, 40, 34});
+            // The mast and sail heel over and rock in wind and storms.
+            const float heel = (0.12f + 0.5f * L.storm + 0.2f * std::fabs(L.wind)) * std::sin(time_ * 1.7f) + 0.25f * L.storm;
+            for (int m = 3; m < 12; ++m) buf_.set(static_cast<int>(bx + heel * m), static_cast<int>(by) - m, RGB{50, 40, 34});
             for (int m = 4; m < 11; ++m)
-                for (int s = 1; s <= (11 - m) / 2 + 1; ++s) buf_.mix(static_cast<int>(bx) + s, static_cast<int>(by) - m, RGB{150, 145, 130}, 0.8f);
+                for (int s = 1; s <= (11 - m) / 2 + 1; ++s)
+                    buf_.mix(static_cast<int>(bx + heel * m) + s, static_cast<int>(by) - m, RGB{150, 145, 130}, 0.8f);
             buf_.add(static_cast<int>(bx) - 3, static_cast<int>(by) - 4, RGB{255, 180, 70});
             buf_.disc(bx - 3, by - 4, 2.2f, RGB{70, 40, 10});
         }
@@ -209,14 +214,20 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
             // Snow settles in a cap on the cliff top, deeper where it is flat.
             const float capDepth = 3.0f + 3.0f * (0.5f + 0.5f * std::sin(x * 0.55f + 1.3f));
             float lying = std::clamp((top + capDepth - y) / 1.5f, 0.0f, 1.0f);
-            // Two rock shelves catch moonlight, and snow in winter.
-            // Short, nearly flat ledges with gaps between them.
+            // Rock steps catch moonlight, and snow in winter: short segments at
+            // their own heights and lengths, tapering at the ends.
             const float smoothTop = horizon - 14.0f + (1.0f - std::min(t * 2.5f, 1.0f)) * 16.0f;
-            const float shelfA = smoothTop + 18.0f + 0.6f * std::sin(x * 0.12f),
-                        shelfB = smoothTop + 34.0f + 0.6f * std::sin(x * 0.1f + 2.0f);
-            const bool ledgeA = hash(static_cast<uint32_t>(x / 7) * 31 + 5) > 0.35f,
-                       ledgeB = hash(static_cast<uint32_t>(x / 6) * 17 + 9) > 0.4f;
-            const bool onShelf = (ledgeA && y >= shelfA && y < shelfA + 2.0f) || (ledgeB && y >= shelfB && y < shelfB + 2.0f);
+            bool onShelf = false;
+            for (int band = 0; band < 3 && !onShelf; ++band) {
+                const int seg = (x + band * 3) / (5 + band * 2);
+                const float pick = hash(static_cast<uint32_t>(seg * 31 + band * 7 + 5));
+                if (pick < 0.45f)
+                    continue;
+                const float stepY = smoothTop + 12.0f + band * 14.0f + (hash(static_cast<uint32_t>(seg * 13 + band)) - 0.5f) * 8.0f;
+                const float segPos = static_cast<float>((x + band * 3) % (5 + band * 2)) / (5 + band * 2);
+                const float thick = (pick > 0.8f ? 2.0f : 1.0f) * std::clamp(std::sin(segPos * Pi) * 1.6f, 0.0f, 1.0f);
+                onShelf = y >= stepY && y < stepY + thick;
+            }
             if (onShelf)
                 lying = std::max(lying, 0.85f);
             lying *= L.snow_cover;
@@ -315,7 +326,8 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
     }
 
     // --- weather ----------------------------------------------------------
-    precip_.set_max(static_cast<int>(260 * render_quality_scale()));
+    // Fewer flakes than drops: a dense flurry reads as a star field.
+    precip_.set_max(static_cast<int>((260.0f - 130.0f * L.snow) * render_quality_scale()));
     const float seaY = static_cast<float>(horizon);
     // Flakes and drops over the open sea fall out of view; only the cliff top
     // catches them.
