@@ -221,7 +221,10 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
     drop_.decay(dt, 3.0f);
     palette_.update(dt, 1.5f);
     tv_ += dt;
-    pumpClock_ += dt * Tau * std::clamp(audio.feature(AudioProtocol::Feature::Bpm), 70.0f, 180.0f) / 60.0f;
+    // The tempo can be unknown (NaN) before the analyser locks on; clamp() would pass NaN through.
+    const float rawBpm = audio.feature(AudioProtocol::Feature::Bpm);
+    const float bpm = std::isfinite(rawBpm) ? std::clamp(rawBpm, 70.0f, 180.0f) : 90.0f;
+    pumpClock_ = std::fmod(pumpClock_ + dt * Tau * bpm / 60.0f, Tau * 64.0f);
 
     // Speaker cones: a damped spring pushed by the kick and the bass.
     coneVel_ += (kick_.v * 1.4f + bass * 0.5f) * 50.0f * dt;
