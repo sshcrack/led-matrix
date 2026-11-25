@@ -147,6 +147,19 @@ void AudioGraffitiWallScene::new_piece()
     capsules_.push_back({14.0f, mid - 14.0f, 14.0f, mid - 14.0f, 3.0f});
     capsules_.push_back({tx + 1.0f, ty + 16.0f, tx + 1.0f, ty + 16.0f, 2.2f});
     capsules_.push_back({22.0f, mid + 22.0f, 74.0f + rnd() * 16.0f, mid + 18.0f, 2.2f});
+    // Keep the whole piece inside the frame with a small margin.
+    {
+        float lo = 1e9f, hi = -1e9f;
+        for (const auto& c : capsules_) {
+            lo = std::min({lo, c.ax - c.r, c.bx - c.r});
+            hi = std::max({hi, c.ax + c.r, c.bx + c.r});
+        }
+        const float fit = std::min(1.0f, 56.0f / std::max({1.0f, 64.0f - lo, hi - 64.0f}));
+        for (auto& c : capsules_) {
+            c.ax = 64.0f + (c.ax - 64.0f) * fit;
+            c.bx = 64.0f + (c.bx - 64.0f) * fit;
+        }
+    }
     for (auto& c : capsules_) {
         c.ax *= sx;
         c.bx *= sx;
@@ -324,7 +337,7 @@ RGB AudioGraffitiWallScene::layer_color(int, int y, Layer layer) const
             return lerp(colors_.fillA, colors_.fillB, smoothstep(0.25f, 0.75f, t));
         }
         case Layer::Shadow:
-            return colors_.shadow;
+            return lerp(colors_.shadow, colors_.fillB, 0.3f);  // a lit side face, not just a dark gap
         case Layer::Outline:
             return colors_.outline;
         case Layer::Highlight:
@@ -477,6 +490,11 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
         }
         case Phase::Hold:
             hold_ += dt;
+            // A shine sweeps across the finished piece on every beat.
+            if (events_.beatHit) {
+                shine_ = left_ - 10.0f * k;
+                shineEnv_.hit(0.6f + 0.4f * beat_.v);
+            }
             // Fresh paint keeps running on snares while the piece rests.
             if (events_.onsetHit && snare > 0.4f && drips_.size() < 24 && !capsules_.empty()) {
                 const auto& cap = capsules_[static_cast<size_t>(rnd() * capsules_.size()) % capsules_.size()];
@@ -524,6 +542,22 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
                 c = lerp(c, paint_[i] * ((0.32f + 0.9f * light_[i]) * texture_[i]), alpha_[i]);
             buf_.at(x, y) = c;
         }
+
+    // Shine sweep and bright heads on running drips.
+    shine_ += dt * 150.0f * k;
+    shineEnv_.decay(dt, 0.5f);
+    if (phase_ == Phase::Hold && shineEnv_.v > 0.05f)
+        for (int y = top_; y < bottom_; ++y)
+            for (int x = std::max(left_, static_cast<int>(shine_ - 40.0f * k)); x < std::min(right_, static_cast<int>(shine_ + 4.0f * k));
+                 ++x) {
+                const size_t i = static_cast<size_t>(y * W + x);
+                const float band = std::fabs(x - shine_ + (y - top_) * 0.6f);
+                if (dist_[i] < 0.0f && band < 2.5f * k)
+                    buf_.add(x, y, RGB{255, 255, 255} * (0.5f * shineEnv_.v * (1.0f - band / (2.5f * k))));
+            }
+    for (const auto& d : drips_)
+        if (d.length < d.max)
+            buf_.add(static_cast<int>(d.x), static_cast<int>(d.y + d.length), lerp(d.color, RGB{255, 255, 255}, 0.5f) * 0.8f);
 
     // Sparkles once the piece is done, twinkling with the hats.
     if (phase_ == Phase::Hold)
@@ -575,7 +609,7 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
         const RGB paintC = layer_color(static_cast<int>(canX_), static_cast<int>(canY_), layer);
         // Mist where the paint lands.
         if (spray_.v > 0.05f) {
-            glow(buf_, canX_, canY_, 6.5f * k, paintC * (0.45f * spray_.v));
+            glow(buf_, canX_, canY_, 4.0f * k, paintC * (0.8f * spray_.v));
             // Bright spray head right where the paint lands.
             buf_.disc(canX_, canY_, 1.3f * k, lerp(paintC, RGB{255, 255, 255}, 0.5f) * std::min(1.0f, 0.4f + spray_.v), true);
             // A fan of bright overspray around the tip, densest on the beat.
@@ -602,15 +636,15 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
         const float rx = buffLeft_ + roller_;
         // Wet edge just behind the roller, a wide roller head and its pole.
         for (int y = buffTop_; y < buffBottom_; ++y)
-            for (int w = 1; w <= static_cast<int>(5 * k); ++w)
-                buf_.add(static_cast<int>(rx) - w, y, RGB{70, 64, 58} * (1.0f - w / (6.0f * k)));
+            for (int w = 1; w <= static_cast<int>(7 * k); ++w)
+                buf_.add(static_cast<int>(rx) - w, y, RGB{90, 84, 76} * (1.0f - w / (8.0f * k)));
         const float mid = (buffTop_ + buffBottom_) * 0.5f, half = std::min(14.0f * k, (buffBottom_ - buffTop_) * 0.5f);
-        rect(buf_, static_cast<int>(rx), static_cast<int>(mid - half), static_cast<int>(rx + 5 * k), static_cast<int>(mid + half),
+        rect(buf_, static_cast<int>(rx), static_cast<int>(mid - half), static_cast<int>(rx + 7 * k), static_cast<int>(mid + half),
              RGB{185, 176, 162});
-        rect(buf_, static_cast<int>(rx + 5 * k), static_cast<int>(mid - half), static_cast<int>(rx + 6 * k), static_cast<int>(mid + half),
+        rect(buf_, static_cast<int>(rx + 7 * k), static_cast<int>(mid - half), static_cast<int>(rx + 8 * k), static_cast<int>(mid + half),
              RGB{60, 56, 52});
         const float gy = Ground * H / 128.0f;
-        for (int t = 0; t < 2; ++t) line(buf_, rx + 6.0f * k + t, mid, rx + 20.0f * k + t, gy + 10.0f * k, RGB{140, 100, 60});
+        for (int t = 0; t < 2; ++t) line(buf_, rx + 8.0f * k + t, mid, rx + 22.0f * k + t, gy + 10.0f * k, RGB{140, 100, 60});
     }
 
     buf_.blit(canvas);

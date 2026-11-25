@@ -67,7 +67,8 @@ private:
     float canX_ = 64.0f, canY_ = 60.0f;
     bool traveling_ = false;
     bool bold_ = false;  // alternates the piece silhouette
-    float hold_ = 0.0f, roller_ = 0.0f, shake_ = 0.0f;
+    float hold_ = 0.0f, roller_ = 0.0f, shake_ = 0.0f, shine_ = -1e3f;
+    AudioKit::Envelope shineEnv_;
     AudioKit::Envelope beat_, spray_, hat_, drop_;
     PropertyPointer<float> paintSpeed_ = MAKE_PROPERTY_MINMAX("paint_speed", float, 1.0f, 0.3f, 3.0f);
 

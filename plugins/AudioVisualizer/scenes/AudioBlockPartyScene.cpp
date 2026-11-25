@@ -271,9 +271,9 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
             const float band = spectrum_.band(group / 12.0f, (group + 1) / 12.0f);
             const float chase = std::max(0.0f, std::cos((x / 128.0f - time_ * 0.8f) * Tau * 2.0f));
             const RGB c = hsv(palette_.value + (bulb % 4) * 70.0f, 0.65f, 1.0f);
-            const float accent = group % 4 == beats_ % 4 ? 0.7f * beat_.v : 0.0f;  // a group swells on each beat
+            const float accent = group % 4 == beats_ % 4 ? 1.2f * beat_.v : 0.0f;  // a group swells on each beat
             const float lv = accent + 0.35f + 0.55f * band + 0.25f * chase * beat_.v + 0.3f * drop_.v;
-            buf_.disc(x * sx, y * sy, 1.5f * sx, c * std::min(1.0f, 0.3f + lv), false);
+            buf_.disc(x * sx, y * sy, (1.5f + 0.8f * accent) * sx, c * std::min(1.0f, 0.3f + lv), false);
             glow(buf_, x * sx, y * sy, 6.0f * sx, c * (0.35f * lv));
         }
     }
@@ -296,7 +296,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
                     if (d > 1.0f)
                         continue;
                     const float ring = 0.5f + 0.5f * std::cos(d * 14.0f - push * 3.0f);
-                    RGB c = RGB{30, 28, 34} + RGB{70, 66, 76} * (ring * 0.4f);
+                    RGB c = RGB{30, 28, 34} + RGB{70, 66, 76} * (ring * 0.4f) + RGB{255, 190, 130} * (0.35f * ring * kick_.v);
                     if (d < 0.3f)
                         c = RGB{90, 86, 96} * (0.7f + 0.5f * std::max(0.0f, push)) + RGB{255, 200, 140} * (0.8f * kick_.v);
                     if (d > 0.88f)
@@ -305,14 +305,15 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
                 }
         }
     }
-    R(6.0f, 52.0f, 20.0f, 56.0f, RGB{30, 28, 34});  // horn on top
+    glow(buf_, 13.0f * sx, 92.0f * sy, 16.0f * sx, RGB{255, 170, 100} * (0.55f * kick_.v));  // the stack lights the pavement on kicks
+    R(6.0f, 52.0f, 20.0f, 56.0f, RGB{30, 28, 34});                                           // horn on top
     R(8.0f, 53.0f, 18.0f, 55.0f, RGB{70, 66, 74} * (0.7f + 0.6f * snare_.v));
 
     // DJ behind the table: nodding head, headphones, one hand up on drops.
     {
         glow(buf_, 36.0f * sx, 70.0f * sy, 22.0f * sx, RGB{255, 150, 70} * (0.55f + 0.35f * beat_.v));  // warm backlight
         glow(buf_, 30.0f * sx, 90.0f * sy, 26.0f * sx, RGB{255, 140, 60} * (0.35f + 0.3f * beat_.v));   // pool on the pavement
-        const float nod = beat_.v * 1.4f;
+        const float nod = beat_.v * 2.6f;
         const float dx = 36.0f;
         // Warm rim around the DJ so the silhouette stands out against the wall.
         R(dx - 6.0f, 68.0f + nod * 0.4f, dx + 6.0f, 80.0f, RGB{230, 140, 70} * (0.6f + 0.3f * beat_.v));
@@ -335,9 +336,16 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int d = 0; d < 2; ++d) {
             const float cx = 30.0f + d * 12.0f;
             const float a = time_ * 3.5f + d;
-            buf_.set(static_cast<int>((cx + std::cos(a) * 1.5f) * sx), static_cast<int>((79.0f) * sy), RGB{200, 200, 210});
-            buf_.set(static_cast<int>(cx * sx), static_cast<int>(79.0f * sy), RGB{10, 10, 12});
+            buf_.disc(cx * sx, 78.5f * sy, 2.8f * sx, RGB{44, 42, 50}, false);
+            buf_.disc(cx * sx, 78.5f * sy, 2.0f * sx, RGB{14, 12, 16}, false);
+            buf_.set(static_cast<int>((cx + std::cos(a) * 1.6f) * sx), static_cast<int>((78.5f + std::sin(a) * 0.8f) * sy),
+                     RGB{230, 230, 240});
         }
+        // One hand works the left deck on the beat.
+        const float hand = 30.0f + 2.5f * std::sin(pumpClock_);
+        line(buf_, (dx - 4.0f) * sx, 71.0f * sy, hand * sx, 77.5f * sy, RGB{16, 12, 20});
+        line(buf_, (dx - 4.0f) * sx, 72.0f * sy, hand * sx, 78.0f * sy, RGB{16, 12, 20});
+        buf_.disc(hand * sx, 77.8f * sy, 1.2f * sx, RGB{20, 14, 24}, false);
         glow(buf_, 36.0f * sx, 79.0f * sy, 4.0f * sx, hsv(palette_.value, 0.7f, 1.0f) * (0.3f + 0.4f * beat_.v));
     }
 
