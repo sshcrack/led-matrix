@@ -135,7 +135,7 @@ void AllotmentScene::build_backdrop()
         for (const auto [px, py, pr] : {std::array<float, 3>{28.0f, 117.0f, 4.6f}, std::array<float, 3>{29.6f, 101.0f, 1.6f}}) {
             const Rgb skyC = from_env(L.sky(0.4f)), mud = scale(terrain({0.30f, 0.26f, 0.20f}), 0.6f);
             const Rgb water = mix(skyC, {1, 1, 1}, 0.25f);
-            art.oval(px, py, pr * 1.5f, pr * 0.7f, scale(terrain({0.30f, 0.24f, 0.18f}), 0.7f), 0.5f * wet);  // damp ground round it
+            art.oval(px, py + 0.2f, pr * 1.35f, pr * 0.72f, scale(terrain({0.26f, 0.20f, 0.15f}), 0.5f), 0.85f * wet);  // a dark wet margin
             // Three overlapping, flat lobes sunk into the mud: a dark far lip
             // (the bank's shadow) and the sky's reflection, broken by mud.
             for (int lobe = 0; lobe < 3; ++lobe) {
@@ -508,7 +508,7 @@ void AllotmentScene::build_backdrop()
 
     // Rain: the wet eave and roof edge pick up a few dull highlights.
     if (wet > 0.1f)
-        for (int i = 0; i < 9; ++i) dot(1.0f + 27.0f * hash01(i * 19u + 3u), 65.2f, lit({0.70f, 0.74f, 0.80f}), 0.8f * wet);
+        art.rect(20.0f, 65.0f, 9.0f, 0.5f, mix(lit({0.16f, 0.15f, 0.15f}), lit({0.70f, 0.74f, 0.80f}), 0.6f * wet));  // wet eave
 
     // Moonlight picks out the roof ridge and the top fence rail at night.
     if (L.night > 0.3f) {
@@ -857,6 +857,11 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
             for (int x = 0; x < cv_.w; ++x)
                 if (field_[static_cast<size_t>(y * cv_.w + x)])
                     cv_.blend(x, y, haze, 0.85f * L.fog);
+        // The hedge stays a faint dark line in the middle distance.
+        for (int y = static_cast<int>((HedgeY - 3.0f) * sy); y < static_cast<int>((HedgeY + 0.5f) * sy); ++y)
+            for (int x = 0; x < cv_.w; ++x)
+                if (!field_[static_cast<size_t>(y * cv_.w + x)])
+                    cv_.blend(x, y, scale(from_env(L.haze), 0.55f), 0.3f * L.fog);
     }
     draw_sunflowers();
     draw_smoke(dt);
@@ -887,12 +892,15 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
     if (wet > 0.05f) {
         const Rgb shine = mix(from_env(L.sky(0.2f)), {1, 1, 1}, 0.3f);
         const float sway = 2.2f * std::sin(t_ * 0.7f);
-        // A sky reflection that stretches and now and then breaks apart.
-        const float len = 1.2f + 0.8f * std::sin(t_ * 0.9f), brk = std::max(0.0f, std::sin(t_ * 0.45f)) * 1.2f;
-        cv_.capsule((26.6f + 0.5f * sway) * sx, 117.0f * sy, 0.35f * k, (26.6f + len + 0.5f * sway) * sx, 117.0f * sy, 0.35f * k, shine,
-                    0.5f * wet);
-        cv_.capsule((27.6f + len + brk + 0.5f * sway) * sx, 117.0f * sy, 0.3f * k, (28.6f + len + brk + 0.5f * sway) * sx, 117.0f * sy,
-                    0.3f * k, shine, 0.35f * wet);
+        // A broad sky reflection across the puddle, in two rows, broken
+        // here and there and drifting slowly.
+        for (int row = 0; row < 2; ++row)
+            for (float x = 24.6f; x < 31.6f; x += 1.0f / sx) {
+                const float u = x + 0.4f * sway + row * 1.3f;
+                if (std::sin(u * 2.1f + t_ * 0.8f + row) < -0.55f)
+                    continue;
+                cv_.blend(static_cast<int>(x * sx), static_cast<int>((116.4f + row * 1.0f) * sy), shine, (0.55f - 0.15f * row) * wet);
+            }
         if (L.rain > 0.1f)
             for (int ring = 0; ring < 2; ++ring) {
                 const float clock = t_ * 1.6f + ring * 0.5f;
@@ -910,7 +918,7 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
     if (L.rain > 0.1f)
         for (int i = 0; i < 3; ++i) {
             const float clock = t_ * 0.9f + i * 0.37f, fall = std::fmod(clock, 1.0f);
-            const float dx = 2.0f + 24.0f * hash01(static_cast<uint32_t>(clock) * 5u + i);
+            const float dx = 27.5f + 1.5f * hash01(static_cast<uint32_t>(clock) * 5u + i);  // off the low eave corner
             cv_.blend(static_cast<int>(dx * sx), static_cast<int>((65.6f + fall * fall * 26.0f) * sy),
                       mix(from_env(L.sky(0.3f)), {1, 1, 1}, 0.3f), 0.6f * L.rain);
         }
