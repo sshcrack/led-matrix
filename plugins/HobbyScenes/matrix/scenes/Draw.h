@@ -120,6 +120,22 @@ public:
             }
     }
     // Additive radial glow with quadratic falloff out to radius r.
+    // A soft round puff blended over what is there (smoke, steam, dust that
+    // should not brighten a light sky the way glow() would).
+    void puff(float cx, float cy, float r, Rgb c, float opacity)
+    {
+        if (opacity <= 0.0f || r <= 0.0f)
+            return;
+        const float inv = 1.0f / r;
+        for (int y = std::max(0, static_cast<int>(cy - r)); y <= std::min(h - 1, static_cast<int>(cy + r)); ++y)
+            for (int x = std::max(0, static_cast<int>(cx - r)); x <= std::min(w - 1, static_cast<int>(cx + r)); ++x) {
+                const float dx = x + 0.5f - cx, dy = y + 0.5f - cy;
+                const float d2 = (dx * dx + dy * dy) * inv * inv;
+                if (d2 < 1.0f)
+                    blend(x, y, c, opacity * (1.0f - d2) * (1.0f - d2));
+            }
+    }
+
     void glow(float cx, float cy, float r, Rgb c, float strength)
     {
         if (strength <= 0.0f || r <= 0.0f)
