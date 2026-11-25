@@ -161,20 +161,18 @@ bool AudioLowriderScene::render(rgb_matrix::FrameCanvas* canvas)
             hit(rear_, 5.0f);
         }
         else if (beatCount_ % 2 == 0)
-            hit(front_, 4.0f + 3.0f * kick);
+            hit(front_, 3.0f + 2.0f * kick);
         else
-            hit(rear_, 4.0f + 3.0f * kick);
+            hit(rear_, 3.0f + 2.0f * kick);
         ++beatCount_;
     }
     if (events_.onsetHit && kick > 0.5f)
         kick_.hit(kick);
     if (events_.dropHit) {
         drop_.hit();
-        hit(front_, 15.0f);  // the big front hop
+        hit(front_, 17.0f);  // the big front hop
         paint_.next();
     }
-    if (events_.sectionHit)
-        paint_.next();
     beat_.decay(dt, 0.2f);
     kick_.decay(dt, 0.14f);
     drop_.decay(dt, 1.6f);
@@ -254,7 +252,7 @@ bool AudioLowriderScene::render(rgb_matrix::FrameCanvas* canvas)
                     buf_.at(x, y) = RGB{140, 120, 90};
         }
     }
-    const RGB glowC = hsv(paint_.value + 40.0f, 0.8f, 1.0f);
+    const RGB glowC = hsv(paint_.value + 150.0f, 0.85f, 1.0f);  // contrasts with the paint
     const float glowLevel = underglow_->get() ? 0.35f + 0.65f * std::max(bass, kick_.v) : 0.0f;
     const float liftMid = (front_.lift + rear_.lift) * 0.5f;
     if (glowLevel > 0.0f)

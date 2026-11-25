@@ -120,11 +120,14 @@ void AudioBlockPartyScene::init_world()
     for (float y = 22.0f; y < CurbY; y += 0.5f) px(124.0f, y, RGB{20, 16, 24});
     people_.clear();
     // Back row smaller and further up; front row big and cut off by the frame.
-    for (int i = 0; i < 7; ++i)
+    // Width varies the build; styles are fixed so every frame has a few hands up.
+    for (int i = 0; i < 6; ++i)
         people_.push_back(
-            {10.0f + i * 18.0f + (rnd() - 0.5f) * 5.0f, rnd() * Tau, 0.78f + rnd() * 0.1f, rnd() * 360.0f, 0, (i * 3 + 1) % 4});
-    for (int i = 0; i < 5; ++i)
-        people_.push_back({12.0f + i * 26.0f + (rnd() - 0.5f) * 6.0f, rnd() * Tau, 1.1f + rnd() * 0.15f, rnd() * 360.0f, 1, (i * 2) % 4});
+            {14.0f + i * 20.0f + (rnd() - 0.5f) * 6.0f, rnd() * Tau, 0.8f + rnd() * 0.1f, 0.85f + rnd() * 0.35f, 0, (i * 3 + 1) % 4});
+    constexpr int FrontStyles[] = {2, 3, 0, 2};
+    for (int i = 0; i < 4; ++i)
+        people_.push_back(
+            {16.0f + i * 32.0f + (rnd() - 0.5f) * 6.0f, i * 1.7f, 1.3f + rnd() * 0.15f, 0.85f + rnd() * 0.35f, 1, FrontStyles[i]});
     water_.clear();
 }
 
@@ -158,18 +161,21 @@ void AudioBlockPartyScene::draw_person(const Person& p, float bob, int arms)
     // Shoulders and body to the bottom of the frame.
     for (float y = headY + 4.5f * s; y < 130.0f; y += 0.5f) {
         const float t = std::min(1.0f, (y - headY - 4.5f * s) / (2.2f * s));
-        const float half = (2.2f + 4.6f * std::sqrt(t)) * s;
+        const float half = (2.2f + 4.6f * p.width * std::sqrt(t)) * s;
         blob(p.x, y, half, 0.6f);
     }
-    // Hands in the air: one pumping on the beat, or both up.
-    const float pump = beat_.v * 3.0f;
+    // Hands in the air: pumping with the tempo, each dancer a little out of
+    // step; the swaying dancers wave one hand side to side instead.
+    const float pump = 3.5f * std::max(0.0f, std::sin(pumpClock_ + p.phase));
+    const float wave = p.style == 3 ? 3.0f * std::sin(time_ * 3.0f + p.phase) : 0.0f;
+    const float shoulder = 4.0f + 2.0f * p.width;
     if (arms >= 1) {
-        limb(p.x + 5.5f * s, headY + 6.5f * s, p.x + 8.0f * s - sway, headY - 6.0f * s + pump, 1.3f * s);
-        blob(p.x + 8.0f * s - sway, headY - 6.5f * s + pump, 1.7f * s, 1.7f * s);
+        limb(p.x + shoulder * s, headY + 6.5f * s, p.x + (shoulder + 2.5f) * s + wave, headY - 7.0f * s + pump, 1.3f * s);
+        blob(p.x + (shoulder + 2.5f) * s + wave, headY - 7.5f * s + pump, 1.8f * s, 1.8f * s);
     }
     if (arms >= 2) {
-        limb(p.x - 5.5f * s, headY + 6.5f * s, p.x - 8.0f * s, headY - 5.5f * s + pump, 1.3f * s);
-        blob(p.x - 8.0f * s, headY - 6.0f * s + pump, 1.7f * s, 1.7f * s);
+        limb(p.x - shoulder * s, headY + 6.5f * s, p.x - (shoulder + 2.5f) * s, headY - 6.5f * s + pump, 1.3f * s);
+        blob(p.x - (shoulder + 2.5f) * s, headY - 7.0f * s + pump, 1.8f * s, 1.8f * s);
     }
 }
 
@@ -210,6 +216,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
     drop_.decay(dt, 3.0f);
     palette_.update(dt, 1.5f);
     tv_ += dt;
+    pumpClock_ += dt * Tau * std::clamp(audio.feature(AudioProtocol::Feature::Bpm), 70.0f, 180.0f) / 60.0f;
 
     // Speaker cones: a damped spring pushed by the kick and the bass.
     coneVel_ += (kick_.v * 1.4f + bass * 0.5f) * 50.0f * dt;
@@ -255,7 +262,8 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
             buf_.set(static_cast<int>(x * sx), static_cast<int>(strand_y(s, x) * sy), RGB{20, 14, 18});
         for (float x = s.x0 + 4.0f; x < s.x1; x += 8.0f, ++bulb) {
             const float y = strand_y(s, x) + 1.5f;
-            const float band = spectrum_.band((bulb % 12) / 12.0f, (bulb % 12 + 1) / 12.0f);
+            const int group = (bulb / 3) % 12;  // neighbours rise and fall together
+            const float band = spectrum_.band(group / 12.0f, (group + 1) / 12.0f);
             const float chase = std::max(0.0f, std::cos((x / 128.0f - time_ * 0.8f) * Tau * 2.0f));
             const RGB c = hsv(palette_.value + (bulb % 4) * 70.0f, 0.65f, 1.0f);
             const float lv = 0.35f + 0.55f * band + 0.25f * chase * beat_.v + 0.3f * drop_.v;
@@ -283,7 +291,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
                     if (d < 0.3f)
                         c = RGB{90, 86, 96} * (0.7f + 0.5f * std::max(0.0f, push));
                     if (d > 0.88f)
-                        c = RGB{100, 96, 106};
+                        c = lerp(RGB{100, 96, 106}, RGB{255, 200, 150}, kick_.v);  // the rim flashes on kicks
                     buf_.set(x, y, c);
                 }
         }
@@ -293,6 +301,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
 
     // DJ behind the table: nodding head, headphones, one hand up on drops.
     {
+        glow(buf_, 36.0f * sx, 68.0f * sy, 14.0f * sx, RGB{255, 150, 70} * (0.45f + 0.35f * beat_.v));  // warm backlight
         const float nod = beat_.v * 1.4f;
         const float dx = 36.0f;
         R(dx - 5.0f, 69.0f + nod * 0.4f, dx + 5.0f, 80.0f, RGB{16, 12, 20});
@@ -337,7 +346,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
         w.x += w.vx * dt;
         w.y += w.vy * dt;
         w.life -= dt;
-        if (w.y > 104.0f && w.vy > 0.0f) {
+        if (w.y > 100.0f && w.vy > 0.0f) {
             w.vy *= -0.15f;
             w.vx *= 0.4f;
             w.life = std::min(w.life, 0.25f);
@@ -348,6 +357,17 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
         // Spray catches the string lights.
         const RGB c = lerp(RGB{140, 180, 230}, hsv(palette_.value, 0.4f, 1.0f), 0.3f);
         buf_.splat(w.x * sx, w.y * sy, c * (0.35f * std::min(1.0f, w.life * 4.0f)));
+    }
+    // A solid jet out of the nozzle before it breaks into droplets.
+    if (hydrant_->get()) {
+        const float power = 0.7f + 0.5f * energy + 0.4f * kick_.v;
+        const float vx = -36.0f * power, vy = -33.0f * power;
+        for (float t = 0.0f; t < 0.22f; t += 0.004f) {
+            const float x = HydrantX - 4.0f + vx * t, y = HydrantY + 3.0f + vy * t + 30.0f * t * t;
+            const float fade = 1.0f - t / 0.22f;
+            buf_.splat(x * sx, y * sy, RGB{200, 225, 255} * (0.5f * fade));
+            buf_.splat(x * sx, (y + 0.7f) * sy, RGB{150, 190, 240} * (0.3f * fade));
+        }
     }
     // Wet street under the spray reflects the lights.
     for (int y = static_cast<int>(96.0f * sy); y < static_cast<int>(108.0f * sy); ++y)
@@ -383,7 +403,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
             int arms = 0;
             if (p.style == 2)
                 arms = drop_.v > 0.15f || energy > 0.45f ? 2 : 1;
-            else if (p.style == 1 && energy > 0.3f)
+            else if (p.style == 3 || (p.style == 1 && energy > 0.3f))
                 arms = 1;
             if (drop_.v > 0.5f && p.style != 3)
                 arms = 2;

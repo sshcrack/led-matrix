@@ -11,7 +11,8 @@ namespace {
 constexpr int WallTop = 9;
 constexpr int Ground = 108;
 constexpr float LampX = 64.0f, LampY = 14.0f;
-constexpr float HoldSeconds = 16.0f;
+constexpr float HoldSeconds = 8.0f;
+const RGB BuffPaint{78, 62, 58};
 
 float segment_distance(float px, float py, float ax, float ay, float bx, float by)
 {
@@ -48,6 +49,7 @@ void AudioGraffitiWallScene::init_world()
     const size_t n = static_cast<size_t>(W * H);
     wall_.assign(n, {});
     light_.assign(n, 0.0f);
+    texture_.assign(n, 1.0f);
     paint_.assign(n, {});
     alpha_.assign(n, 0.0f);
     for (int y = 0; y < H; ++y)
@@ -80,22 +82,16 @@ void AudioGraffitiWallScene::init_world()
             const float tone = 0.75f + 0.35f * hash(static_cast<uint32_t>(row * 977 + bxi * 31));
             const RGB brick = mortar ? RGB{24, 22, 24} : RGB{70, 34, 26} * tone;
             wall_[i] = brick * (0.28f + 0.95f * light_[i]);
+            // Paint follows the brick: mortar joints stay visible through it.
+            texture_[i] = mortar ? 0.7f : 0.9f + 0.12f * tone;
         }
     drips_.clear();
     paletteIndex_ = static_cast<int>(rnd() * ColourwayCount) % ColourwayCount;
     new_piece();
-    // A fresh buff patch and a piece that is already well under way, so the
-    // first glance shows paint going on rather than a bare wall.
-    for (int y = top_; y < bottom_; ++y)
-        for (int x = left_; x < right_; ++x) {
-            const size_t i = static_cast<size_t>(y * W + x);
-            paint_[i] = RGB{74, 70, 66};
-            alpha_[i] = 1.0f;
-        }
+    // Start on bare brick: the first piece goes straight onto the wall.
     phase_ = Phase::Paint;
-    size_t total = 0;
-    for (const auto& s : strokes_) total += s.pts.size();
-    advance(static_cast<float>(total) * 0.6f * 0.3f);
+    canX_ = static_cast<float>(right_);
+    canY_ = (top_ + bottom_) * 0.5f;
 }
 
 void AudioGraffitiWallScene::new_piece()
@@ -443,9 +439,13 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
             const int to = std::min(buffRight_, buffLeft_ + static_cast<int>(roller_));
             for (int y = buffTop_; y < buffBottom_; ++y)
                 for (int x = buffLeft_; x < to; ++x) {
+                    // Rough, feathered edges so the patch sits in the wall, not on it.
                     const size_t i = static_cast<size_t>(y * W + x);
-                    paint_[i] = RGB{74, 70, 66};
-                    alpha_[i] = 1.0f;
+                    const float edge = static_cast<float>(std::min({x - buffLeft_, buffRight_ - 1 - x, y - buffTop_, buffBottom_ - 1 - y}));
+                    const float rough = hash(static_cast<uint32_t>(x * 7349 + y * 1931));
+                    const float a = std::clamp(0.25f + edge / (4.0f * k) + 0.3f * rough, 0.0f, 1.0f);
+                    paint_[i] = lerp(paint_[i], BuffPaint, a);
+                    alpha_[i] = std::max(alpha_[i], a);
                 }
             if (to >= buffRight_) {
                 phase_ = Phase::Paint;
@@ -475,6 +475,13 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
         }
         case Phase::Hold:
             hold_ += dt;
+            // Fresh paint keeps running on snares while the piece rests.
+            if (events_.onsetHit && snare > 0.4f && drips_.size() < 24 && !capsules_.empty()) {
+                const auto& cap = capsules_[static_cast<size_t>(rnd() * capsules_.size()) % capsules_.size()];
+                const float bx = cap.ay > cap.by ? cap.ax : cap.bx, by = std::max(cap.ay, cap.by) + cap.r - 0.5f;
+                drips_.push_back({bx, by, 0.0f, (4.0f + rnd() * 6.0f) * k, (5.0f + rnd() * 4.0f) * k,
+                                  layer_color(static_cast<int>(bx), static_cast<int>(by), Layer::Fill)});
+            }
             if (hold_ > HoldSeconds && (events_.sectionHit || events_.beatHit || hold_ > HoldSeconds * 1.5f)) {
                 // Plan the next piece, then roll a patch over the old one and its space.
                 const int oldTop = top_, oldBottom = bottom_, oldLeft = left_, oldRight = right_;
@@ -513,7 +520,7 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
             const size_t i = static_cast<size_t>(y * W + x);
             RGB c = wall_[i];
             if (alpha_[i] > 0.0f)
-                c = lerp(c, paint_[i] * (0.32f + 0.9f * light_[i]), alpha_[i]);
+                c = lerp(c, paint_[i] * ((0.32f + 0.9f * light_[i]) * texture_[i]), alpha_[i]);
             buf_.at(x, y) = c;
         }
 
@@ -567,7 +574,7 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
         const RGB paintC = layer_color(static_cast<int>(canX_), static_cast<int>(canY_), layer);
         // Mist where the paint lands.
         if (spray_.v > 0.05f)
-            glow(buf_, canX_, canY_, 4.5f * k, paintC * (0.32f * spray_.v));
+            glow(buf_, canX_, canY_, 6.5f * k, paintC * (0.45f * spray_.v));
         // The can, held just right of and below the spray point; it shakes on the beat between strokes.
         const float jig = traveling_ ? std::sin(time_ * 40.0f) * shake_ * 1.2f * k : 0.0f;
         const float cx = canX_ + 2.5f * k, cy = canY_ + 1.0f * k + jig;

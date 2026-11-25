@@ -15,6 +15,7 @@ constexpr float MixerX0 = 91.0f, MixerX1 = 125.0f, DeckY0 = 4.0f, DeckY1 = 97.0f
 constexpr float ChannelX[] = {99.0f, 117.0f};
 constexpr float Rpm = 33.333f;
 constexpr float ScratchRadius = 29.0f;  // where the hand rests on the record
+constexpr float LightAngle = -2.3f;     // the room light comes from the upper left
 
 // Anti-aliased opaque capsule.
 void capsule(Buffer& b, float sx, float sy, float ax, float ay, float bx, float by, float r, const RGB& c, float alpha = 1.0f)
@@ -49,12 +50,15 @@ void AudioTurntableScene::init_world()
     booth_.assign(n, {});
     radius_.assign(n, 1e3f);
     angle_.assign(n, 0.0f);
+    sheen_.assign(n, 0.0f);
     for (int y = 0; y < H; ++y)
         for (int x = 0; x < W; ++x) {
             const size_t i = static_cast<size_t>(y * W + x);
             const float gx = (x + 0.5f) / sx, gy = (y + 0.5f) / sy;
             radius_[i] = len(gx - PlatterX, gy - PlatterY);
             angle_[i] = std::atan2(gy - PlatterY, gx - PlatterX);
+            // The sheen on the vinyl stays put while the record turns, so it is static.
+            sheen_[i] = std::pow(std::fabs(std::cos(angle_[i] - LightAngle)), 18.0f);
             // Booth top: dark laminate with a faint grain.
             const float grain = 0.9f + 0.2f * hash(static_cast<uint32_t>(y * 31 + (x / 3) * 7));
             RGB c = RGB{20, 18, 24} * grain;
@@ -198,7 +202,7 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
         scratch_ = std::min(1.0f, scratch_ + dt / 0.42f);
         const float prev = handOffset_;
         // Forward, back, forward: a quick "baby scratch".
-        handOffset_ = scratchAmp_ * std::sin(scratch_ * Tau * 1.5f) * (1.0f - scratch_ * 0.3f);
+        handOffset_ = -scratchAmp_ * std::sin(scratch_ * Tau * 1.5f) * (1.0f - scratch_ * 0.3f);  // pull back first
         recordAngle_ += (handOffset_ - prev) / ScratchRadius;
         press_.hit();
     }
@@ -212,7 +216,6 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
 
     // --- platter rim with strobe dots, the record ------------------------------------------------------
     const RGB labelA = hsv(palette_.value, 0.75f, 0.95f), labelB = hsv(palette_.value + 150.0f, 0.6f, 0.55f);
-    const float lightAng = -2.3f;  // light from the upper left
     for (int y = static_cast<int>((PlatterY - PlatterR - 1) * sy); y <= static_cast<int>((PlatterY + PlatterR + 1) * sy); ++y)
         for (int x = static_cast<int>((PlatterX - PlatterR - 1) * sx); x <= static_cast<int>((PlatterX + PlatterR + 1) * sx); ++x) {
             if (x < 0 || y < 0 || x >= W || y >= H)
@@ -237,7 +240,7 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
                 c = RGB{16, 16, 20} + RGB{6, 6, 8} * groove;
                 if (gap)
                     c = RGB{8, 8, 10};
-                const float sheen = std::pow(std::fabs(std::cos(a - lightAng)), 18.0f);
+                const float sheen = sheen_[i];
                 c = c + RGB{120, 120, 140} * (sheen * (0.35f + 0.25f * groove));
                 // A tint of the club light on the vinyl.
                 c = c + labelA * (0.04f + 0.05f * beat_.v);
@@ -248,9 +251,6 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
                 c = std::cos(rel) > 0.0f ? labelA : labelB;
                 if (r > LabelR - 1.2f)
                     c = c * 0.7f;
-                const float sxk = len(r * std::cos(rel) - 7.0f, r * std::sin(rel));
-                if (sxk < 1.6f)
-                    c = RGB{240, 240, 230};
             }
             else {
                 c = RGB{210, 210, 220};  // spindle
@@ -258,10 +258,12 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
             buf_.at(x, y) = c;
         }
 
-    // Cue line drawn on the vinyl from the sticker outwards (scratch DJs mark it).
-    for (float r = LabelR + 0.5f; r < RecordR - 0.5f; r += 0.5f) {
-        const float x = PlatterX + std::cos(recordAngle_) * r, y = PlatterY + std::sin(recordAngle_) * r;
-        buf_.mix(static_cast<int>(x * sx), static_cast<int>(y * sy), RGB{230, 230, 220}, 0.45f);
+    // Chunky cue sticker on the vinyl next to the label: it shows the record
+    // turning, stopping and being dragged back.
+    {
+        const float x = PlatterX + std::cos(recordAngle_) * 15.0f, y = PlatterY + std::sin(recordAngle_) * 15.0f;
+        buf_.disc(x * sx, y * sy, 2.8f * sx, RGB{40, 30, 10}, false);
+        buf_.disc(x * sx, y * sy, 2.2f * sx, RGB{255, 214, 50}, false);
     }
 
     // --- tonearm ---------------------------------------------------------------------------------------
@@ -310,9 +312,6 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
                 capsule(buf_, sx, sy, vx, sy0, vx + 1.0f, sy0, 0.8f, lit ? on : on * 0.12f);
             }
         }
-        // Crossfader cap.
-        const float fx = 97.0f + 23.0f * fader_;
-        capsule(buf_, sx, sy, fx, 89.5f, fx, 93.0f, 1.6f, RGB{220, 220, 230});
     }
 
     // --- hands ------------------------------------------------------------------------------------------
@@ -325,14 +324,36 @@ bool AudioTurntableScene::render(rgb_matrix::FrameCanvas* canvas)
         draw_hand(hx - 2.0f, hy, 0.15f + along * 0.6f, lift, 1.1f);
         // Fader hand from the lower right on the crossfader.
         const float fx = 97.0f + 23.0f * fader_;
-        draw_hand(fx + 1.0f, 87.0f, -Pi * 0.62f, 0.3f, 1.0f);
+        draw_hand(fx + 3.5f, 100.0f, -Pi * 0.62f, 0.3f, 1.0f);
+        // Crossfader cap with a bright edge, pinched by the fingertips below it.
+        capsule(buf_, sx, sy, fx, 89.0f, fx, 93.5f, 2.2f, RGB{255, 255, 255});
+        capsule(buf_, sx, sy, fx, 89.5f, fx, 93.0f, 1.4f, hsv(palette_.value, 0.5f, 0.9f));
+    }
+
+    // Shift the booth down a little and run an LED strip along the far edge
+    // of the booth (the crowd side); it shows the spectrum.
+    {
+        const int shift = static_cast<int>(6.0f * sy);
+        for (int y = H - 1; y >= shift; --y)
+            for (int x = 0; x < W; ++x) buf_.at(x, y) = buf_.at(x, y - shift);
+        for (int y = 0; y < shift; ++y)
+            for (int x = 0; x < W; ++x) buf_.at(x, y) = RGB{20, 18, 24};
+        constexpr int Segments = 32;
+        for (int s = 0; s < Segments; ++s) {
+            const float lv = spectrum_.band(s / static_cast<float>(Segments), (s + 1) / static_cast<float>(Segments));
+            const RGB col = hsv(palette_.value + s * 6.0f, 0.8f, 1.0f) * std::min(1.0f, 0.15f + 0.9f * lv + 0.2f * beat_.v);
+            const int x0 = s * W / Segments, x1 = (s + 1) * W / Segments - 1;
+            for (int x = x0; x < x1; ++x)
+                for (int y = static_cast<int>(1.0f * sy); y < static_cast<int>(3.0f * sy); ++y) buf_.at(x, y) = col;
+            glow(buf_, (x0 + x1) * 0.5f, 3.5f * sy, 3.0f * sx, col * 0.3f);
+        }
     }
 
     // --- club light: a colour wash that sweeps over the booth, brighter on beats ------------------------
     {
         const float cx = 64.0f + 70.0f * std::sin(sweep_ * Tau * 0.5f), cy = 40.0f + 30.0f * std::cos(sweep_ * Tau * 0.35f);
         const RGB tint = hsv(palette_.value + 40.0f, 0.8f, 1.0f);
-        const float amount = 0.10f + 0.12f * beat_.v + 0.15f * drop_.v;
+        const float amount = 0.14f + 0.14f * beat_.v + 0.15f * drop_.v;
         buf_.add_field(0, H, field_step(), [&](float x, float y) {
             const float d = len(x / sx - cx, y / sy - cy) / 48.0f;
             return tint * (amount * std::exp(-d * d * 2.0f));

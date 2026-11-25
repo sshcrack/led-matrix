@@ -47,6 +47,7 @@ private:
 
     std::vector<AudioKit::RGB> wall_;  // lit bricks (static)
     std::vector<float> light_;         // lamp light on wall and pavement
+    std::vector<float> texture_;       // brick relief the paint follows
     std::vector<AudioKit::RGB> paint_;
     std::vector<float> alpha_;
     std::vector<float> dist_;    // signed distance to the piece (negative inside)
@@ -117,7 +118,7 @@ public:
 // --------------------------------------------------------------------------
 class AudioBlockPartyScene final : public AmbientMusicScene {
     struct Person {
-        float x, phase, scale, hue;
+        float x, phase, scale, width;
         int row;    // 0 back, 1 front
         int style;  // 0 nod, 1 bounce, 2 arms up on drops, 3 sway
     };
@@ -128,7 +129,7 @@ class AudioBlockPartyScene final : public AmbientMusicScene {
     std::vector<uint8_t> crowd_;  // silhouette mask, rebuilt every frame
     std::vector<Person> people_;
     std::vector<Drop> water_;
-    float cone_ = 0.0f, coneVel_ = 0.0f, waterClock_ = 0.0f, tv_ = 0.0f;
+    float cone_ = 0.0f, coneVel_ = 0.0f, waterClock_ = 0.0f, tv_ = 0.0f, pumpClock_ = 0.0f;
     AudioKit::Envelope beat_, kick_, snare_, drop_, offbeat_;
     AudioKit::HueCycle palette_{{30.0f, 330.0f, 190.0f, 280.0f, 50.0f}};
     PropertyPointer<bool> hydrant_ = MAKE_PROPERTY("open_hydrant", bool, true);
@@ -147,6 +148,7 @@ public:
 class AudioTurntableScene final : public AmbientMusicScene {
     std::vector<AudioKit::RGB> booth_;   // static booth, plinth and mixer
     std::vector<float> radius_, angle_;  // polar coordinates around the platter
+    std::vector<float> sheen_;           // static highlight on the vinyl
     std::vector<float> vu_;
     float recordAngle_ = 0.0f;
     float scratch_ = 1.0f;  // 0..1 progress of the current scratch, 1 = idle
