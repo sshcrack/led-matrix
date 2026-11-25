@@ -20,6 +20,26 @@ constexpr std::array<Rgb, 7> Palette{{
     {0.80f, 0.92f, 1.00f},  // silver
 }};
 
+enum Hair { Short, Beanie, Bun, Hood };
+struct Who {
+    float x, head, width, sway;
+    Hair hair;
+    int arm;  // 0 none, 1 sparkler, 2 glass, 3 arm round a neighbour
+    float tilt;
+};
+constexpr std::array<Who, 5> People{{{17, 100, 5.5f, 0.0f, Beanie, 3, 0.6f},
+                                     {30, 101, 5.0f, 1.7f, Bun, 2, -0.5f},
+                                     {66, 99, 6.0f, 3.1f, Short, 1, 0.0f},
+                                     {97, 100, 5.5f, 4.4f, Hood, 0, 0.0f},
+                                     {110, 103, 4.2f, 5.2f, Beanie, 0, -0.3f}}};
+constexpr Point Moon{18.0f, 16.0f};
+// How long a burst lights its surroundings, and how bright at time `age`.
+constexpr float LightLife = 1.2f;
+float light_at(float age, float strength)
+{
+    return strength * std::min(1.0f, age / 0.1f) * std::exp(-age * 3.2f);
+}
+
 float far_top(float x)
 {
     // Building tops of the far skyline: flat roofs from a stable hash per lot.
@@ -85,7 +105,7 @@ void NewYearRooftopScene::initialize(int width, int height)
     sparks_.clear();
     smoke_.clear();
     bursts_.clear();
-    flash_ = flashPeak_ = 0.0f;
+    flash_ = lull_ = 0.0f;
     salvoLeft_ = 0.0f;
     launchClock_ = 0.0f;
     sparkler_ = 0.0f;
@@ -145,7 +165,7 @@ void NewYearRooftopScene::build_backdrop()
 
     Environment::paint_sky(s, L, Horizon * sy);
     Environment::paint_stars(s, L, 70 * sy, 1.7f, 41, 70);
-    Environment::paint_moon(s, L, {18.0f * sx, 16.0f * sy}, 4.0f * k);
+    Environment::paint_moon(s, L, {Moon.x * sx, Moon.y * sy}, 4.0f * k);
     // The city lights the haze above the skyline orange.
     for (int y = 0; y < static_cast<int>(Horizon * sy); ++y) {
         const float glow = std::pow(std::clamp(y / (Horizon * sy), 0.0f, 1.0f), 3.0f) * (0.10f + 0.10f * L.overcast);
@@ -186,8 +206,14 @@ void NewYearRooftopScene::build_backdrop()
             const uint32_t id = static_cast<uint32_t>(y * 977 + x * 13);
             if (hash01(id) > 0.42f)
                 continue;
+            // Windows right behind the people's heads stay dim, so their
+            // outlines read against the city.
+            float behind = 1.0f;
+            for (const auto& p : People)
+                if (std::fabs(x + 1.0f - p.x) < p.width + 3.0f && y > p.head - 8.0f)
+                    behind = 0.35f;
             rect(static_cast<float>(x), static_cast<float>(y), 2, 2,
-                 scale(windowTints[static_cast<size_t>(hash01(id + 5) * 3.99f)], 0.45f + 0.4f * hash01(id + 9)));
+                 scale(windowTints[static_cast<size_t>(hash01(id + 5) * 3.99f)], behind * (0.45f + 0.4f * hash01(id + 9))));
         }
     // Mark the open sky before the rooftop goes on top.
     sky_.assign(static_cast<size_t>(bg.w * bg.h), 0);
@@ -218,9 +244,23 @@ void NewYearRooftopScene::build_backdrop()
 void NewYearRooftopScene::launch(float speedScale)
 {
     Rocket r{};
-    r.x = 10.0f + 108.0f * rnd();
+    // Pick the spot, of a few candidates, furthest from fresh bursts, rockets
+    // still climbing and the moon, so big shells open in their own space.
+    float best = -1.0f;
+    for (int attempt = 0; attempt < 6; ++attempt) {
+        const float x = 10.0f + 108.0f * rnd(), y = 14.0f + 32.0f * rnd();
+        float clear = std::hypot(x - Moon.x, y - Moon.y) - 8.0f;
+        for (const auto& b : bursts_)
+            if (b.age < 0.9f)
+                clear = std::min(clear, std::hypot(x - b.x, y - b.y) - b.r);
+        for (const auto& o : rockets_) clear = std::min(clear, std::hypot(x - o.x, y - o.burstY) - 14.0f);
+        if (clear > best) {
+            best = clear;
+            r.x = x;
+            r.burstY = y;
+        }
+    }
     r.y = Horizon;
-    r.burstY = 14.0f + 32.0f * rnd();
     r.vy = -(std::sqrt(2.0f * 28.0f * (Horizon - r.burstY)) * (0.95f + 0.1f * rnd())) * speedScale;
     r.kind = static_cast<int>(rnd() * 6.0f);
     r.color = Palette[static_cast<size_t>(rnd() * (Palette.size() - 0.01f))];
@@ -272,13 +312,7 @@ void NewYearRooftopScene::burst(const Rocket& r)
                 break;  // glitter
         }
     }
-    bursts_.push_back({r.x, r.y, 0.0f, 12.0f * size, r.kind == 5 ? Rgb{1.0f, 0.95f, 0.85f} : mix(r.color, {1, 1, 1}, 0.4f)});
-    if (flashPeak_ < 0.4f + 0.4f * size) {
-        flashPeak_ = 0.4f + 0.4f * size;
-        flashColor_ = r.kind == 5 ? Rgb{1.0f, 0.95f, 0.85f} : r.color;
-        flashX_ = r.x;
-        flashY_ = r.y;
-    }
+    bursts_.push_back({r.x, r.y, 0.0f, 14.0f * size, r.kind == 5 ? Rgb{1.0f, 0.95f, 0.85f} : r.color, 0.45f + 0.4f * size});
     if (smoke_.size() < 40)
         smoke_.push_back({r.x, r.y, 9.0f * size, 18.0f, 18.0f, mix(r.color, {0.55f, 0.52f, 0.5f}, 0.8f)});
 }
@@ -292,8 +326,13 @@ void NewYearRooftopScene::update_fireworks(float dt)
         if (launchClock_ <= 0.0f) {
             launch(1.0f);
             salvoLeft_ -= 1.0f;
-            launchClock_ = 0.18f + 0.25f * rnd();
+            launchClock_ = 0.22f + 0.25f * rnd();
+            if (salvoLeft_ <= 0.0f)
+                lull_ = 1.2f + 1.0f * rnd();  // a breath after each volley
         }
+    }
+    else if (lull_ > 0.0f) {
+        lull_ -= dt;
     }
     else if (rnd() < launch_rate() * dt) {
         launch(1.0f);
@@ -349,26 +388,40 @@ void NewYearRooftopScene::update_fireworks(float dt)
     }
     std::erase_if(smoke_, [](const Puff& m) { return m.life <= 0.0f; });
     for (auto& b : bursts_) b.age += dt;
-    std::erase_if(bursts_, [](const Bloom& b) { return b.age > 0.35f; });
-    // The light eases in over ~0.1 s instead of popping, then fades.
-    flash_ += (flashPeak_ - flash_) * std::min(1.0f, dt * 22.0f);
-    flashPeak_ *= std::exp(-dt * 5.0f);
+    std::erase_if(bursts_, [](const Bloom& b) { return b.age > LightLife; });
+    // The rooftop, smoke and glass catch the combined light of the bursts.
+    // Both amount and colour ease over a few frames, so they never jump.
+    float total = 0.0f;
+    Rgb tint{};
+    for (const auto& b : bursts_) {
+        const float l = light_at(b.age, b.strength);
+        total += l;
+        tint = {tint.r + b.color.r * l, tint.g + b.color.g * l, tint.b + b.color.b * l};
+    }
+    flash_ += (std::min(1.0f, total) - flash_) * std::min(1.0f, dt * 12.0f);
+    if (total > 0.01f)
+        flashColor_ = mix(flashColor_, scale(tint, 1.0f / total), std::min(1.0f, dt * 8.0f));
 }
 
 void NewYearRooftopScene::draw_sky_effects()
 {
     const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f;
     const int skyRows = std::min(cv_.h, static_cast<int>(std::ceil(Horizon * sy)) + 1);
-    // Each burst lights the sky around itself and, faintly, the city below it.
-    if (flash_ > 0.01f) {
-        const float fx = flashX_ * sx, fy = flashY_ * sy, inv = 1.0f / (55.0f * std::min(sx, sy));
-        for (int y = 0; y < static_cast<int>(Parapet * sy) && y < cv_.h; ++y)
-            for (int x = 0; x < cv_.w; ++x) {
-                const size_t i = static_cast<size_t>(y * cv_.w + x);
+    // Each burst lights the sky around itself and, faintly, the city below
+    // it; the light stays where the shell opened and fades there.
+    const float reach = 55.0f * std::min(sx, sy), inv = 1.0f / reach;
+    const int rows = std::min(cv_.h, static_cast<int>(Parapet * sy));
+    for (const auto& b : bursts_) {
+        const float l = light_at(b.age, b.strength);
+        if (l < 0.02f)
+            continue;
+        const float fx = b.x * sx, fy = b.y * sy;
+        for (int y = std::max(0, static_cast<int>(fy - reach)); y < std::min(rows, static_cast<int>(fy + reach) + 1); ++y)
+            for (int x = std::max(0, static_cast<int>(fx - reach)); x < std::min(cv_.w, static_cast<int>(fx + reach) + 1); ++x) {
                 const float dx = x - fx, dy = y - fy;
-                const float near = std::max(0.0f, 1.0f - std::sqrt(dx * dx + dy * dy) * inv);
+                const float near = 1.0f - std::sqrt(dx * dx + dy * dy) * inv;
                 if (near > 0.0f)
-                    cv_.add(x, y, flashColor_, flash_ * (sky_[i] ? 0.18f * near * near : 0.05f * near));
+                    cv_.add(x, y, b.color, l * (sky_[static_cast<size_t>(y * cv_.w + x)] ? 0.18f * near * near : 0.05f * near));
             }
     }
     // Smoke from earlier rockets hangs over the city, lit by the bursts.
@@ -391,7 +444,7 @@ void NewYearRooftopScene::draw_sky_effects()
     for (const auto& b : bursts_) {
         const float u = 1.0f - b.age / 0.35f;
         if (u > 0.0f)
-            cv_.glow(b.x * sx, b.y * sy, b.r * 0.9f * sx * (0.6f + 0.4f * (1.0f - u)), b.color, 0.4f * u * u);
+            cv_.glow(b.x * sx, b.y * sy, b.r * 0.65f * sx * (0.6f + 0.4f * (1.0f - u)), mix(b.color, {1, 1, 1}, 0.4f), 0.4f * u * u);
     }
 }
 
@@ -450,7 +503,6 @@ void NewYearRooftopScene::draw_rooftop(float dt)
     sparkler_ += (sparkleOn - sparkler_) * std::min(1.0f, dt * 1.5f);
     const float toast = std::clamp(std::sin(t_ * 0.45f) * 3.0f - 2.0f, 0.0f, 1.0f);
     Point sparklerTip{}, glass{};
-    enum Hair { Short, Beanie, Bun, Hood };
     const auto person = [&](int pass, float x, float headY, float width, float sway, Hair hair, int arm, float tilt) {
         const Rgb col = pass == 0 ? rim : body;
         const float a = pass == 0 ? rimA : 1.0f;
@@ -496,22 +548,11 @@ void NewYearRooftopScene::draw_rooftop(float dt)
             cv_.capsule((cx + width - 2.0f) * sx, (hy + 7.0f) * sy, 1.3f * k, (cx + width + 4.5f) * sx, (hy + 6.0f) * sy, 1.1f * k, col, a);
         }
     };
-    struct Who {
-        float x, head, width, sway;
-        Hair hair;
-        int arm;
-        float tilt;
-    };
-    const std::array<Who, 5> people{{{17, 100, 5.5f, 0.0f, Beanie, 3, 0.6f},
-                                     {30, 101, 5.0f, 1.7f, Bun, 2, -0.5f},
-                                     {66, 99, 6.0f, 3.1f, Short, 1, 0.0f},
-                                     {97, 100, 5.5f, 4.4f, Hood, 0, 0.0f},
-                                     {110, 103, 4.2f, 5.2f, Beanie, 0, -0.3f}}};
     // A soft warm haze from the street below sits behind the heads, so the
     // silhouettes read even between bursts.
-    for (const auto& p : people) cv_.glow(p.x * sx, (p.head + 3.0f) * sy, 9.0f * k, {1.0f, 0.62f, 0.32f}, 0.10f);
+    for (const auto& p : People) cv_.glow(p.x * sx, (p.head + 3.0f) * sy, 9.0f * k, {1.0f, 0.62f, 0.32f}, 0.10f);
     for (int pass = 0; pass < 2; ++pass)
-        for (const auto& p : people) person(pass, p.x, p.head, p.width, p.sway, p.hair, p.arm, p.tilt);
+        for (const auto& p : People) person(pass, p.x, p.head, p.width, p.sway, p.hair, p.arm, p.tilt);
 
     if (glass.x > 0.0f) {
         cv_.set(static_cast<int>(glass.x * sx), static_cast<int>((glass.y - 1.5f) * sy),

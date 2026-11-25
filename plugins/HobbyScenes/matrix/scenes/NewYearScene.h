@@ -32,6 +32,7 @@ class NewYearRooftopScene final : public HobbySceneBase {
     struct Bloom {
         float x, y, age, r;
         Rgb color;
+        float strength;
     };
     std::vector<float> backdrop_;  // sky and skyline, rebuilt when the look changes
     std::vector<uint8_t> sky_;     // 1 where open sky shows (flash and smoke paint only there)
@@ -42,9 +43,9 @@ class NewYearRooftopScene final : public HobbySceneBase {
     std::vector<Bloom> bursts_;
     float launchClock_ = 0.0f;
     float salvoLeft_ = 0.0f;
-    float flash_ = 0.0f, flashPeak_ = 0.0f;
+    float flash_ = 0.0f;  // combined light of the current bursts, eased
+    float lull_ = 0.0f;   // pause after a salvo
     Rgb flashColor_{1, 1, 1};
-    float flashX_ = 64.0f, flashY_ = 30.0f;
     float sparkler_ = 0.0f;
 
     PropertyPointer<Plugins::EnumProperty<NewYearShow>> show_ = MAKE_ENUM_PROPERTY("show", NewYearShow, NewYearShow::AUTO);
