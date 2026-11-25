@@ -2,6 +2,8 @@
 
 #include <tuple>
 
+#include "Backdrop.h"
+
 namespace Hobbies {
 namespace {
 
@@ -10,41 +12,6 @@ constexpr float Rail = 79.0f;
 constexpr float WaterTop = 87.0f;
 constexpr float Horizon = 74.0f;
 constexpr float CycleSeconds = 120.0f;
-
-// Draw in a 128×128 design space. Scale the composition to the actual canvas.
-struct Artwork {
-    Canvas& canvas;
-    float sx, sy;
-
-    explicit Artwork(Canvas& cv) : canvas(cv), sx(cv.w / 128.0f), sy(cv.h / 128.0f) {}
-
-    void rect(float x, float y, float width, float height, Rgb color) const
-    {
-        const int left = std::max(0, static_cast<int>(std::lround(x * sx)));
-        const int right = std::min(canvas.w, static_cast<int>(std::lround((x + width) * sx)));
-        const int top = std::max(0, static_cast<int>(std::lround(y * sy)));
-        const int bottom = std::min(canvas.h, static_cast<int>(std::lround((y + height) * sy)));
-        for (int row = top; row < bottom; ++row)
-            for (int col = left; col < right; ++col) canvas.set(col, row, color);
-    }
-
-    void oval(float x, float y, float rx, float ry, Rgb color, float alpha = 1.0f) const
-    {
-        canvas.ellipse(x * sx, y * sy, rx * sx, ry * sy, 0.0f, color, alpha);
-    }
-
-    void pine(float x, float base, float height, Rgb shade, Rgb lit) const
-    {
-        rect(x, base - height, 1.0f, height, shade);
-        for (int branch = 1; branch <= 4; ++branch) {
-            const float width = height * (0.08f + 0.036f * branch);
-            const float y = base - height + height * branch * 0.207f;
-            const float r = std::max(0.48f, height * 0.055f) * sy;
-            canvas.capsule((x - width) * sx, (y + width * 0.4f) * sy, r, x * sx, y * sy, r, shade);
-            canvas.capsule(x * sx, y * sy, r, (x + width) * sx, (y + width * 0.4f) * sy, r, lit);
-        }
-    }
-};
 
 float far_bank(float x)
 {
@@ -161,9 +128,6 @@ void RailwayViaductScene::build_backdrop()
 
     // Remember which pixels still show open sky (for the drifting clouds) and
     // open water (for the animated reflections).
-    const auto unchanged = [&](const std::vector<float>& stage, size_t i) {
-        return bg.px[i * 3] == stage[i * 3] && bg.px[i * 3 + 1] == stage[i * 3 + 1] && bg.px[i * 3 + 2] == stage[i * 3 + 2];
-    };
     sky_.assign(static_cast<size_t>(bg.w * bg.h), 0);
     water_.assign(static_cast<size_t>(bg.w * bg.h), 0);
     const int skyRows = std::min(bg.h, static_cast<int>(std::ceil(horizon)));
@@ -171,9 +135,9 @@ void RailwayViaductScene::build_backdrop()
         for (int x = 0; x < bg.w; ++x) {
             const size_t i = static_cast<size_t>(y * bg.w + x);
             if (y < skyRows)
-                sky_[i] = unchanged(skyStage, i);
+                sky_[i] = unchanged(bg, skyStage, i);
             else if (y >= static_cast<int>(WaterTop * art.sy))
-                water_[i] = unchanged(waterStage, i);
+                water_[i] = unchanged(bg, waterStage, i);
         }
     backdrop_ = std::move(bg.px);
 }
@@ -182,13 +146,8 @@ void RailwayViaductScene::draw_water(float raw_dt, float front, bool train)
 {
     const auto& L = env();
     const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f, W = static_cast<float>(cv_.w);
-    const auto wet = [&](int x, int y) { return x >= 0 && y >= 0 && x < cv_.w && y < cv_.h && water_[static_cast<size_t>(y * cv_.w + x)]; };
-    const auto streak = [&](float x, float y, float length, Rgb color, float alpha) {
-        const int row = static_cast<int>(y * sy);
-        for (int col = static_cast<int>(x * sx); col < static_cast<int>((x + length) * sx); ++col)
-            if (wet(col, row))
-                cv_.add(col, row, color, alpha);
-    };
+    const MaskedLight water(cv_, water_);
+    const auto streak = [&](float x, float y, float length, Rgb color, float alpha) { water.streak(x, y, length, color, alpha); };
     const float calm = 1.0f - 0.6f * L.fog;
 
     // Slow ripples catch the sky.
@@ -205,20 +164,8 @@ void RailwayViaductScene::draw_water(float raw_dt, float front, bool train)
     const float lightX = (moon ? Environment::moon_point(L, W, Horizon * sy).x : Environment::sun_point(L, W, Horizon * sy).x) / sx;
     const float pathVis = (moon ? 0.7f * L.moon_light + 0.25f * L.night : std::clamp((L.sun_elevation + 2.0f) / 4.0f, 0.0f, 1.0f)) *
                           (1.0f - 0.9f * L.overcast) * calm;
-    if (pathVis > 0.02f) {
-        const Rgb pathColor = moon ? Rgb{0.78f, 0.85f, 1.0f} : mix(from_env(L.sun_color), {1.0f, 0.95f, 0.85f}, 0.5f);
-        const uint32_t frame = static_cast<uint32_t>(t_ * 5.0f);
-        for (int y = 89; y < 128; y += 2) {
-            const float d = (y - WaterTop) / (128 - WaterTop);
-            const float half = 3 + 8 * d;
-            const float wobble = 1.5f * std::sin(y * 0.7f + t_ * 1.4f);
-            for (float x = lightX - half; x < lightX + half; x += 1.0f) {
-                const float fall = 1 - std::fabs(x - lightX) / half;
-                const float glint = hash01(static_cast<uint32_t>(y * 977 + static_cast<int>(x) * 131) + frame * 2654435761u);
-                streak(x + wobble, static_cast<float>(y), 1, pathColor, pathVis * fall * (glint > 0.7f ? 0.32f : 0.06f));
-            }
-        }
-    }
+    const Rgb pathColor = moon ? Rgb{0.78f, 0.85f, 1.0f} : mix(from_env(L.sun_color), {1.0f, 0.95f, 0.85f}, 0.5f);
+    water.light_path(t_, lightX, WaterTop, 89, 3.0f, 11.0f, pathColor, pathVis);
 
     // Lit carriage windows trail wavering reflections across the river.
     const float lamp = L.lamp();
@@ -308,13 +255,7 @@ bool RailwayViaductScene::render(rgb_matrix::FrameCanvas* canvas)
 
     // Clouds drift behind the ridges: paint them over the sky rows, then put
     // back every pixel the landscape covers.
-    if (L.clouds > 0.03f || L.overcast > 0.03f) {
-        const int skyRows = std::min(cv_.h, static_cast<int>(std::ceil(Horizon * sy)));
-        Environment::paint_clouds({cv_.px.data(), cv_.w, skyRows, 1.0f}, L, t_, 3 * sy, 50 * sy, 0.0f, 7);
-        for (size_t i = 0; i < static_cast<size_t>(skyRows * cv_.w); ++i)
-            if (!sky_[i])
-                std::copy_n(&backdrop_[i * 3], 3, &cv_.px[i * 3]);
-    }
+    paint_clouds_behind(cv_, backdrop_, sky_, L, t_, Horizon * sy, 3 * sy, 50 * sy, 7);
 
     cycle_ = std::fmod(cycle_ + dt, CycleSeconds);
     const float front = 16 + 20 * cycle_;
