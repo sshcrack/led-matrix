@@ -97,6 +97,8 @@ void AllotmentScene::build_backdrop()
                 c = scale(c, 0.86f + 0.08f * su + 0.06f * wi);
             if (std::fabs(y / sy - (TractorY - 0.3f)) < 0.6f)
                 c = mix(c, terrain({0.42f, 0.34f, 0.24f}, 0.45f), 0.35f);  // the farm track
+            // Rain darkens and cools the field towards wet ochre.
+            c = mix(scale(c, 1.0f - 0.3f * wet), lit({0.36f, 0.36f, 0.34f}, 0.45f), 0.2f * wet);
             // At night the pale field sinks back behind the garden.
             c = scale(c, 1.0f - 0.25f * L.night);
             bg.set(x, y, c);
@@ -132,7 +134,7 @@ void AllotmentScene::build_backdrop()
     if (wet > 0.05f)
         for (const auto [px, py, pr] : {std::array<float, 3>{28.0f, 117.0f, 4.6f}, std::array<float, 3>{29.6f, 101.0f, 1.6f}}) {
             const Rgb skyC = from_env(L.sky(0.4f)), mud = scale(terrain({0.30f, 0.26f, 0.20f}), 0.6f);
-            const Rgb water = mix(skyC, {1, 1, 1}, 0.12f);
+            const Rgb water = mix(skyC, {1, 1, 1}, 0.25f);
             art.oval(px, py, pr * 1.5f, pr * 0.7f, scale(terrain({0.30f, 0.24f, 0.18f}), 0.7f), 0.5f * wet);  // damp ground round it
             // Three overlapping, flat lobes sunk into the mud: a dark far lip
             // (the bank's shadow) and the sky's reflection, broken by mud.
@@ -854,7 +856,7 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int y = static_cast<int>((Horizon - 8.0f) * sy); y < static_cast<int>(HedgeY * sy); ++y)
             for (int x = 0; x < cv_.w; ++x)
                 if (field_[static_cast<size_t>(y * cv_.w + x)])
-                    cv_.blend(x, y, haze, 0.6f * L.fog);
+                    cv_.blend(x, y, haze, 0.85f * L.fog);
     }
     draw_sunflowers();
     draw_smoke(dt);
@@ -895,8 +897,13 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
             for (int ring = 0; ring < 2; ++ring) {
                 const float clock = t_ * 1.6f + ring * 0.5f;
                 const float age = std::fmod(clock, 1.0f), rx = 26.0f + 5.0f * hash01(static_cast<uint32_t>(clock) * 3u + ring);
-                cv_.ellipse(rx * sx, 117.4f * sy, (0.5f + 1.4f * age) * k, (0.3f + 0.4f * age) * k, 0.0f, shine,
-                            0.4f * (1.0f - age) * L.rain);
+                // An expanding ring that breaks the reflection as it passes.
+                const float rr = 0.6f + 2.2f * age;
+                for (int seg = 0; seg < 14; ++seg) {
+                    const float ang = kTau * seg / 14.0f;
+                    cv_.blend(static_cast<int>((rx + std::cos(ang) * rr) * sx), static_cast<int>((117.2f + std::sin(ang) * rr * 0.4f) * sy),
+                              seg % 2 ? shine : lit({0.20f, 0.18f, 0.16f}), 0.55f * (1.0f - age) * L.rain);
+                }
             }
     }
     // Drips run off the shed's eave in the rain.
@@ -971,7 +978,7 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
         }
     }
     if (L.fog > 0.02f)
-        draw_scarecrow(0.45f * L.fog);  // the nearer landmark keeps some contrast in the mist
+        draw_scarecrow(0.7f * L.fog);  // the nearer landmark keeps some contrast in the mist
     precip_.set_max(static_cast<int>(200 * render_quality_scale()));
     paint_weather(raw, Horizon * sy, [&](float) { return cv_.h + 6.0f; });
     present(canvas);
