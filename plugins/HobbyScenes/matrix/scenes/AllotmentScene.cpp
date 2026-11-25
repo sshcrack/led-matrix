@@ -117,7 +117,8 @@ void AllotmentScene::build_backdrop()
     // A trodden path up the middle, between the shed and the beds.
     for (int y = static_cast<int>(FenceY * sy); y < bg.h; ++y) {
         const float t = (y / sy - FenceY) / (128 - FenceY);
-        art.rect(30.0f - 7.0f * t, y / sy, 3.0f + 6.0f * t, 1.0f / sy, scale(frosted(terrain({0.50f, 0.42f, 0.30f}), 1.0f), 1.0f - 0.35f * wet));
+        art.rect(30.0f - 7.0f * t, y / sy, 3.0f + 6.0f * t, 1.0f / sy,
+                 scale(frosted(terrain({0.50f, 0.42f, 0.30f}), 1.0f), 1.0f - 0.35f * wet));
     }
     // After rain, puddles in the low spots of the path mirror the sky.
     if (wet > 0.05f)
@@ -262,8 +263,8 @@ void AllotmentScene::build_backdrop()
                 art.oval(x, y, 2.0f, 1.3f, vine, vines);
             }
             // Pumpkins: small and green in summer, big and orange in autumn.
-            constexpr std::array<std::array<float, 3>, 5> Pumpkins{{{54.0f, 6.5f, 1.25f}, {63.5f, 4.5f, 0.75f}, {70.0f, 8.0f, 1.0f},
-                                                                    {81.0f, 5.0f, 0.6f}, {87.5f, 8.5f, 1.15f}}};
+            constexpr std::array<std::array<float, 3>, 5> Pumpkins{
+                {{54.0f, 6.5f, 1.25f}, {63.5f, 4.5f, 0.75f}, {70.0f, 8.0f, 1.0f}, {81.0f, 5.0f, 0.6f}, {87.5f, 8.5f, 1.15f}}};
             for (size_t i = 0; i < Pumpkins.size(); ++i) {
                 const auto [ox, oy, size] = Pumpkins[i];
                 const float x = b.x0 + ox, y = b.top + oy;
@@ -277,7 +278,8 @@ void AllotmentScene::build_backdrop()
                 art.rect(x - 0.3f, y - r - 0.8f, 0.8f, 1.0f, lit({0.30f, 0.26f, 0.14f}));
             }
             // A few leaves lie over the pumpkins, half hiding some.
-            for (const auto [lx, ly] : {std::array<float, 2>{51.5f, 5.0f}, std::array<float, 2>{72.5f, 6.5f}, std::array<float, 2>{89.0f, 7.0f}})
+            for (const auto [lx, ly] :
+                 {std::array<float, 2>{51.5f, 5.0f}, std::array<float, 2>{72.5f, 6.5f}, std::array<float, 2>{89.0f, 7.0f}})
                 art.oval(b.x0 + lx, b.top + ly, 2.2f, 1.4f, vine, vines);
         }
         if (wi > 0.02f)
@@ -327,7 +329,8 @@ void AllotmentScene::build_backdrop()
             }
         for (int i = 0; i < 9; ++i) {
             const auto& b = Beds[static_cast<size_t>(i % 3)];
-            const float x = b.x0 + 6.0f + (b.x1 - b.x0 - 12.0f) * hash01(i * 13u + 3u), y = b.top + 2.0f + (b.height - 4.0f) * hash01(i * 13u + 4u);
+            const float x = b.x0 + 6.0f + (b.x1 - b.x0 - 12.0f) * hash01(i * 13u + 3u),
+                        y = b.top + 2.0f + (b.height - 4.0f) * hash01(i * 13u + 4u);
             art.oval(x, y, 1.6f + hash01(i * 13u + 5u), 0.7f, scale(terrain({0.30f, 0.22f, 0.16f}, 0.0f, 0.0f), 0.9f), 0.7f * L.snow_cover);
         }
     }
@@ -631,7 +634,8 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int y = clearFrom; y < cv_.h; ++y) {
             const float keep = 0.6f * smoothstep(static_cast<float>(clearFrom), static_cast<float>(cv_.h), static_cast<float>(y));
             for (int i = y * cv_.w * 3; i < (y + 1) * cv_.w * 3; ++i)
-                cv_.px[static_cast<size_t>(i)] += (nearRows_[static_cast<size_t>(i - clearFrom * cv_.w * 3)] - cv_.px[static_cast<size_t>(i)]) * keep;
+                cv_.px[static_cast<size_t>(i)] +=
+                    (nearRows_[static_cast<size_t>(i - clearFrom * cv_.w * 3)] - cv_.px[static_cast<size_t>(i)]) * keep;
         }
     precip_.set_max(static_cast<int>(200 * render_quality_scale()));
     paint_weather(raw, Horizon * sy, [&](float) { return cv_.h + 6.0f; });
