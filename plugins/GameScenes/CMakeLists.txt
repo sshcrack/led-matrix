@@ -1,14 +1,6 @@
 register_plugin(GameScenes
         matrix/GameScenes.cpp
         matrix/GameScenes.h
-        scenes/PingPongGameScene.cpp
-        scenes/PingPongGameScene.h
-        scenes/MazeGameScene.cpp
-        scenes/MazeGameScene.h
-        scenes/SnakeGameScene.cpp
-        scenes/SnakeGameScene.h
-        scenes/PacmanGameScene.cpp
-        scenes/PacmanGameScene.h
         scenes/tetris/TetrisScene.cpp
         scenes/tetris/TetrisScene.h
 
