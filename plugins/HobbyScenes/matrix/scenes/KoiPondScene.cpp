@@ -70,7 +70,7 @@ void KoiPondScene::initialize(int width, int height)
         Koi k{};
         const float a = kTau * i / 6.0f + rnd(), r = 8.0f + 22.0f * rnd();
         k.heading = rnd() * kTau;
-        k.speed = 5.5f + 3.0f * rnd();
+        k.speed = 4.5f + 5.0f * rnd();
         k.turn = 0.0f;
         k.wander = rnd() * 100.0f;
         k.size = i == 0 ? 1.25f : 0.85f + 0.3f * rnd();
@@ -143,7 +143,13 @@ void KoiPondScene::build_backdrop()
         const float a = kTau * (s + 0.6f * hash01(s * 17u)) / 44.0f, r = rim(a) + 2.5f;
         const float x = CX + std::cos(a) * r, y = CY + std::sin(a) * r;
         const float h = hash01(s * 7u + 1u), size = 2.0f + 2.8f * h * h;
-        const Rgb stone = lit(mix({0.38f, 0.37f, 0.36f}, {0.48f, 0.46f, 0.43f}, hash01(s * 3u + 2u)));
+        Rgb stone = lit(mix({0.38f, 0.37f, 0.36f}, {0.48f, 0.46f, 0.43f}, hash01(s * 3u + 2u)));
+        // The low sun catches the stones on its side of the pond.
+        if (L.twilight > 0.02f) {
+            const float sunA = std::atan2(-22.0f, 22.0f - 44.0f * L.sun_x), facing = std::max(0.0f, std::cos(a - sunA));
+            const Rgb warm = L.morning ? Rgb{1.0f, 0.68f, 0.48f} : Rgb{1.0f, 0.58f, 0.28f};
+            stone = mix(stone, warm, 0.5f * L.twilight * facing * facing);
+        }
         bg.ellipse((x + 0.6f) * sx, (y + 0.8f) * sy, size * k, size * 0.8f * k, a, scale(stone, 0.4f), 0.6f);
         bg.ellipse(x * sx, y * sy, size * k, size * 0.8f * k, a, stone);
         bg.ellipse((x - 0.6f) * sx, (y - 0.6f) * sy, size * 0.55f * k, size * 0.4f * k, a,
@@ -377,7 +383,7 @@ void KoiPondScene::draw_water(float dt)
             continue;
         const Point at = pass == 0 ? Point{CX + 14.0f, CY - 16.0f} : Point{CX + 22.0f - 44.0f * L.sun_x, CY - 22.0f};
         const Rgb c = pass == 0 ? Rgb{0.82f, 0.88f, 1.0f}
-                                : (L.morning ? Rgb{1.0f, 0.74f, 0.70f} : mix(from_env(L.sun_color), {1.0f, 0.75f, 0.5f}, 0.3f));
+                                : (L.morning ? Rgb{1.0f, 0.62f, 0.40f} : mix(from_env(L.sun_color), {1.0f, 0.75f, 0.5f}, 0.3f));
         // A soft, vertically stretched smear: each row fades out to both
         // sides and sways on its own, brightest in the middle.
         // The low dawn sun lays a longer, wider band than the moon.
@@ -403,7 +409,7 @@ void KoiPondScene::draw_water(float dt)
     }
     for (auto& r : ripples_) {
         r.r += dt * 4.5f;
-        r.life -= dt * 0.7f;
+        r.life -= dt * 0.9f;
     }
     std::erase_if(ripples_, [](const Ripple& r) { return r.life <= 0.0f; });
     const Rgb ring = mix(sheen, {1, 1, 1}, 0.3f);
