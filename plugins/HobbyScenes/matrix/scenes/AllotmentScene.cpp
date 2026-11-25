@@ -20,8 +20,8 @@ struct Bed {
 constexpr std::array<Bed, 3> Beds{{{80.0f, 7.0f, 46.0f, 117.0f}, {93.0f, 9.0f, 40.0f, 123.0f}, {108.0f, 12.0f, 33.0f, 129.0f}}};
 
 // Where a crow may come down: scarecrow arms, fence top, shed ridge, the beds.
-constexpr std::array<Point, 9> Perches{{{100.8f, ArmY - 0.6f},
-                                        {117.2f, ArmY - 0.6f},
+constexpr std::array<Point, 9> Perches{{{100.5f, FenceY - 8.0f},
+                                        {116.5f, FenceY - 8.0f},
                                         {52.0f, 69.0f},
                                         {84.0f, 69.0f},
                                         {15.0f, 57.5f},
@@ -126,14 +126,17 @@ void AllotmentScene::build_backdrop()
         for (const auto [px, py, pr] : {std::array<float, 3>{25.0f, 114.0f, 5.0f}, std::array<float, 3>{13.0f, 100.5f, 2.6f}}) {
             const Rgb skyC = from_env(L.sky(0.4f)), mud = scale(terrain({0.30f, 0.26f, 0.20f}), 0.6f);
             const Rgb water = mix(mud, skyC, 0.6f);
-            // Three overlapping lobes make an irregular puddle with a muddy rim.
+            // Three overlapping, flat lobes sunk into the mud: a dark far lip
+            // (the bank's shadow) and the sky's reflection, broken by mud.
             for (int lobe = 0; lobe < 3; ++lobe) {
-                const float ox = (lobe - 1) * pr * 0.55f, oy = (lobe == 1 ? -0.3f : 0.25f) * (1 + lobe % 2),
+                const float ox = (lobe - 1) * pr * 0.55f, oy = (lobe == 1 ? -0.2f : 0.2f) * (1 + lobe % 2),
                             r = pr * (0.55f + 0.2f * (lobe % 2));
-                art.oval(px + ox, py + oy + 0.3f, r * 1.1f, r * 0.45f, mud, wet);
-                art.oval(px + ox, py + oy, r, r * 0.36f, water, wet);
+                art.oval(px + ox, py + oy - 0.3f, r, r * 0.26f, mud, 0.8f * wet);
+                art.oval(px + ox, py + oy, r * 0.9f, r * 0.24f, water, 0.75f * wet);
             }
-            art.oval(px - pr * 0.4f, py - 0.4f, pr * 0.35f, 0.3f, mix(skyC, {1, 1, 1}, 0.25f), 0.7f * wet);
+            for (int i = 0; i < 4; ++i)
+                dot(px - pr + 2.0f * pr * hash01(static_cast<uint32_t>(px) * 7u + i), py + 0.4f * (hash01(i * 3u + 1u) - 0.5f), mud,
+                    0.7f * wet);
         }
 
     // Sunflowers in front of the fence (drawn after the fence below).
@@ -195,13 +198,13 @@ void AllotmentScene::build_backdrop()
             for (float y = b.top + 2.5f; y < b.top + b.height - 1.0f; y += 4.0f)
                 for (float x = b.x0 + 3.0f; x < b.x1 - 2.0f; x += 3.2f) {
                     const uint32_t id = static_cast<uint32_t>(x * 13 + y * 71);
-                    // Sown in short rows, one stretch of each bed still bare.
-                    const float u = (x - b.x0) / (b.x1 - b.x0), bare = 0.35f + 0.25f * hash01(static_cast<uint32_t>(b.top));
-                    if ((u > bare && u < bare + 0.16f) || hash01(id) < 0.1f)
+                    // Clumps of different sizes with irregular bare earth between.
+                    const float n = std::sin(x * 0.19f + b.top * 0.7f) * std::sin(x * 0.07f + y * 0.9f + b.top * 0.3f);
+                    if (n < -0.2f || hash01(id) < 0.15f)
                         continue;
                     // A tiny pair of leaves on a stalk.
-                    const float jx = x + 1.5f * (hash01(id + 1u) - 0.5f), size = 0.6f + 0.6f * hash01(id + 2u);
-                    const Rgb shoot = plant({0.46f, 0.74f, 0.24f}, 0.0f, 0.2f, 0.3f);
+                    const float jx = x + 2.0f * (hash01(id + 1u) - 0.5f), size = 0.4f + 0.9f * hash01(id + 2u) * (0.6f + 0.4f * n);
+                    const Rgb shoot = plant({0.40f, 0.62f, 0.26f}, 0.0f, 0.2f, 0.3f);
                     dot(jx, y, scale(shoot, 0.7f), sp);
                     bg.ellipse((jx - 0.7f) * sx, (y - 0.8f) * sy, 0.7f * size * k, 0.45f * k, -0.4f, shoot, sp);
                     bg.ellipse((jx + 0.7f) * sx, (y - 0.8f) * sy, 0.7f * size * k, 0.45f * k, 0.4f, shoot, sp);
@@ -356,6 +359,16 @@ void AllotmentScene::build_backdrop()
                 art.oval(x, b.top + b.height + 0.1f, 1.6f + 1.4f * hash01(id + 1u), 1.0f, snowC, 0.85f * L.snow_cover);
                 art.oval(x + 1.0f, b.top - 0.3f, 1.4f + hash01(id + 2u), 0.7f, snowC, 0.7f * L.snow_cover);
             }
+        for (const auto& b : Beds) {
+            // A shallow blue shadow under each bed's snowy front lip, and the
+            // odd dead stalk poking through.
+            art.rect(b.x0 - 1.0f, b.top + b.height + 1.1f, b.x1 - b.x0 + 2.0f, 0.7f, lit({0.56f, 0.62f, 0.76f}));
+            for (int i = 0; i < 7; ++i) {
+                const float x = b.x0 + 4.0f + (b.x1 - b.x0 - 8.0f) * hash01(static_cast<uint32_t>(b.top) * 31u + i);
+                const float y = b.top + 1.0f + (b.height - 2.0f) * hash01(static_cast<uint32_t>(b.top) * 37u + i);
+                cap(x, y, 0.2f, x + 0.4f * (hash01(i * 5u) - 0.5f), y - 1.6f - 1.4f * hash01(i * 7u), 0.15f, lit({0.30f, 0.24f, 0.16f}));
+            }
+        }
         for (int i = 0; i < 9; ++i) {
             const auto& b = Beds[static_cast<size_t>(i % 3)];
             const float x = b.x0 + 6.0f + (b.x1 - b.x0 - 12.0f) * hash01(i * 13u + 3u),
@@ -377,7 +390,7 @@ void AllotmentScene::build_backdrop()
                     continue;
                 const float toward = 1.0f - std::fabs(x / W - sunX);
                 float* px = &bg.px[i * 3];
-                const float shade = 1.0f - 0.22f * low * (1.0f - toward);
+                const float shade = 1.0f - 0.30f * low * (1.0f - toward);
                 px[0] = px[0] * shade * (1.0f - 0.06f * low) + warm.r * 0.05f * low * toward * toward;
                 px[1] = px[1] * shade + warm.g * 0.04f * low * toward * toward;
                 px[2] = px[2] * shade * (1.0f + 0.10f * low * (1.0f - toward)) + warm.b * 0.02f * low * toward * toward;
@@ -395,13 +408,22 @@ void AllotmentScene::build_backdrop()
         for (const auto& b : Beds)
             for (float x = b.x0 + 2.0f; x < b.x1 - 2.0f; x += 3.0f)
                 if (hash01(static_cast<uint32_t>(x * 5 + b.top)) > 0.5f)
-                    dot(x, b.top + 1.0f, rim, 0.25f * low * (1.0f - std::fabs(x / 128.0f - sunX)));
+                    dot(x, b.top + 1.0f, rim, 0.5f * low * (1.0f - std::fabs(x / 128.0f - sunX)));
         // The path in the shade of the shed stays cool.
         for (int y = static_cast<int>(FenceY * sy); y < bg.h; ++y) {
             const float t = (y / sy - FenceY) / (128 - FenceY);
             for (int x = static_cast<int>((30.0f - 7.0f * t) * sx); x < static_cast<int>((33.0f - t) * sx); ++x)
-                bg.blend(x, y, lit({0.30f, 0.32f, 0.40f}), 0.25f * low);
+                bg.blend(x, y, lit({0.30f, 0.32f, 0.40f}), 0.4f * low);
         }
+        // The shed throws a soft shadow away from the sun.
+        const float shedAway = sunX < 0.5f ? 1.0f : -1.0f;
+        for (int y = static_cast<int>(88.0f * sy); y < static_cast<int>(98.0f * sy); ++y) {
+            const float t = (y / sy - 88.0f) / 10.0f;
+            const float from = shedAway > 0 ? 27.0f + 2.0f * t : 3.0f - 10.0f * t, to = shedAway > 0 ? 36.0f + 8.0f * t : 3.0f;
+            for (int x = static_cast<int>(std::max(0.0f, from) * sx); x < static_cast<int>(to * sx); ++x)
+                bg.blend(x, y, lit({0.14f, 0.16f, 0.24f}), 0.3f * low * (1.0f - 0.6f * t));
+        }
+        dot(7.0f, 72.0f, rim, 0.8f * low);  // a catchlight on the window
         const float edgeX = sunX < 0.5f ? 3.0f : 26.0f;
         art.rect(edgeX, 66.0f, 1.0f, 26.0f, mix(lit({0.38f, 0.48f, 0.42f}), warm, 0.55f * low));
         for (float x = 36.0f; x < 128.0f; x += 8.0f) {
@@ -469,7 +491,8 @@ void AllotmentScene::draw_scarecrow()
     }
     // Sleeves to the elbows, straw poking out of the cuffs.
     for (float side : {-1.0f, 1.0f}) {
-        cap(x + side * 2.5f, ArmY, 1.1f, x + side * 5.6f, ArmY + 0.4f + 0.3f * flap * side, 0.9f, coat);
+        const float hang = side > 0 ? 2.2f : 0.4f;  // the right sleeve sags off the bar
+        cap(x + side * 2.5f, ArmY, 1.1f, x + side * 5.4f, ArmY + hang + 0.3f * flap * side, 0.9f, coat);
         for (int s = 0; s < 3; ++s)
             cap(x + side * 6.2f, ArmY, 0.3f, x + side * (7.6f + 0.4f * s), ArmY - 1.0f + s * 1.0f + 0.3f * flap, 0.25f, straw);
     }
@@ -477,6 +500,7 @@ void AllotmentScene::draw_scarecrow()
     cap(x + 1.0f, 91.5f, 0.3f, x + 1.4f + 0.5f * flap, 94.5f, 0.2f, straw);
     // Sack head with a stitched face and a straw hat.
     cv_.ellipse(x * sx, 76.5f * sy, 2.6f * k, 2.9f * k, 0.0f, sack);
+    cv_.ellipse(x * sx, 74.8f * sy, 2.5f * k, 1.2f * k, 0.0f, scale(sack, 0.6f), 0.8f);  // shade under the brim
     cv_.set(static_cast<int>((x - 1.0f) * sx), static_cast<int>(76.0f * sy), prop({0.30f, 0.24f, 0.18f}));
     cv_.set(static_cast<int>((x + 1.0f) * sx), static_cast<int>(76.0f * sy), prop({0.30f, 0.24f, 0.18f}));
     cap(x - 4.5f, 73.6f, 0.5f, x + 4.5f, 73.6f + 0.3f * flap, 0.5f, hat);
@@ -506,7 +530,8 @@ void AllotmentScene::draw_tractor(float dt)
             cv_.glow((x - 3.0f - i * 2.2f) * sx, (y - 0.8f - 0.4f * i) * sy, (1.2f + 0.5f * i) * k,
                      from_env(L.lit({0.72f, 0.62f, 0.46f}, 0.4f)), 0.10f * (1.0f - age / 4.0f));
         }
-    const Rgb body = lit({0.20f, 0.46f, 0.22f}, 0.35f), tyre = lit({0.10f, 0.10f, 0.10f}, 0.35f), cab = lit({0.80f, 0.84f, 0.86f}, 0.35f);
+    const float far = 0.35f + 0.5f * L.fog;
+    const Rgb body = lit({0.20f, 0.46f, 0.22f}, far), tyre = lit({0.10f, 0.10f, 0.10f}, far), cab = lit({0.70f, 0.74f, 0.76f}, far);
     const float bump = 0.15f * std::sin(t_ * 9.0f);
     cap(x - 1.5f, y - 2.6f + bump, 1.2f, x + 2.5f, y - 2.2f + bump, 1.0f, body);    // bonnet and body
     cv_.ellipse((x - 1.8f) * sx, (y - 1.6f) * sy, 1.8f * k, 1.8f * k, 0.0f, tyre);  // big rear wheel
@@ -639,8 +664,8 @@ void AllotmentScene::draw_smoke(float dt)
     }
     for (auto& p : smoke_) {
         p.age += dt;
-        p.x += (0.6f + 3.0f * L.wind) * dt;
-        p.y -= 2.0f * dt;
+        p.x += (1.8f + 3.0f * L.wind) * dt;
+        p.y -= 1.4f * dt;
     }
     std::erase_if(smoke_, [](const Puff& p) { return p.age > 6.0f; });
     const Rgb c = from_env(L.lit({0.86f, 0.85f, 0.84f}, 0.1f));
@@ -665,14 +690,11 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
         for (int y = static_cast<int>(Horizon * sy); y < cv_.h; ++y)
             for (int x = 0; x < cv_.w; ++x) cv_.add(x, y, {0.55f, 0.58f, 0.70f}, 0.18f * L.flash);
     if (L.flash > 0.01f) {
-        // The roof edges and the wet path catch the flash.
-        cv_.capsule(1.0f * sx, 65.4f * sy, 0.4f * k, 15.0f * sx, 56.4f * sy, 0.4f * k, {0.85f, 0.88f, 1.0f}, 0.6f * L.flash);
-        cv_.capsule(15.0f * sx, 56.4f * sy, 0.4f * k, 29.0f * sx, 65.4f * sy, 0.4f * k, {0.85f, 0.88f, 1.0f}, 0.6f * L.flash);
-        for (int y = static_cast<int>(FenceY * sy); y < cv_.h; ++y) {
-            const float t = (y / sy - FenceY) / (128 - FenceY);
-            for (int x = static_cast<int>((30.0f - 7.0f * t) * sx); x < static_cast<int>((33.0f - t) * sx); ++x)
-                cv_.add(x, y, {0.70f, 0.74f, 0.90f}, 0.35f * L.flash * L.wetness);
-        }
+        // Short stretches of the roof edge and the puddles catch the flash.
+        cv_.capsule(6.0f * sx, 62.2f * sy, 0.35f * k, 12.0f * sx, 58.4f * sy, 0.35f * k, {0.85f, 0.88f, 1.0f}, 0.45f * L.flash);
+        cv_.capsule(19.0f * sx, 58.9f * sy, 0.35f * k, 23.0f * sx, 61.5f * sy, 0.35f * k, {0.85f, 0.88f, 1.0f}, 0.35f * L.flash);
+        for (const auto [px, py, pr] : {std::array<float, 3>{25.0f, 114.0f, 4.0f}, std::array<float, 3>{13.0f, 100.5f, 2.0f}})
+            cv_.ellipse(px * sx, py * sy, pr * k, 0.5f * k, 0.0f, {0.80f, 0.84f, 1.0f}, 0.5f * L.flash * L.wetness);
     }
     paint_clouds_behind(cv_, backdrop_, sky_, L, t_, Horizon * sy, 4 * sy, 40 * sy, 21);
 
@@ -742,6 +764,13 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
                     (nearRows_[static_cast<size_t>(i - clearFrom * cv_.w * 3)] - cv_.px[static_cast<size_t>(i)]) * keep;
         }
     if (L.fog > 0.02f) {
+        // The near beds' soil lips stay firm.
+        for (size_t bi = 1; bi < Beds.size(); ++bi) {
+            const auto& b = Beds[bi];
+            const int row = static_cast<int>((b.top + b.height - 0.3f) * sy);
+            for (int col = static_cast<int>(b.x0 * sx); col < std::min(cv_.w, static_cast<int>(b.x1 * sx)); ++col)
+                cv_.blend(col, row, lit({0.20f, 0.14f, 0.10f}), (bi == 2 ? 0.6f : 0.35f) * L.fog);
+        }
         // The shed's near corner and doorway stay dark through the mist.
         const Rgb dark = lit({0.18f, 0.22f, 0.20f});
         for (int y = static_cast<int>(66.0f * sy); y < static_cast<int>(92.0f * sy); ++y) {
