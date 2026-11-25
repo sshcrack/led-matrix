@@ -47,8 +47,9 @@ void AudioPondScene::build_sky()
                 c = lerp(c, RGB{240, 236, 210} * shade, std::clamp(mr - d + 0.5f, 0.0f, 1.0f));
             }
             const uint32_t id = static_cast<uint32_t>(y * W + x);
-            if (hash(id * 3 + 11) > 0.992f && d > mr + 4)
-                c = c + RGB{120, 130, 160} * hash(id);
+            // Reflected stars: few and soft (bright points read as open sky).
+            if (hash(id * 3 + 11) > 0.995f && d > mr + 4)
+                c = c + RGB{60, 68, 90} * hash(id);
             sky_[static_cast<size_t>(y * W + x)] = c;
         }
 }
@@ -183,12 +184,19 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
             const float gx = h0_[static_cast<size_t>(y * W + std::min(x + 1, W - 1))] - h0_[static_cast<size_t>(y * W + std::max(x - 1, 0))];
             const float gy = h0_[static_cast<size_t>(std::min(y + 1, H - 1) * W + x)] - h0_[static_cast<size_t>(std::max(y - 1, 0) * W + x)];
             // A slow shimmer keeps the reflection from reading as open sky.
-            const float shimmer = std::sin(y * 0.9f + time_ * 1.6f + std::sin(x * 0.05f)) * 0.9f;
+            // Stronger near the moon, whose reflection breaks into wavering
+            // horizontal bands like moonlight on water.
+            const float nearMoon = std::exp(-AudioKit::len(x - W * 0.68f, (y - H * 0.30f) * 0.7f) / 12.0f);
+            const float shimmer = std::sin(y * 0.9f + time_ * 1.6f + std::sin(x * 0.05f)) * (0.9f + 2.2f * nearMoon);
             const int sx = std::clamp(static_cast<int>(x + gx * 14.0f + shimmer), 0, W - 1);
             const int sy = std::clamp(static_cast<int>(y + gy * 14.0f), 0, H - 1);
             RGB c = lerp(sky_[static_cast<size_t>(sy * W + sx)], greySky * (0.8f + 0.4f * static_cast<float>(sy) / H), grey);
+            if (c.r > 70.0f) {
+                const float band = 0.5f + 0.5f * std::sin(y * 1.35f + time_ * 2.2f + std::sin(x * 0.3f + time_) * 1.5f);
+                c = c * (0.5f + 0.5f * band);
+            }
             const float slope = (-gx - gy) * 2.2f;
-            const float spec = std::pow(std::clamp(slope, 0.0f, 1.0f), 1.4f) * 0.8f;
+            const float spec = std::pow(std::clamp(slope, 0.0f, 1.0f), 1.8f) * 0.6f;
             c = c * (1.0f - 0.25f * std::clamp(-slope, 0.0f, 1.0f)) + RGB{120, 150, 195} * spec;
             c = c + RGB{10, 40, 60} * (tint * 0.6f + beat_.v * 0.25f);
             buf_.px[i] = c;
@@ -270,7 +278,9 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
                     continue;
                 // Cool light on the waterline.
                 if (d >= 1.0f) {
-                    buf_.add(x, y, RGB{30, 45, 70} * (moonGlow * (1.08f - d) / 0.08f));
+                    // Wet in rain, a thin ice rim when snow lies.
+                    const RGB edge = RGB{30, 45, 70} * moonGlow + RGB{25, 35, 50} * L.wetness + RGB{70, 85, 105} * L.snow_cover;
+                    buf_.add(x, y, edge * ((1.08f - d) / 0.08f));
                     continue;
                 }
                 const float rim = std::clamp((1.0f - d) * 8.0f, 0.0f, 1.0f);
@@ -311,7 +321,9 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
 
     // Raindrop rings: a thin circle that widens and fades.
     for (const auto& r : rings_) {
-        const float rad = 0.8f + r.age * 6.0f, a = (1.0f - r.age / 0.7f) * 0.55f;
+        const float rad = 0.8f + r.age * 6.0f, a = (1.0f - r.age / 0.7f) * 0.45f;
+        if (r.age < 0.12f)  // the impact itself
+            buf_.splat(r.x, r.y, RGB{160, 180, 210} * (1.0f - r.age / 0.12f));
         const int n = 10 + static_cast<int>(rad * 5.0f);
         for (int k = 0; k < n; ++k) {
             const float ang = k * Tau / static_cast<float>(n);
@@ -323,14 +335,13 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
     for (const auto& f : flakes_) {
         const float a = std::clamp(1.0f - f.life / 1.6f, 0.0f, 1.0f);
         const int fx = static_cast<int>(f.x), fy = static_cast<int>(f.y);
-        buf_.mix(fx, fy, RGB{215, 222, 240}, a);
-        buf_.mix(fx + 1, fy, RGB{170, 178, 200}, a * 0.55f);
-        buf_.mix(fx, fy + 1, RGB{170, 178, 200}, a * 0.55f);
-        if (f.size > 1.5f) {  // a few near flakes, bigger and softer
-            buf_.mix(fx - 1, fy, RGB{170, 178, 200}, a * 0.5f);
-            buf_.mix(fx, fy - 1, RGB{170, 178, 200}, a * 0.5f);
-            buf_.mix(fx + 1, fy + 1, RGB{150, 158, 180}, a * 0.35f);
-        }
+        // A soft flake that spreads a little as it melts into the water.
+        const float spread = f.size * (0.6f + 0.5f * f.life / 1.6f);
+        for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx) {
+                const float w = std::exp(-(dx * dx + dy * dy) / (spread * spread));
+                buf_.mix(fx + dx, fy + dy, RGB{175, 183, 205}, a * w * 0.8f);
+            }
     }
     const Environment::Surface surf{&buf_.px[0].r, W, H, 255.0f};
     Environment::paint_fog(surf, L, time_, 0.0f, static_cast<float>(H));
