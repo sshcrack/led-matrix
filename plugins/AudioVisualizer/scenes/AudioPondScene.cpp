@@ -3,11 +3,30 @@
 namespace Scenes {
 using namespace AudioKit;
 
+AudioPondScene::AudioPondScene()
+{
+    Environment::Adapt adapt;
+    adapt.time = false;  // the moonlit reflection and the fireflies make it a night scene
+    adapt.season_variants = {Environment::Season::Autumn, Environment::Season::Winter};
+    adapt.weather_variants = {Environment::Weather::Rain, Environment::Weather::Snow, Environment::Weather::Fog};
+    env_ = std::make_unique<Environment::SceneEnvironment>(
+        Environment::Defaults{Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Summer}, adapt);
+}
+
 void AudioPondScene::register_properties()
 {
     add_property(sensitivity_);
     add_property(rain_);
     add_property(damping_);
+    for (const auto& p : env_->properties()) add_property(p);
+}
+
+void AudioPondScene::initialize(int width, int height)
+{
+    AmbientMusicScene::initialize(width, height);
+    flakes_.clear();
+    leaves_.clear();
+    env_->snap();
 }
 
 void AudioPondScene::build_sky()
@@ -89,6 +108,39 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
         drop(rnd() * W, rnd() * H, 1.2f, 0.35f + rnd() * 0.3f);
     }
 
+    // Real rain patters on the whole pond; snowflakes settle and melt in.
+    const auto& L = env_->update(dt);
+    weatherDrops_ += dt * (L.rain * 26.0f + L.storm * 14.0f);
+    while (weatherDrops_ >= 1.0f) {
+        weatherDrops_ -= 1.0f;
+        drop(rnd() * W, rnd() * H, 1.0f + rnd() * 0.6f, 0.25f + rnd() * 0.35f);
+    }
+    flakeClock_ += dt * L.snow * 22.0f;
+    while (flakeClock_ >= 1.0f && flakes_.size() < 80) {
+        flakeClock_ -= 1.0f;
+        flakes_.push_back({rnd() * W, rnd() * H, 0.0f});
+    }
+    for (auto& f : flakes_) {
+        f.life += dt;
+        f.x += L.wind * 4.0f * dt;
+        if (f.life >= 1.6f)
+            drop(f.x, f.y, 0.9f, 0.12f);
+    }
+    std::erase_if(flakes_, [](const Flake& f) { return f.life >= 1.6f; });
+    // Autumn leaves land now and then and drift with the wind.
+    if (leaves_.size() < 10 && rnd() < dt * L.autumn * 0.5f) {
+        const RGB tones[] = {RGB{150, 70, 18}, RGB{175, 120, 25}, RGB{120, 40, 20}};
+        leaves_.push_back({rnd() * W, rnd() * H, rnd() * Tau, (rnd() - 0.5f) * 0.4f, tones[static_cast<int>(rnd() * 2.99f)]});
+    }
+    for (auto& l : leaves_) {
+        l.x += (L.wind * 3.0f + 0.6f) * dt;
+        l.y += std::sin(time_ * 0.3f + l.angle) * 0.6f * dt;
+        l.angle += l.spin * dt;
+    }
+    std::erase_if(leaves_, [W](const Leaf& l) { return l.x > W + 4; });
+    if (L.autumn < 0.05f)
+        leaves_.clear();
+
     // Two wave-equation steps per frame (ripple speed ~60 px/s).
     const float damping = damping_->get();
     for (int step = 0; step < 2; ++step) {
@@ -112,6 +164,9 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
 
     // Shade: refract the sky by the surface gradient, add crest highlights.
     const float tint = spectrum_.band(0.0f, 0.3f);
+    // Clouds and fog replace the reflected moon and stars with a dull grey.
+    const float grey = std::clamp(L.overcast * 0.9f + L.fog * 0.6f + L.clouds * 0.25f, 0.0f, 0.95f);
+    const RGB greySky = RGB{20, 26, 34} + RGB{120, 130, 150} * (L.flash * 0.8f);
     for (int y = 0; y < H; ++y)
         for (int x = 0; x < W; ++x) {
             const size_t i = static_cast<size_t>(y * W + x);
@@ -119,7 +174,7 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
             const float gy = h0_[static_cast<size_t>(std::min(y + 1, H - 1) * W + x)] - h0_[static_cast<size_t>(std::max(y - 1, 0) * W + x)];
             const int sx = std::clamp(static_cast<int>(x + gx * 14.0f), 0, W - 1);
             const int sy = std::clamp(static_cast<int>(y + gy * 14.0f), 0, H - 1);
-            RGB c = sky_[static_cast<size_t>(sy * W + sx)];
+            RGB c = lerp(sky_[static_cast<size_t>(sy * W + sx)], greySky * (0.8f + 0.4f * static_cast<float>(sy) / H), grey);
             const float slope = (-gx - gy) * 2.2f;
             const float spec = std::clamp(slope, 0.0f, 1.0f);
             c = c * (1.0f - 0.45f * std::clamp(-slope, 0.0f, 1.0f)) + RGB{130, 165, 210} * spec;
@@ -127,7 +182,12 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
             buf_.px[i] = c;
         }
 
-    // Lily pads with a notch and a pink flower that opens with the bass.
+    // Lily pads with a notch and a pink flower that opens with the bass. They
+    // yellow in autumn and lie brown in winter; flowers only bloom in the warm
+    // months.
+    const auto padRgb = L.foliage({18.0f / 255.0f, 70.0f / 255.0f, 30.0f / 255.0f}, 0.8f);
+    const RGB padColor{padRgb.r * 255.0f, padRgb.g * 255.0f, padRgb.b * 255.0f};
+    const float bloom = std::clamp(L.summer + L.spring * 0.6f, 0.0f, 1.0f);
     for (const auto& p : pads_) {
         const float bob = std::sin(time_ * 0.8f + p.phase) * 0.4f;
         for (int y = static_cast<int>(p.y - p.r - 1); y <= static_cast<int>(p.y + p.r + 1); ++y)
@@ -140,10 +200,10 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
                     continue;
                 const float a = std::clamp(p.r - d + 0.5f, 0.0f, 1.0f);
                 const float vein = 0.85f + 0.15f * std::cos(ang * 9.0f);
-                buf_.mix(x, y, RGB{18, 70, 30} * vein * (0.8f + 0.2f * d / p.r), a);
+                buf_.mix(x, y, padColor * vein * (0.8f + 0.2f * d / p.r), a);
             }
-        if (p.r > 7)
-            buf_.disc(p.x + 1, p.y + bob, 1.6f + tint * 1.4f, RGB{200, 80, 140} * (0.6f + beat_.v * 0.5f), false);
+        if (p.r > 7 && bloom > 0.1f)
+            buf_.disc(p.x + 1, p.y + bob, 1.6f + tint * 1.4f, RGB{200, 80, 140} * ((0.6f + beat_.v * 0.5f) * bloom), false);
     }
 
     // Reeds framing the bottom corners, swaying with the mids.
@@ -164,15 +224,36 @@ bool AudioPondScene::render(rgb_matrix::FrameCanvas* canvas)
 
     // Fireflies drift above the water; they glow with the high end.
     const float treble = spectrum_.band(0.55f, 1.0f);
+    // Fireflies need a warm, dry night.
+    const float warm = std::clamp(L.summer + L.spring * 0.4f, 0.0f, 1.0f) * (1.0f - L.rain) * (1.0f - L.snow);
     for (auto& f : flies_) {
         f.vx += (std::sin(time_ * 0.7f + f.phase * 3.0f) * 6.0f - f.vx) * dt;
         f.vy += (std::cos(time_ * 0.5f + f.phase * 2.0f) * 4.0f - f.vy) * dt;
         f.x = std::fmod(f.x + f.vx * dt + W, static_cast<float>(W));
         f.y = std::clamp(f.y + f.vy * dt, 4.0f, H - 10.0f);
-        const float glow = std::clamp(0.25f + treble * 1.1f + 0.3f * std::sin(time_ * 3.0f + f.phase * 5.0f), 0.0f, 1.2f);
+        const float glow = std::clamp(0.25f + treble * 1.1f + 0.3f * std::sin(time_ * 3.0f + f.phase * 5.0f), 0.0f, 1.2f) * warm;
         buf_.splat(f.x, f.y, RGB{220, 240, 90} * glow);
         buf_.disc(f.x, f.y, 2.0f, RGB{40, 60, 10} * glow);
     }
+
+    for (const auto& l : leaves_) {
+        const float ca = std::cos(l.angle), sa = std::sin(l.angle);
+        for (int k = -2; k <= 2; ++k) {
+            buf_.mix(static_cast<int>(l.x + ca * k), static_cast<int>(l.y + sa * k), l.color * 0.75f, 0.9f);
+            if (std::abs(k) < 2)
+                buf_.mix(static_cast<int>(l.x + ca * k - sa), static_cast<int>(l.y + sa * k + ca), l.color * 0.6f, 0.8f);
+        }
+    }
+    // Snowflakes resting on the surface fade as they melt.
+    for (const auto& f : flakes_) {
+        const float a = std::clamp(1.0f - f.life / 1.6f, 0.0f, 1.0f);
+        const int fx = static_cast<int>(f.x), fy = static_cast<int>(f.y);
+        buf_.mix(fx, fy, RGB{215, 222, 240}, a);
+        buf_.mix(fx + 1, fy, RGB{170, 178, 200}, a * 0.55f);
+        buf_.mix(fx, fy + 1, RGB{170, 178, 200}, a * 0.55f);
+    }
+    const Environment::Surface surf{&buf_.px[0].r, W, H, 255.0f};
+    Environment::paint_fog(surf, L, time_, 0.0f, static_cast<float>(H));
 
     buf_.blit(canvas);
     return true;
@@ -183,11 +264,13 @@ SceneDescriptor AudioPondScene::get_descriptor() const
     auto d = Scene::get_descriptor();
     d.automatic_eligible = true;
     d.family = "pond";
-    d.tags = {"music", "water", "nature", "night", "fits:dusk", "fits:night", "audio-reactive", "calm", "music-showcase", "style:chill", "style:acoustic", "drop-reactive"};
+    d.tags = {"music",          "water", "nature",         "night",       "fits:dusk",      "fits:night",   "fits:rain",
+              "audio-reactive", "calm",  "music-showcase", "style:chill", "style:acoustic", "drop-reactive"};
     d.intensity = 0.35f;
     d.motion = 0.45f;
     d.music_affinity = 0.9f;
     d.performance_cost = 0.35f;
+    env_->add_variants(d);
     return d;
 }
 }  // namespace Scenes

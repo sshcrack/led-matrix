@@ -61,11 +61,31 @@ class AudioPondScene final : public AmbientMusicScene {
     AudioKit::Envelope beat_;
     PropertyPointer<float> rain_ = MAKE_PROPERTY_MINMAX("rain_amount", float, 1.0f, 0.0f, 3.0f);
     PropertyPointer<float> damping_ = MAKE_PROPERTY_MINMAX("ripple_damping", float, 0.985f, 0.95f, 0.998f);
+    // Always night; follows the real weather (rain on the water, snow melting
+    // into it, a grey reflected sky) and season (pads, leaves, fireflies).
+    std::unique_ptr<Environment::SceneEnvironment> env_;
+    struct Flake {
+        float x, y, life;
+    };
+    std::vector<Flake> flakes_;
+    struct Leaf {
+        float x, y, angle, spin;
+        AudioKit::RGB color;
+    };
+    std::vector<Leaf> leaves_;
+    float weatherDrops_ = 0.0f, flakeClock_ = 0.0f;
 
     void drop(float x, float y, float radius, float strength);
     void build_sky();
 
 public:
+    AudioPondScene();
+    void initialize(int width, int height) override;
+    void set_random_seed(uint32_t seed) override
+    {
+        rng_.seed(seed);
+        env_->set_random_seed(seed + 2);
+    }
     bool render(rgb_matrix::FrameCanvas* canvas) override;
     void register_properties() override;
     std::string get_name() const override { return "audio_pond"; }
@@ -201,8 +221,23 @@ class AudioLighthouseScene final : public AmbientMusicScene {
     std::vector<std::pair<float, float>> bolt_;
     PropertyPointer<int> beatsPerTurn_ = MAKE_PROPERTY_MINMAX("beats_per_rotation", int, 8, 2, 32);
     PropertyPointer<bool> storm_ = MAKE_PROPERTY("lightning_on_drop", bool, true);
+    // Always night (the beam only reads in the dark); follows the real
+    // weather and season: clouds, sea fog the beam lights up, rain, snow,
+    // storms and a rougher sea in wind.
+    std::unique_ptr<Environment::SceneEnvironment> env_;
+    Environment::Precipitation precip_;
+    Environment::Lightning lightningEnv_;
 
 public:
+    AudioLighthouseScene();
+    void initialize(int width, int height) override;
+    void set_random_seed(uint32_t seed) override
+    {
+        rng_.seed(seed);
+        precip_.set_seed(seed + 1);
+        env_->set_random_seed(seed + 2);
+        lightningEnv_.set_seed(seed + 3);
+    }
     bool render(rgb_matrix::FrameCanvas* canvas) override;
     void register_properties() override;
     std::string get_name() const override { return "audio_lighthouse"; }
