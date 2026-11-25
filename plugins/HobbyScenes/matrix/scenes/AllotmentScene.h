@@ -28,6 +28,7 @@ class AllotmentScene final : public HobbySceneBase {
     float tractor_ = 0.0f;  // seconds into the tractor's cycle
     std::vector<Puff> smoke_;
     float smokeClock_ = 0.0f;
+    std::vector<float> nearRows_;  // the foreground before the fog, to thin it there
     Environment::SeasonalDrift drift_;
 
     void build_backdrop();
