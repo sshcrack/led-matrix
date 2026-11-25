@@ -33,6 +33,7 @@ class AllotmentScene final : public HobbySceneBase {
 
     void build_backdrop();
     void draw_scarecrow();
+    void draw_sunflowers();
     void draw_tractor(float dt);
     void update_crows(float dt);
     void draw_crow(const Crow& c);
