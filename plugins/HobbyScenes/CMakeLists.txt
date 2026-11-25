@@ -19,6 +19,8 @@ register_plugin(HobbyScenes
         matrix/scenes/RailwayViaductScene.h
         matrix/scenes/KoiPondScene.cpp
         matrix/scenes/KoiPondScene.h
+        matrix/scenes/NewYearScene.cpp
+        matrix/scenes/NewYearScene.h
         matrix/scenes/ActivityScenes.cpp
         matrix/scenes/ActivityScenes.h
         matrix/scenes/HolidayScenes.cpp
