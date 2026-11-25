@@ -227,6 +227,7 @@ class AudioLighthouseScene final : public AmbientMusicScene {
     std::unique_ptr<Environment::SceneEnvironment> env_;
     Environment::Precipitation precip_;
     Environment::Lightning lightningEnv_;
+    float spray_ = 0.0f;
 
 public:
     AudioLighthouseScene();

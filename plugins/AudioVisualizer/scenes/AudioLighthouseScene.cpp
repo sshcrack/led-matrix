@@ -187,10 +187,22 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
             const float rock = hash(static_cast<uint32_t>((x / 3) * 131 + (y / 3) * 17));
             const float shade = (0.65f + 0.35f * rock) * (1.0f - 0.4f * static_cast<float>(y - top) / (H - top));
             // Snow settles in a cap on the cliff top, deeper where it is flat.
-            const float capDepth = 2.0f + 2.5f * (0.5f + 0.5f * std::sin(x * 0.55f + 1.3f));
-            const float lying = L.snow_cover * std::clamp((top + capDepth - y) / 1.5f, 0.0f, 1.0f);
+            const float capDepth = 3.0f + 3.0f * (0.5f + 0.5f * std::sin(x * 0.55f + 1.3f));
+            float lying = std::clamp((top + capDepth - y) / 1.5f, 0.0f, 1.0f);
+            // Two rock shelves catch moonlight, and snow in winter.
+            // Short, nearly flat ledges with gaps between them.
+            const float smoothTop = horizon - 14.0f + (1.0f - std::min(t * 2.5f, 1.0f)) * 16.0f;
+            const float shelfA = smoothTop + 18.0f + 0.6f * std::sin(x * 0.12f),
+                        shelfB = smoothTop + 34.0f + 0.6f * std::sin(x * 0.1f + 2.0f);
+            const bool ledgeA = hash(static_cast<uint32_t>(x / 7) * 31 + 5) > 0.35f,
+                       ledgeB = hash(static_cast<uint32_t>(x / 6) * 17 + 9) > 0.4f;
+            const bool onShelf = (ledgeA && y >= shelfA && y < shelfA + 2.0f) || (ledgeB && y >= shelfB && y < shelfB + 2.0f);
+            if (onShelf)
+                lying = std::max(lying, 0.85f);
+            lying *= L.snow_cover;
             const RGB rockColor = lerp(RGB{18, 18, 24} * shade, RGB{110, 118, 140} * (0.85f + 0.15f * rock), lying);
-            buf_.set(x, y, lerp(rockColor, rockColor * 0.7f, L.wetness * 0.5f) + RGB{30, 30, 40} * (flash * 0.5f));
+            const RGB moonRim = onShelf ? RGB{28, 32, 46} * (moonLight * (1.0f - lying)) : RGB{};
+            buf_.set(x, y, lerp(rockColor, rockColor * 0.7f, L.wetness * 0.5f) + moonRim + RGB{30, 30, 40} * (flash * 0.5f));
         }
     }
     const int towerTop = static_cast<int>(lampY + 5), towerBottom = horizon - 13;
@@ -209,6 +221,29 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
 
     // Sea fog drifts in front of the cliff; the beam lights it up below.
     Environment::paint_fog(surf, L, time_, horizon - 26.0f, static_cast<float>(H));
+    // A denser bank lies on the horizon and swallows the far sea and the sail.
+    if (L.fog > 0.02f)
+        for (int y = horizon - 14; y < horizon + 26; ++y)
+            for (int x = 0; x < W; ++x) {
+                if (!buf_.inside(x, y))
+                    continue;
+                const float v = std::exp(-std::pow((y - (horizon + 4.0f)) / 11.0f, 2.0f));
+                const float drift = 0.75f + 0.25f * std::sin(x * 0.07f + time_ * 0.15f) * std::sin(x * 0.023f - time_ * 0.09f);
+                buf_.mix(x, y, RGB{62, 66, 76}, std::min(0.85f, L.fog * v * drift));
+            }
+    // Storm surf bursts white against the foot of the cliff.
+    if (L.storm > 0.05f) {
+        if (events_.beatHit || rnd() < dt * 1.5f)
+            spray_ = 1.0f;
+        spray_ = std::max(0.0f, spray_ - dt * 1.4f);
+        for (int i = 0; i < 40; ++i) {
+            const float a = hash(i * 7 + 3), b = hash(i * 13 + 1);
+            const float rise = spray_ * (6.0f + 22.0f * b) * L.storm;
+            const float sx = W * 0.72f - 2.0f + (a - 0.6f) * 16.0f * (1.2f - spray_);
+            const float sy = H - 18.0f - rise + 3.0f * a;
+            buf_.splat(sx, sy, RGB{200, 215, 235} * (spray_ * (0.5f + 0.5f * b)));
+        }
+    }
     if (L.fog > 0.02f)
         for (int y = 0; y < H; ++y)
             for (int x = 0; x < W; ++x) {
@@ -226,7 +261,7 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
             const float d = (x - lampX) * (dir > 0 ? 1.0f : -1.0f);
             if (d < 0 || d > length)
                 continue;
-            const float halfWidth = 1.2f + d * 0.10f;
+            const float halfWidth = 1.2f + d * (0.10f + 0.10f * L.fog);  // the cone widens in haze
             const float fade = (1.0f - d / length) * beamPower * (0.55f + 0.45f * std::fabs(dir));
             for (int y = static_cast<int>(lampY - 2 - halfWidth); y <= static_cast<int>(lampY - 2 + halfWidth + 1); ++y) {
                 const float edge = 1.0f - std::fabs(y - (lampY - 2)) / (halfWidth + 1.0f);
@@ -237,7 +272,20 @@ bool AudioLighthouseScene::render(rgb_matrix::FrameCanvas* canvas)
     }
     const float flare = std::pow(std::max(0.0f, facing), 8.0f);
     buf_.disc(lampX, lampY - 2, 2.0f, RGB{255, 240, 190}, false);
-    buf_.disc(lampX, lampY - 2, 4.0f + flare * 8.0f + L.fog * 4.0f, RGB{255, 220, 140} * (0.25f + flare * 0.9f + L.fog * 0.2f));
+    // A small hot core with a soft halo that swells as the beam faces the
+    // viewer (a flat disc read as a second moon).
+    {
+        const float reach = 5.0f + flare * 7.0f + L.fog * 5.0f;
+        const float gain = 0.30f + flare * 0.85f + L.fog * 0.15f;
+        for (int y = static_cast<int>(lampY - 2 - reach * 3); y <= static_cast<int>(lampY - 2 + reach * 3); ++y)
+            for (int x = static_cast<int>(lampX - reach * 3); x <= static_cast<int>(lampX + reach * 3); ++x) {
+                if (!buf_.inside(x, y))
+                    continue;
+                const float d = AudioKit::len(x + 0.5f - lampX, y + 0.5f - (lampY - 2));
+                buf_.add(x, y, RGB{255, 215, 140} * (gain * std::exp(-d * d / (reach * reach)) * 0.55f));
+            }
+        buf_.disc(lampX, lampY - 2, 1.2f + flare * 1.3f, RGB{255, 250, 225}, false);
+    }
 
     // --- weather ----------------------------------------------------------
     precip_.set_max(static_cast<int>(260 * render_quality_scale()));
