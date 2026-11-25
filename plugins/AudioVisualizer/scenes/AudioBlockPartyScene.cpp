@@ -155,7 +155,7 @@ void AudioBlockPartyScene::draw_person(const Person& p, float bob, int arms)
             blob(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, r, r);
         }
     };
-    const float sway = p.style == 3 ? std::sin(time_ * 2.0f + p.phase) * 3.0f : 0.0f;  // leans from the hips
+    const float sway = p.style == 3 ? std::sin(time_ * 2.0f + p.phase) * (p.row == 1 ? 5.0f : 3.0f) : 0.0f;  // leans from the hips
     const float hx = p.x + sway;
     blob(hx, headY, 2.9f * s, 3.3f * s);                             // head
     blob(p.x + sway * 0.85f, headY + 4.0f * s, 1.6f * s, 1.5f * s);  // neck
@@ -167,7 +167,7 @@ void AudioBlockPartyScene::draw_person(const Person& p, float bob, int arms)
     }
     // Hands in the air: pumping with the tempo, each dancer a little out of
     // step; the swaying dancers wave one hand side to side instead.
-    const float pump = 3.5f * std::max(0.0f, std::sin(pumpClock_ + p.phase));
+    const float pump = (p.row == 1 ? 6.5f : 3.5f) * std::max(0.0f, std::sin(pumpClock_ + p.phase));
     const float wave = p.style == 3 ? 3.0f * std::sin(time_ * 3.0f + p.phase) : 0.0f;
     const float shoulder = 4.0f + 2.0f * p.width;
     const float reach = p.style == 2 ? 10.5f : 7.0f;  // the both-hands dancer reaches high above the crowd
@@ -203,6 +203,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
     if (events_.beatHit) {
         beat_.hit(0.6f + 0.4f * kick);
         offbeat_.v = 0.0f;
+        ++beats_;
     }
     if (events_.onsetHit && kick > 0.35f)
         kick_.hit(kick);
@@ -270,7 +271,8 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
             const float band = spectrum_.band(group / 12.0f, (group + 1) / 12.0f);
             const float chase = std::max(0.0f, std::cos((x / 128.0f - time_ * 0.8f) * Tau * 2.0f));
             const RGB c = hsv(palette_.value + (bulb % 4) * 70.0f, 0.65f, 1.0f);
-            const float lv = 0.35f + 0.55f * band + 0.25f * chase * beat_.v + 0.3f * drop_.v;
+            const float accent = group % 4 == beats_ % 4 ? 0.7f * beat_.v : 0.0f;  // a group swells on each beat
+            const float lv = accent + 0.35f + 0.55f * band + 0.25f * chase * beat_.v + 0.3f * drop_.v;
             buf_.disc(x * sx, y * sy, 1.5f * sx, c * std::min(1.0f, 0.3f + lv), false);
             glow(buf_, x * sx, y * sy, 6.0f * sx, c * (0.35f * lv));
         }
@@ -296,7 +298,7 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
                     const float ring = 0.5f + 0.5f * std::cos(d * 14.0f - push * 3.0f);
                     RGB c = RGB{30, 28, 34} + RGB{70, 66, 76} * (ring * 0.4f);
                     if (d < 0.3f)
-                        c = RGB{90, 86, 96} * (0.7f + 0.5f * std::max(0.0f, push));
+                        c = RGB{90, 86, 96} * (0.7f + 0.5f * std::max(0.0f, push)) + RGB{255, 200, 140} * (0.8f * kick_.v);
                     if (d > 0.88f)
                         c = lerp(RGB{100, 96, 106}, RGB{255, 200, 150}, kick_.v);  // the rim flashes on kicks
                     buf_.set(x, y, c);
@@ -312,6 +314,9 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
         glow(buf_, 30.0f * sx, 90.0f * sy, 26.0f * sx, RGB{255, 140, 60} * (0.35f + 0.3f * beat_.v));   // pool on the pavement
         const float nod = beat_.v * 1.4f;
         const float dx = 36.0f;
+        // Warm rim around the DJ so the silhouette stands out against the wall.
+        R(dx - 6.0f, 68.0f + nod * 0.4f, dx + 6.0f, 80.0f, RGB{230, 140, 70} * (0.6f + 0.3f * beat_.v));
+        buf_.disc(dx * sx, (65.0f + nod) * sy, 4.0f * sx, RGB{230, 140, 70} * (0.6f + 0.3f * beat_.v), false);
         R(dx - 5.0f, 69.0f + nod * 0.4f, dx + 5.0f, 80.0f, RGB{16, 12, 20});
         buf_.disc(dx * sx, (65.0f + nod) * sy, 3.0f * sx, RGB{16, 12, 20}, false);
         for (float a = Pi; a <= Tau; a += 0.15f)
@@ -395,7 +400,9 @@ bool AudioBlockPartyScene::render(rgb_matrix::FrameCanvas* canvas)
             float bob = 0.0f;
             // Front dancers dip their shoulders in a staggered groove with the tempo.
             if (p.row == 1)
-                bob = 2.8f * std::fabs(std::sin(pumpClock_ * 0.5f + p.phase)) - 1.0f;
+                bob = p.style == 1   ? 3.5f * std::fabs(std::sin(pumpClock_ + p.phase)) - 1.0f         // head bob on every beat
+                      : p.style == 2 ? 4.0f * std::fabs(std::sin(pumpClock_ * 0.5f + p.phase)) - 1.5f  // deep dip every other beat
+                                     : 1.5f * std::sin(pumpClock_ * 0.5f + p.phase);
             else
                 switch (p.style) {
                     case 0:

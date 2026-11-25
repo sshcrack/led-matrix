@@ -66,6 +66,7 @@ private:
     float sub_ = 0.0f;  // distance carried into the next step
     float canX_ = 64.0f, canY_ = 60.0f;
     bool traveling_ = false;
+    bool bold_ = false;  // alternates the piece silhouette
     float hold_ = 0.0f, roller_ = 0.0f, shake_ = 0.0f;
     AudioKit::Envelope beat_, spray_, hat_, drop_;
     PropertyPointer<float> paintSpeed_ = MAKE_PROPERTY_MINMAX("paint_speed", float, 1.0f, 0.3f, 3.0f);
@@ -130,6 +131,7 @@ class AudioBlockPartyScene final : public AmbientMusicScene {
     std::vector<Person> people_;
     std::vector<Drop> water_;
     float cone_ = 0.0f, coneVel_ = 0.0f, waterClock_ = 0.0f, tv_ = 0.0f, pumpClock_ = 0.0f;
+    int beats_ = 0;
     AudioKit::Envelope beat_, kick_, snare_, drop_, offbeat_;
     AudioKit::HueCycle palette_{{30.0f, 330.0f, 190.0f, 280.0f, 50.0f}};
     PropertyPointer<bool> hydrant_ = MAKE_PROPERTY("open_hydrant", bool, true);

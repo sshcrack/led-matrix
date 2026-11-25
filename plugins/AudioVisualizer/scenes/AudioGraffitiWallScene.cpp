@@ -12,7 +12,7 @@ constexpr int WallTop = 9;
 constexpr int Ground = 108;
 constexpr float LampX = 64.0f, LampY = 14.0f;
 constexpr float HoldSeconds = 8.0f;
-const RGB BuffPaint{78, 62, 58};
+const RGB BuffPaint{84, 58, 50};
 
 float segment_distance(float px, float py, float ax, float ay, float bx, float by)
 {
@@ -106,17 +106,19 @@ void AudioGraffitiWallScene::new_piece()
     // wavy line, an arrow off the end, bubbles and a swoosh. Nothing upright
     // and nothing joined like a letter, so it reads as a piece, never as text.
     capsules_.clear();
-    const float mid = 60.0f + rnd() * 4.0f;
+    // Alternate silhouettes: a dense run of shards, then a few big sweeping ones.
+    bold_ = !bold_;
+    const float mid = (bold_ ? 56.0f : 60.0f) + rnd() * 4.0f;
     const float wave = rnd() * Tau;
     float x = 18.0f + rnd() * 3.0f;
     float sign = rnd() < 0.5f ? 1.0f : -1.0f;
     float lastX = x, lastY = mid;
     int count = 0;
     while (x < 100.0f) {
-        const float cy = mid + 10.0f * std::sin(x * 0.06f + wave) + (rnd() - 0.5f) * 8.0f;
+        const float cy = mid + (bold_ ? 15.0f : 10.0f) * std::sin(x * (bold_ ? 0.045f : 0.06f) + wave) + (rnd() - 0.5f) * 8.0f;
         const float angle = sign * (0.55f + rnd() * 0.5f) + (count % 3 == 2 ? sign * 0.6f : 0.0f);
-        const float length = 24.0f + rnd() * 10.0f;
-        const float r = 4.6f + rnd() * 2.0f;
+        const float length = (bold_ ? 32.0f : 24.0f) + rnd() * 10.0f;
+        const float r = (bold_ ? 6.0f : 4.6f) + rnd() * 2.0f;
         const float dx = std::cos(angle) * length * 0.5f, dy = std::sin(angle) * length * 0.5f;
         capsules_.push_back({x - dx, cy - dy, x + dx, cy + dy, r});
         // Bent end: a short kick off one tip at a sharper angle.
@@ -132,7 +134,7 @@ void AudioGraffitiWallScene::new_piece()
         lastX = x + dx;
         lastY = cy + dy;
         sign = -sign;
-        x += 13.0f + rnd() * 5.0f;
+        x += (bold_ ? 22.0f : 13.0f) + rnd() * 5.0f;
         ++count;
     }
     // Arrow off the last shard, up and right.
@@ -203,7 +205,7 @@ bool AudioGraffitiWallScene::clip(size_t i, Layer layer) const
     const float d = dist_[i];
     switch (layer) {
         case Layer::Cloud:
-            return d >= 0.9f && shadow_[i] >= 0.0f && d < cloud_[i];
+            return d >= 1.9f && shadow_[i] >= 1.0f && d < cloud_[i] + 1.0f;  // a brick gap around the piece
         case Layer::Fill:
             return d < 0.0f;
         case Layer::Shadow:
@@ -443,7 +445,7 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
                     const size_t i = static_cast<size_t>(y * W + x);
                     const float edge = static_cast<float>(std::min({x - buffLeft_, buffRight_ - 1 - x, y - buffTop_, buffBottom_ - 1 - y}));
                     const float rough = hash(static_cast<uint32_t>(x * 7349 + y * 1931));
-                    const float a = std::clamp(0.25f + edge / (4.0f * k) + 0.3f * rough, 0.0f, 1.0f);
+                    const float a = std::clamp(0.25f + edge / (4.0f * k) + 0.3f * rough, 0.0f, 0.82f);  // brick still shows through
                     paint_[i] = lerp(paint_[i], BuffPaint, a);
                     alpha_[i] = std::max(alpha_[i], a);
                 }
@@ -508,8 +510,8 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
         const int y = static_cast<int>(d.y + d.length);
         if (x >= 0 && x < W && y >= 0 && y < static_cast<int>(Ground * H / 128.0f)) {
             const size_t i = static_cast<size_t>(y * W + x);
-            paint_[i] = lerp(paint_[i], d.color, 0.85f);
-            alpha_[i] = std::max(alpha_[i], 0.9f);
+            paint_[i] = d.color;
+            alpha_[i] = 1.0f;
         }
     }
 
@@ -577,11 +579,10 @@ bool AudioGraffitiWallScene::render(rgb_matrix::FrameCanvas* canvas)
             // Bright spray head right where the paint lands.
             buf_.disc(canX_, canY_, 1.3f * k, lerp(paintC, RGB{255, 255, 255}, 0.5f) * std::min(1.0f, 0.4f + spray_.v), true);
             // A fan of bright overspray around the tip, densest on the beat.
-            const int specks = static_cast<int>(4 + 8 * spray_.v);
+            const int specks = static_cast<int>(6 + 12 * spray_.v);
             for (int s = 0; s < specks; ++s) {
-                const float a = rnd() * Tau, r = (1.5f + rnd() * 3.5f) * k;
-                buf_.add(static_cast<int>(canX_ + std::cos(a) * r), static_cast<int>(canY_ + std::sin(a) * r),
-                         lerp(paintC, RGB{255, 255, 255}, 0.35f) * (0.6f * spray_.v));
+                const float a = rnd() * Tau, r = (1.5f + rnd() * 4.5f) * k;
+                buf_.splat(canX_ + std::cos(a) * r, canY_ + std::sin(a) * r, paintC * (0.9f * spray_.v));
             }
         }
         // The can, held just right of and below the spray point; it shakes on the beat between strokes.
