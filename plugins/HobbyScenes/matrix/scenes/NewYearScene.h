@@ -42,9 +42,9 @@ class NewYearRooftopScene final : public HobbySceneBase {
     std::vector<Bloom> bursts_;
     float launchClock_ = 0.0f;
     float salvoLeft_ = 0.0f;
-    float flash_ = 0.0f;
+    float flash_ = 0.0f, flashPeak_ = 0.0f;
     Rgb flashColor_{1, 1, 1};
-    float flashX_ = 64.0f;
+    float flashX_ = 64.0f, flashY_ = 30.0f;
     float sparkler_ = 0.0f;
 
     PropertyPointer<Plugins::EnumProperty<NewYearShow>> show_ = MAKE_ENUM_PROPERTY("show", NewYearShow, NewYearShow::AUTO);

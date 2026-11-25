@@ -85,7 +85,7 @@ void NewYearRooftopScene::initialize(int width, int height)
     sparks_.clear();
     smoke_.clear();
     bursts_.clear();
-    flash_ = 0.0f;
+    flash_ = flashPeak_ = 0.0f;
     salvoLeft_ = 0.0f;
     launchClock_ = 0.0f;
     sparkler_ = 0.0f;
@@ -102,7 +102,7 @@ float NewYearRooftopScene::launch_rate() const
 {
     switch (show_->get().get()) {
         case NewYearShow::FINALE:
-            return 3.2f;
+            return 2.6f;
         case NewYearShow::STEADY:
             return 0.95f;
         case NewYearShow::AUTO:
@@ -203,7 +203,15 @@ void NewYearRooftopScene::build_backdrop()
             const bool joint = (y - static_cast<int>(Parapet)) % 3 == 2 || (x + row * 3) % 7 == 0;
             rect(static_cast<float>(x), static_cast<float>(y), 1, 1, joint ? mortar : brick);
         }
-    rect(0, Parapet - 1, 128, 2, mix({0.14f, 0.13f, 0.14f}, {0.55f, 0.58f, 0.68f}, snowCap));
+    rect(0, Parapet, 128, 1, {0.14f, 0.13f, 0.14f});
+    // Snow lies unevenly on the cap: drifts of one to three pixels.
+    for (int x = 0; x < 128; ++x) {
+        const float drift =
+            snowCap * (1.0f + 1.2f * (0.5f + 0.5f * std::sin(x * 0.21f + 1.3f)) + 0.8f * hash01(static_cast<uint32_t>(x) * 37u));
+        if (drift > 0.3f)
+            rect(static_cast<float>(x), Parapet + 1 - std::round(drift), 1, std::round(drift),
+                 mix({0.40f, 0.42f, 0.50f}, {0.62f, 0.65f, 0.75f}, hash01(x * 11u)));
+    }
     backdrop_ = std::move(bg.px);
 }
 
@@ -265,10 +273,11 @@ void NewYearRooftopScene::burst(const Rocket& r)
         }
     }
     bursts_.push_back({r.x, r.y, 0.0f, 12.0f * size, r.kind == 5 ? Rgb{1.0f, 0.95f, 0.85f} : mix(r.color, {1, 1, 1}, 0.4f)});
-    if (flash_ < 0.4f + 0.4f * size) {
-        flash_ = 0.4f + 0.4f * size;
+    if (flashPeak_ < 0.4f + 0.4f * size) {
+        flashPeak_ = 0.4f + 0.4f * size;
         flashColor_ = r.kind == 5 ? Rgb{1.0f, 0.95f, 0.85f} : r.color;
         flashX_ = r.x;
+        flashY_ = r.y;
     }
     if (smoke_.size() < 40)
         smoke_.push_back({r.x, r.y, 9.0f * size, 18.0f, 18.0f, mix(r.color, {0.55f, 0.52f, 0.5f}, 0.8f)});
@@ -341,27 +350,33 @@ void NewYearRooftopScene::update_fireworks(float dt)
     std::erase_if(smoke_, [](const Puff& m) { return m.life <= 0.0f; });
     for (auto& b : bursts_) b.age += dt;
     std::erase_if(bursts_, [](const Bloom& b) { return b.age > 0.35f; });
-    flash_ *= std::exp(-dt * 5.0f);
+    // The light eases in over ~0.1 s instead of popping, then fades.
+    flash_ += (flashPeak_ - flash_) * std::min(1.0f, dt * 22.0f);
+    flashPeak_ *= std::exp(-dt * 5.0f);
 }
 
 void NewYearRooftopScene::draw_sky_effects()
 {
     const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f;
     const int skyRows = std::min(cv_.h, static_cast<int>(std::ceil(Horizon * sy)) + 1);
-    // Each burst lights the sky (most near itself) and a little of the city.
+    // Each burst lights the sky around itself and, faintly, the city below it.
     if (flash_ > 0.01f) {
-        const float fx = flashX_ * sx, inv = 1.0f / (90.0f * sx);
+        const float fx = flashX_ * sx, fy = flashY_ * sy, inv = 1.0f / (55.0f * std::min(sx, sy));
         for (int y = 0; y < static_cast<int>(Parapet * sy) && y < cv_.h; ++y)
             for (int x = 0; x < cv_.w; ++x) {
                 const size_t i = static_cast<size_t>(y * cv_.w + x);
-                const float near = std::max(0.0f, 1.0f - std::fabs(x - fx) * inv);
-                cv_.add(x, y, flashColor_, flash_ * (sky_[i] ? 0.10f + 0.10f * near : 0.05f * near));
+                const float dx = x - fx, dy = y - fy;
+                const float near = std::max(0.0f, 1.0f - std::sqrt(dx * dx + dy * dy) * inv);
+                if (near > 0.0f)
+                    cv_.add(x, y, flashColor_, flash_ * (sky_[i] ? 0.18f * near * near : 0.05f * near));
             }
     }
     // Smoke from earlier rockets hangs over the city, lit by the bursts.
+    // Stacked puffs during a busy show must not fog the whole sky.
+    const float density = std::min(1.0f, 10.0f / std::max<float>(1.0f, static_cast<float>(smoke_.size())));
     for (const auto& m : smoke_) {
-        const float fade = std::min(1.0f, m.life / 4.0f) * std::min(1.0f, (m.maxLife - m.life) / 0.8f);
-        const Rgb tint = scale(mix(m.tint, flashColor_, 0.4f * flash_), 0.30f + 0.6f * flash_);
+        const float fade = density * std::min(1.0f, m.life / 4.0f) * std::min(1.0f, (m.maxLife - m.life) / 0.8f);
+        const Rgb tint = scale(mix(m.tint, flashColor_, 0.4f * flash_), 0.30f + 0.4f * flash_);
         const float rx = m.r * sx, ry = m.r * 0.7f * sy, cx = m.x * sx, cy = m.y * sy;
         for (int y = std::max(0, static_cast<int>(cy - ry)); y <= std::min(skyRows - 1, static_cast<int>(cy + ry)); ++y)
             for (int x = std::max(0, static_cast<int>(cx - rx)); x <= std::min(cv_.w - 1, static_cast<int>(cx + rx)); ++x) {
@@ -390,6 +405,9 @@ void NewYearRooftopScene::draw_fireworks()
         cv_.add(px, py, c, a);
     };
     const uint32_t frame = static_cast<uint32_t>(t_ * 20.0f);
+    // In a busy sky the white crackle is shorter and dimmer, so overlapping
+    // shells keep their shapes.
+    const bool busy = sparks_.size() > 600;
     for (size_t idx = 0; idx < sparks_.size(); ++idx) {
         const auto& p = sparks_[idx];
         const float u = p.life / p.maxLife;  // 1 fresh .. 0 gone
@@ -398,11 +416,11 @@ void NewYearRooftopScene::draw_fireworks()
         if (p.kind == 3) {  // trail embers
             a = u * 0.55f;
         }
-        else if (p.kind == 2 && u < 0.35f) {  // crackle: white pops at the end
-            if (hash01(static_cast<uint32_t>(idx) * 2654435761u + frame) < 0.5f)
+        else if (p.kind == 2 && u < (busy ? 0.22f : 0.35f)) {  // crackle: white pops at the end
+            if (hash01(static_cast<uint32_t>(idx) * 2654435761u + frame) < (busy ? 0.65f : 0.5f))
                 continue;
             c = {1.0f, 1.0f, 0.95f};
-            a = 0.9f;
+            a = busy ? 0.55f : 0.8f;
         }
         else if (p.kind == 4) {  // glitter twinkles all the way
             a *= hash01(static_cast<uint32_t>(idx) * 40503u + frame * 7u) > 0.45f ? 1.0f : 0.15f;
@@ -426,8 +444,8 @@ void NewYearRooftopScene::draw_rooftop(float dt)
     // Five people seen from behind, dark against the city. Their outline
     // catches the warm city glow and flares in the colour of each burst.
     const Rgb body{0.02f, 0.02f, 0.03f};
-    const Rgb rim = mix({0.55f, 0.36f, 0.22f}, flashColor_, std::min(1.0f, flash_ * 1.4f));
-    const float rimA = 0.55f + 0.45f * std::min(1.0f, flash_ * 1.5f);
+    const Rgb rim = mix({0.85f, 0.55f, 0.30f}, flashColor_, std::min(1.0f, flash_ * 1.4f));
+    const float rimA = 0.7f + 0.3f * std::min(1.0f, flash_ * 1.5f);
     const float sparkleOn = std::fmod(t_, 40.0f) < 26.0f ? 1.0f : 0.0f;
     sparkler_ += (sparkleOn - sparkler_) * std::min(1.0f, dt * 1.5f);
     const float toast = std::clamp(std::sin(t_ * 0.45f) * 3.0f - 2.0f, 0.0f, 1.0f);
@@ -462,9 +480,9 @@ void NewYearRooftopScene::draw_rooftop(float dt)
         }
         if (arm == 1 && sparkler_ > 0.05f) {  // raised arm with a sparkler
             const Point shoulder{cx + width - 2.0f, hy + 7.0f};
-            const Point hand{shoulder.x + 3.5f, shoulder.y - 2.0f - 9.0f * sparkler_ + 0.8f * std::sin(t_ * 2.3f)};
+            const Point hand{shoulder.x + 5.5f, shoulder.y - 2.0f - 8.0f * sparkler_ + 0.8f * std::sin(t_ * 2.3f)};
             cv_.capsule(shoulder.x * sx, shoulder.y * sy, 1.3f * k, hand.x * sx, hand.y * sy, 1.0f * k, col, a);
-            sparklerTip = {hand.x + 1.5f, hand.y - 3.5f};
+            sparklerTip = {hand.x + 2.5f, hand.y - 3.0f};
             if (pass == 1)
                 cv_.capsule(hand.x * sx, hand.y * sy, 0.35f * k, sparklerTip.x * sx, sparklerTip.y * sy, 0.35f * k, {0.25f, 0.22f, 0.2f});
         }
@@ -489,6 +507,9 @@ void NewYearRooftopScene::draw_rooftop(float dt)
                                      {66, 99, 6.0f, 3.1f, Short, 1, 0.0f},
                                      {97, 100, 5.5f, 4.4f, Hood, 0, 0.0f},
                                      {110, 103, 4.2f, 5.2f, Beanie, 0, -0.3f}}};
+    // A soft warm haze from the street below sits behind the heads, so the
+    // silhouettes read even between bursts.
+    for (const auto& p : people) cv_.glow(p.x * sx, (p.head + 3.0f) * sy, 9.0f * k, {1.0f, 0.62f, 0.32f}, 0.10f);
     for (int pass = 0; pass < 2; ++pass)
         for (const auto& p : people) person(pass, p.x, p.head, p.width, p.sway, p.hair, p.arm, p.tilt);
 
@@ -498,14 +519,14 @@ void NewYearRooftopScene::draw_rooftop(float dt)
         cv_.set(static_cast<int>(glass.x * sx), static_cast<int>((glass.y - 2.5f) * sy), {0.75f, 0.75f, 0.7f});
     }
     if (sparklerTip.x > 0.0f) {
-        cv_.glow(sparklerTip.x * sx, sparklerTip.y * sy, 7.0f * k, {1.0f, 0.75f, 0.4f}, 0.4f * sparkler_);
+        cv_.glow(sparklerTip.x * sx, sparklerTip.y * sy, 6.0f * k, {1.0f, 0.75f, 0.4f}, 0.28f * sparkler_);
         const uint32_t frame = static_cast<uint32_t>(t_ * 30.0f);
-        for (uint32_t i = 0; i < 18; ++i) {
+        for (uint32_t i = 0; i < 10; ++i) {
             if (hash01(i * 977u + frame * 31u) > sparkler_)
                 continue;
             const float ang = kTau * hash01(i * 131u + frame * 17u), len = 1.0f + 5.0f * hash01(i * 71u + frame * 5u);
             cv_.add(static_cast<int>((sparklerTip.x + std::cos(ang) * len) * sx),
-                    static_cast<int>((sparklerTip.y + std::sin(ang) * len) * sy), {1.0f, 0.92f, 0.7f}, 0.9f);
+                    static_cast<int>((sparklerTip.y + std::sin(ang) * len) * sy), {1.0f, 0.92f, 0.7f}, 0.75f);
         }
     }
 }
@@ -514,6 +535,8 @@ bool NewYearRooftopScene::render(rgb_matrix::FrameCanvas* canvas)
 {
     float dt = 0.0f;
     begin_frame(dt);
+    // Fewer, sparser flakes than the default so snow does not read as sparks.
+    precip_.set_max(static_cast<int>(110 * render_quality_scale()));
     const float raw = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.1f);
     if (environment_changed(backdropKey_) || backdrop_.empty())
         build_backdrop();
