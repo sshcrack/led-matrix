@@ -139,6 +139,8 @@ void AudioBlockPartyScene::draw_person(const Person& p, float bob, int arms)
     const float s = p.scale;
     const float headY = (p.row == 0 ? 97.0f : 106.0f) - bob;
     auto blob = [&](float cx, float cy, float rx, float ry) {
+        if (!std::isfinite(cx) || !std::isfinite(cy))
+            return;
         for (int y = static_cast<int>((cy - ry) * sy) - 1; y <= static_cast<int>((cy + ry) * sy) + 1; ++y)
             for (int x = static_cast<int>((cx - rx) * sx) - 1; x <= static_cast<int>((cx + rx) * sx) + 1; ++x) {
                 if (x < 0 || y < 0 || x >= W || y >= H)
@@ -161,7 +163,7 @@ void AudioBlockPartyScene::draw_person(const Person& p, float bob, int arms)
     blob(p.x + sway * 0.85f, headY + 4.0f * s, 1.6f * s, 1.5f * s);  // neck
     // Shoulders and body to the bottom of the frame.
     for (float y = headY + 4.5f * s; y < 130.0f; y += 0.5f) {
-        const float t = std::min(1.0f, (y - headY - 4.5f * s) / (2.2f * s));
+        const float t = std::clamp((y - headY - 4.5f * s) / (2.2f * s), 0.0f, 1.0f);  // rounding can dip below 0 (sqrt NaN)
         const float half = (2.2f + 4.6f * p.width * std::sqrt(t)) * s;
         blob(p.x + sway * std::max(0.0f, 1.0f - (y - headY) / (24.0f * s)), y, half, 0.6f);
     }
