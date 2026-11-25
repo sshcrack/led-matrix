@@ -47,6 +47,7 @@ class NewYearRooftopScene final : public HobbySceneBase {
     float lull_ = 0.0f;   // pause after a salvo
     Rgb flashColor_{1, 1, 1};
     float sparkler_ = 0.0f;
+    Rgb lastColor_{};
 
     PropertyPointer<Plugins::EnumProperty<NewYearShow>> show_ = MAKE_ENUM_PROPERTY("show", NewYearShow, NewYearShow::AUTO);
 

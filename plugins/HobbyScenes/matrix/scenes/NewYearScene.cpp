@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <ctime>
+#include <limits>
 
 namespace Hobbies {
 namespace {
@@ -250,9 +251,10 @@ void NewYearRooftopScene::launch(float speedScale)
     Rocket r{};
     // Pick the spot, of a few candidates, furthest from fresh bursts, rockets
     // still climbing and the moon, so big shells open in their own space.
-    float best = -1.0f;
+    // Candidates keep a margin for the shell's radius from the top and sides.
+    float best = -std::numeric_limits<float>::infinity();
     for (int attempt = 0; attempt < 6; ++attempt) {
-        const float x = 10.0f + 108.0f * rnd(), y = 14.0f + 32.0f * rnd();
+        const float x = 22.0f + 84.0f * rnd(), y = 20.0f + 26.0f * rnd();
         float clear = std::hypot(x - Moon.x, y - Moon.y) - 8.0f;
         for (const auto& b : bursts_)
             if (b.age < 0.9f)
@@ -267,10 +269,14 @@ void NewYearRooftopScene::launch(float speedScale)
     r.y = Horizon;
     r.vy = -(std::sqrt(2.0f * 28.0f * (Horizon - r.burstY)) * (0.95f + 0.1f * rnd())) * speedScale;
     r.kind = static_cast<int>(rnd() * 6.0f);
-    r.color = Palette[static_cast<size_t>(rnd() * (Palette.size() - 0.01f))];
+    // Avoid repeating the colour of the shell before, so neighbours stay apart.
+    do {
+        r.color = Palette[static_cast<size_t>(rnd() * (Palette.size() - 0.01f))];
+    } while (bursts_.size() > 0 && r.color.r == lastColor_.r && r.color.g == lastColor_.g && r.color.b == lastColor_.b);
     r.second = Palette[static_cast<size_t>(rnd() * (Palette.size() - 0.01f))];
     if (r.kind == 2)
         r.color = {1.0f, 0.70f, 0.30f};  // willows are gold
+    lastColor_ = r.color;
     r.trail = 0.0f;
     rockets_.push_back(r);
 }
@@ -461,7 +467,7 @@ void NewYearRooftopScene::draw_fireworks()
             return;
         cv_.add(px, py, c, a);
     };
-    const uint32_t frame = static_cast<uint32_t>(t_ * 20.0f);
+    const uint32_t frame = static_cast<uint32_t>(t_ * 12.0f);
     // In a busy sky the white crackle is shorter and dimmer, so overlapping
     // shells keep their shapes.
     const bool busy = sparks_.size() > 600;
@@ -473,11 +479,11 @@ void NewYearRooftopScene::draw_fireworks()
         if (p.kind == 3) {  // trail embers
             a = u * 0.55f;
         }
-        else if (p.kind == 2 && u < (busy ? 0.22f : 0.35f)) {  // crackle: white pops at the end
-            if (hash01(static_cast<uint32_t>(idx) * 2654435761u + frame) < (busy ? 0.65f : 0.5f))
-                continue;
+        else if (p.kind == 2 && u < (busy ? 0.22f : 0.35f)) {  // crackle: white twinkles at the end
+            // Each spark pulses on its own smooth phase instead of popping per frame.
+            const float tw = 0.5f + 0.5f * std::sin(t_ * 18.0f + hash01(static_cast<uint32_t>(idx) * 2654435761u) * kTau);
             c = {1.0f, 1.0f, 0.95f};
-            a = busy ? 0.55f : 0.8f;
+            a = (busy ? 0.55f : 0.8f) * tw * tw;
         }
         else if (p.kind == 4) {  // glitter twinkles all the way
             a *= hash01(static_cast<uint32_t>(idx) * 40503u + frame * 7u) > 0.45f ? 1.0f : 0.15f;
@@ -514,7 +520,8 @@ void NewYearRooftopScene::draw_rooftop(float dt)
         const float cx = x + 0.4f * std::sin(t_ * 0.6f + sway), hy = headY + dy, hx = cx + tilt;
         // Shoulders and coat, widening to the bottom of the frame.
         cv_.capsule((cx - width + 2.2f) * sx, (hy + 7.0f) * sy, 2.2f * k, (cx + width - 2.2f) * sx, (hy + 7.0f) * sy, 2.2f * k, col, a);
-        for (int y = static_cast<int>((hy + 7.0f) * sy); y < cv_.h; ++y) {
+        // The rim light only catches heads, shoulders and raised arms.
+        for (int y = static_cast<int>((hy + 7.0f) * sy); y < (pass == 0 ? static_cast<int>((hy + 9.0f) * sy) : cv_.h); ++y) {
             const float half = width + 0.08f * (y / sy - hy - 7.0f);
             for (int xx = static_cast<int>((cx - half) * sx); xx <= static_cast<int>((cx + half) * sx); ++xx) cv_.blend(xx, y, col, a);
         }
