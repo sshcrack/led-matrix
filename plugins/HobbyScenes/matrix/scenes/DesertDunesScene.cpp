@@ -13,19 +13,24 @@ constexpr float CaravanSpeed = 2.4f;   // design px per second
 constexpr float NoCaravan = -1000.0f;  // caravan_ while no caravan is out
 
 // One row of dunes. Wind from the left builds a gentle windward slope and a
-// steep lee face to the right of each crest.
+// steep lee face to the right of each crest. A slow warp of x varies the
+// spacing, so the crests never line up like tiles.
 struct DuneLayer {
     float base, amp, period, offset, depth, ripple;
     uint32_t seed;
 
     // Crest position (0..1 within a period) and height (0..1) of dune i.
-    [[nodiscard]] float crest(int i) const { return 0.55f + 0.2f * hash01(static_cast<uint32_t>(i) * 13u + seed + 1u); }
-    [[nodiscard]] float height(int i) const { return 0.55f + 0.45f * hash01(static_cast<uint32_t>(i) * 7u + seed); }
+    [[nodiscard]] float crest(int i) const { return 0.55f + 0.25f * hash01(static_cast<uint32_t>(i) * 13u + seed + 1u); }
+    [[nodiscard]] float height(int i) const { return 0.4f + 0.6f * hash01(static_cast<uint32_t>(i) * 7u + seed); }
+
+    [[nodiscard]] float warp(float x) const { return x + 0.28f * period * std::sin(x / period * 0.85f + static_cast<float>(seed)); }
+    // Position in dune periods at design x: whole part = dune index, fraction = place in that dune.
+    [[nodiscard]] float phase(float x) const { return (warp(x) + offset) / period; }
 
     // Top edge (design row) at design x.
     [[nodiscard]] float top(float x) const
     {
-        const float p = (x + offset) / period;
+        const float p = phase(x);
         const int i = static_cast<int>(std::floor(p));
         const float u = p - static_cast<float>(i), c = crest(i);
         float h;
@@ -41,15 +46,21 @@ struct DuneLayer {
         return base - amp * (height(i) * h * 0.8f + 0.2f * swell);
     }
 
-    // Design x of the crest of dune i.
-    [[nodiscard]] float crest_x(int i) const { return (static_cast<float>(i) + crest(i)) * period - offset; }
+    // Design x of the crest of dune i (inverts the warp by a few fixed-point steps).
+    [[nodiscard]] float crest_x(int i) const
+    {
+        const float target = (static_cast<float>(i) + crest(i)) * period - offset;
+        float x = target;
+        for (int k = 0; k < 6; ++k) x = target - 0.28f * period * std::sin(x / period * 0.85f + static_cast<float>(seed));
+        return x;
+    }
 };
 
 const std::array<DuneLayer, 4> kLayers{{
-    {Horizon + 4.0f, 9.0f, 38.0f, 11.0f, 0.85f, 0.0f, 3u},
-    {Horizon + 15.0f, 13.0f, 53.0f, 30.0f, 0.6f, 0.0f, 17u},
-    {Horizon + 30.0f, 10.0f, 70.0f, 5.0f, 0.35f, 0.05f, 29u},
-    {Horizon + 62.0f, 22.0f, 96.0f, 47.0f, 0.08f, 0.09f, 41u},
+    {Horizon + 4.0f, 9.0f, 58.0f, 11.0f, 0.85f, 0.0f, 3u},
+    {Horizon + 15.0f, 13.0f, 72.0f, 30.0f, 0.6f, 0.0f, 17u},
+    {Horizon + 30.0f, 10.0f, 84.0f, 5.0f, 0.35f, 0.015f, 29u},
+    {Horizon + 62.0f, 22.0f, 110.0f, 47.0f, 0.08f, 0.06f, 41u},
 }};
 
 }  // namespace
@@ -85,8 +96,8 @@ void DesertDunesScene::build_backdrop()
     const float horizon = Horizon * art.sy;
 
     Environment::paint_sky(s, L, horizon + 6 * art.sy);
-    // Desert nights are clear and dark: many stars and a large moon.
-    Environment::paint_stars(s, L, horizon, 1.7f, 31, 230);
+    // Desert nights are clear and dark: plenty of stars and a large moon.
+    Environment::paint_stars(s, L, horizon, 1.7f, 31, 140);
     Environment::paint_sun(s, L, Environment::sun_point(L, W, horizon), 7.0f * k);
     Environment::paint_moon(s, L, Environment::moon_point(L, W, horizon * 0.8f), 8.5f * k);
     const std::vector<float> skyStage = bg.px;
@@ -108,44 +119,56 @@ void DesertDunesScene::build_backdrop()
             const Rgb silver = scale(Rgb{0.62f, 0.72f, 1.0f}, luma * (1.3f + 0.9f * L.moon_light));
             base = mix(base, silver, 0.7f * L.night);
         }
-        const Rgb shade_color = mix(scale(base, 0.74f), scale(from_env(L.zenith), 0.9f), 0.25f);  // shadows take the sky's colour
-        // Lit and shaded faces differ more in raking light.
-        const float lit_gain = 0.9f + 0.25f * contrast, dark_gain = std::clamp(1.0f - 0.25f * contrast, 0.7f, 1.0f);
+        // Shadows are a cool plum lit by the sky, never black; farther rows lose contrast.
+        const float luma = 0.3f * base.r + 0.55f * base.g + 0.15f * base.b;
+        const Rgb shade_color =
+            mix(mix(scale(base, 0.72f), scale(Rgb{0.62f, 0.48f, 0.78f}, luma * 0.95f), 0.35f), scale(from_env(L.zenith), 0.9f), 0.15f);
+        const float fade = layer.depth;
+        const float lit_gain = 0.92f + 0.22f * contrast;
+        const float shade_strength = (1.0f - 0.55f * fade);
+        // Warm light rakes along the crests that face a low sun.
+        const Rgb shoulder_light = mix(scale(base, 1.3f), scale(from_env(L.sun_color), 0.9f), moon ? 0.0f : 0.35f * L.twilight);
+        // With the light on the right, the gentle windward slopes only dim a little, and less so with a high sun.
+        const float windward_dim = 0.12f + 0.22f * std::clamp(low - 0.3f, 0.0f, 1.0f);
+        // A high sun skims the steep slip faces, so they read darker than the gentle slopes.
+        const float overhead = std::clamp((1.25f - low) / 0.6f, 0.0f, 1.0f);
         for (int x = 0; x < bg.w; ++x) {
             const float dx = (x + 0.5f) / art.sx;
-            const float t = layer.top(dx) * art.sy;
+            const float top = layer.top(dx);
+            const float t = top * art.sy;
             const int y0 = std::max(0, static_cast<int>(std::floor(t)));
-            const int i = static_cast<int>(std::floor((dx + layer.offset) / layer.period));
+            const float p = layer.phase(dx);
+            const int i = static_cast<int>(std::floor(p));
             for (int y = y0; y < bg.h; ++y) {
                 const float dy = (y + 0.5f) / art.sy;
-                // Each dune's slip face is a wedge under its lee edge: deepest below the crest,
-                // thinning to nothing at the trough.
+                const float under = dy - top;
+                // Each dune's slip face is a wedge under its lee edge: deepest just past the crest,
+                // thinning to nothing at the trough. Its edge leans from the crest down to the
+                // right, so the face never starts with an upright line.
                 float slip = 0.0f;
-                for (int j = i; j <= i + 1; ++j) {
-                    const float c = layer.crest(j);
-                    const float under = dy - layer.top(dx);
-                    const float u = (dx + layer.offset) / layer.period - static_cast<float>(j);
+                for (int j = i - 1; j <= i; ++j) {
+                    const float c = layer.crest(j), u = p - static_cast<float>(j);
+                    const float full = layer.amp * layer.height(j) * 0.95f;
                     float depth;
-                    if (u >= c && u < 1.0f) {
-                        const float v = (u - c) / (1.0f - c);
-                        depth = (1.0f - v) * layer.amp * layer.height(j) * 0.95f;
-                    }
-                    else {
+                    if (u >= c && u < 1.0f)
+                        depth = full * (1.0f - (u - c) / (1.0f - c)) * std::min(1.0f, (u - c) / 0.07f + 0.05f);
+                    else
                         continue;
-                    }
                     slip = std::max(slip, 1.0f - smoothstep(depth - 1.5f, depth + 0.5f, under));
                 }
-                // The gentle windward slopes only dim a little; the steep slip faces catch it full on.
-                const float dark = side < 0.0f ? slip : 0.35f * (1.0f - slip);
-                const float glare = side < 0.0f ? 0.0f : 0.12f * slip;
-                // Slopes darken a little towards the trough below each crest.
-                const float below = std::clamp((dy - layer.top(dx)) / (layer.amp + 8.0f), 0.0f, 1.0f);
+                const float dark = (side < 0.0f ? slip : windward_dim * (1.0f - slip) + 0.45f * overhead * slip) * shade_strength;
+                const float glare = side < 0.0f ? 0.0f : 0.12f * (1.0f - overhead) * slip;
+                // A pale lit shoulder just under each crest on the light's side.
+                const float shoulder = (1.0f - slip) * std::exp(-under / 2.5f) * (side < 0.0f ? 0.5f : 0.3f) * (0.4f + 0.6f * contrast);
+                const float below = std::clamp(under / (layer.amp + 8.0f), 0.0f, 1.0f);
                 float gain = lit_gain * (1.0f - 0.15f * below);
-                // Wind ripples: fine wavy lines across the near slopes, strongest in raking light.
+                // Wind ripples on the near slopes, fading with distance below the crest and broken up.
                 if (layer.ripple > 0.0f)
-                    gain *= 1.0f + layer.ripple * (0.6f + 0.6f * contrast) *
-                                       std::sin(dx * 0.55f + dy * 2.6f + 2.4f * std::sin(dx * 0.07f + dy * 0.05f));
-                Rgb c = mix(scale(base, gain * (1.0f + glare)), scale(shade_color, dark_gain * (1.0f - 0.1f * below)), dark);
+                    gain *= 1.0f + layer.ripple * (0.6f + 0.6f * contrast) * std::clamp(under / 10.0f, 0.0f, 1.0f) *
+                                       std::sin(dx * 0.55f + dy * 2.6f + 2.4f * std::sin(dx * 0.07f + dy * 0.05f)) *
+                                       (0.5f + 0.5f * std::sin(dx * 0.13f - dy * 0.4f));
+                Rgb c = mix(scale(base, gain * (1.0f + glare)), shade_color, dark);
+                c = mix(c, shoulder_light, std::min(0.6f, shoulder));
                 bg.blend(x, y, c, y == y0 ? 1.0f - (t - std::floor(t)) : 1.0f);
             }
         }
@@ -196,7 +219,7 @@ void DesertDunesScene::draw_grains(float raw_dt)
         spawn_ -= 1.0f;
         const int li = 1 + static_cast<int>(rnd() * 2.99f);
         const auto& layer = kLayers[static_cast<size_t>(li)];
-        const int first = static_cast<int>(std::floor(layer.offset / layer.period));
+        const int first = static_cast<int>(std::floor(layer.phase(0.0f)));
         const int i = first + static_cast<int>(rnd() * (128.0f / layer.period + 1.0f));
         const float cx = layer.crest_x(i);
         const float storm = L.storm * rnd();
@@ -236,7 +259,7 @@ void DesertDunesScene::draw_caravan(float dt)
         caravan_ = -6.0f;
     }
     caravan_ += CaravanSpeed * dt;
-    if (caravan_ - CamelGap * Camels > 134.0f) {
+    if (caravan_ - CamelGap * Camels - 3.0f > 134.0f) {
         caravan_ = NoCaravan;
         caravanWait_ = 35.0f + 40.0f * rnd();
         return;
@@ -250,17 +273,19 @@ void DesertDunesScene::draw_caravan(float dt)
         for (int j = -3; j <= 3; ++j) sum += layer.top(x + j * 2.5f);
         return sum / 7.0f;
     };
-    const Rgb hide = subject({0.42f, 0.29f, 0.18f}), dark = scale(hide, 0.7f);
+    // At night the caravan is a dark silhouette against the moonlit sand.
+    const Rgb hide = mix(subject({0.42f, 0.29f, 0.18f}), {0.03f, 0.03f, 0.05f}, 0.65f * L.night), dark = scale(hide, 0.7f);
     const Rgb cloth = subject({0.62f, 0.16f, 0.12f}), wrap = subject({0.82f, 0.78f, 0.70f});
     const Rgb shadow = scale(from_env(L.zenith), 0.25f);
     const float side = (L.night > 0.5f ? Environment::moon_point(L, cv_.w, Horizon * sy).x / cv_.w : L.sun_x) < 0.5f ? 1.0f : -1.0f;
     const auto P = [&](float x, float y) { return std::pair{x * sx, y * sy}; };
     for (int n = Camels - 1; n >= 0; --n) {
-        const float x = caravan_ - CamelGap * static_cast<float>(n);
+        // The lead camel walks a little ahead of the others.
+        const float x = caravan_ - CamelGap * static_cast<float>(n) - (n > 0 ? 3.0f : 0.0f);
         if (x < -8.0f || x > 136.0f)
             continue;
         const float gy = ground(x);
-        const float phase = x * 0.95f;
+        const float phase = x * 0.95f + static_cast<float>(n) * 1.9f;  // each animal in its own step
         // A faint shadow on the sand away from the light.
         cv_.ellipse((x + side * 1.5f) * sx, (gy + 0.2f) * sy, 3.2f * sx, 0.5f * sy, 0.0f, shadow, 0.35f * (1.0f - L.overcast));
         // Legs, far pair darker; each pair swings in opposite phase.
@@ -300,15 +325,22 @@ void DesertDunesScene::draw_sandstorm()
     const auto& L = env();
     if (L.storm < 0.02f)
         return;
-    // Dust hides the distance first, rolls in bands and tints everything ochre.
+    // A haze hides the distance; translucent sheets of dust race sideways over the crests.
+    // Every half minute or so the wind drops for a moment and the land shows through.
     // Daylight still glows through the dust, so it stays warm ochre instead of mud.
     const Rgb dust = mix(lit({0.78f, 0.55f, 0.32f}, 0.4f), scale(Rgb{0.80f, 0.56f, 0.32f}, 0.25f + 0.6f * L.daylight), 0.6f);
+    const float lull = smoothstep(0.55f, 0.95f, std::sin(t_ * 0.22f));
+    const float sy = cv_.h / 128.0f;
     for (int y = 0; y < cv_.h; ++y) {
-        const float v = static_cast<float>(y) / cv_.h;
-        const float distance = 1.0f - smoothstep(0.45f, 1.0f, v) * 0.55f;
+        const float dy = (y + 0.5f) / sy;
+        // Most dust far away and over the crests; the nearest ridge stays readable.
+        const float distance = 1.0f - 0.7f * smoothstep(Horizon + 20.0f, 128.0f, dy);
+        const float crests = std::exp(-((dy - Horizon - 18.0f) * (dy - Horizon - 18.0f)) / 500.0f);
+        const float bend = 1.7f * std::sin(dy * 0.09f + t_ * 0.4f);
+        const float haze = L.storm * (0.42f * distance) * (1.0f - 0.45f * lull);
         for (int x = 0; x < cv_.w; ++x) {
-            const float band = 0.5f + 0.5f * std::sin(y * 0.33f - t_ * 1.4f + 2.0f * std::sin(x * 0.04f + t_ * 0.3f));
-            cv_.blend(x, y, dust, std::min(0.85f, L.storm * distance * (0.45f + 0.3f * band)));
+            const float sheet = smoothstep(0.3f, 0.95f, 0.5f + 0.5f * std::sin(x * 0.07f / (cv_.w / 128.0f) - t_ * 2.2f + bend));
+            cv_.blend(x, y, dust, std::min(0.85f, haze + L.storm * 0.45f * sheet * crests * (1.0f - 0.7f * lull)));
         }
     }
 }
