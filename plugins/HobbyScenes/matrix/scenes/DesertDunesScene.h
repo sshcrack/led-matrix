@@ -12,7 +12,7 @@ namespace Hobbies {
 // sandstorm.
 class DesertDunesScene final : public HobbySceneBase {
     struct Grain {
-        float x, y, vx, vy, life, max_life;  // pixels, pixels per second
+        float x, y, vx, vy, life, max_life, trail;  // pixels, pixels per second; trail length in pixels
     };
     struct Crest {
         float x, y, z;  // pixel position of a crest seen against farther sand, and its distance
@@ -43,7 +43,7 @@ class DesertDunesScene final : public HobbySceneBase {
     float windDir_ = 1.0f;  // screen direction the sand blows in
     std::vector<Grain> grains_;
     std::vector<float> row_;         // scratch row for the heat shimmer
-    std::vector<float> columnTops_;  // sandstorm, per column: gust strengths, sky glow
+    std::vector<float> columnTops_;  // sandstorm, per column: skyline gust strength, sky glow
     float caravan_ = -1000.0f;       // design x of the lead camel; -1000 while no caravan is out
     float caravanWait_ = 6.0f;
     float spawn_ = 0.0f;
