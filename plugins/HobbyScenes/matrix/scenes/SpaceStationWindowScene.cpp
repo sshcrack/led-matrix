@@ -85,7 +85,7 @@ Planet make_planet()
     p.lights.resize(static_cast<size_t>(n));
     p.water.resize(static_cast<size_t>(n));
     const Rgb green{0.16f, 0.30f, 0.12f}, forest{0.10f, 0.20f, 0.09f}, sand{0.62f, 0.50f, 0.32f};
-    const Rgb tundra{0.38f, 0.36f, 0.30f}, ice{0.90f, 0.93f, 0.97f};
+    const Rgb tundra{0.38f, 0.36f, 0.30f}, ice{0.74f, 0.76f, 0.80f};
     const Rgb deep{0.02f, 0.07f, 0.20f}, shallow{0.07f, 0.30f, 0.42f};
     for (int ty = 0; ty < Planet::H; ++ty) {
         const float lat = (0.5f - (ty + 0.5f) / Planet::H) * kPi;
@@ -103,7 +103,8 @@ Planet make_planet()
             const float coast = smoothstep(0.475f, 0.495f, height) * (1 - land) * (1.0f - lakes);
             const float detail = fbm(x, y, z, 4, 6.0f);
             const float moist = fbm(x + 3, y, z, 4, 2.2f);
-            const float desert = smoothstep(0.5f, 0.65f, moist * 0.6f + 0.4f * std::clamp(1 - std::abs(alat - 24) / 20, 0.0f, 1.0f));
+            const float desert = smoothstep(0.5f, 0.65f, moist * 0.6f + 0.4f * std::clamp(1 - std::abs(alat - 24) / 20, 0.0f, 1.0f)) *
+                                 (1.0f - smoothstep(36, 48, alat));
             const float patches = fbm(x - 2, y + 1, z, 3, 4.5f);
             const Rgb ochre{0.52f, 0.36f, 0.22f}, steppe{0.40f, 0.40f, 0.24f};
             const Rgb dryland = lerp_rgb(sand, ochre, smoothstep(0.4f, 0.65f, patches));
@@ -345,9 +346,9 @@ void SpaceStationWindowScene::draw_earth(const float sun[3])
     const float spin = spin_ * Planet::W, drift = (spin_ + cloudDrift_) * Planet::W;
     float half[3] = {sun[0], sun[1], sun[2] + 1.0f};
     normalize3(half);
-    const Rgb cloudWhite{0.95f, 0.96f, 1.0f}, atmosphere{0.35f, 0.6f, 1.0f};
+    const Rgb cloudWhite{0.88f, 0.9f, 0.95f}, atmosphere{0.35f, 0.6f, 1.0f};
     const Rgb city{1.0f, 0.72f, 0.35f}, moonlit{0.6f, 0.7f, 1.0f};
-    const float nightClouds = 0.035f + 0.08f * L.moon_light;
+    const float nightClouds = 0.05f + 0.08f * L.moon_light;
     float daySum = 0.0f;
     for (const auto& e : earth_) {
         Tap s = tap(e.tx + spin, e.ty), c = tap(e.tx + drift, e.ty);
@@ -389,7 +390,9 @@ void SpaceStationWindowScene::draw_earth(const float sun[3])
             // A dim blue-grey rim of atmosphere outlines the night side.
             const float edge = 1.0f - e.nz;
             const float rim = edge * edge * 0.12f + 0.02f;
-            dark.r += 0.25f * rim;
+            dark.r += 0.25f * rim + 0.008f;
+            dark.g += 0.012f;
+            dark.b += 0.028f * (1.0f - cl);
             dark.g += 0.35f * rim;
             dark.b += 0.6f * rim;
         }
@@ -410,7 +413,7 @@ void SpaceStationWindowScene::draw_limb(const float sun[3], float dt)
         auroraTime_ -= dt;
         if (auroraTime_ <= 0.0f) {
             auroraTarget_ = 0.0f;
-            auroraWait_ = 30.0f + 40.0f * rnd();
+            auroraWait_ = (env().night > 0.5f ? 15.0f : 30.0f) + 30.0f * rnd();
         }
     }
     else if (auroraWait_ <= 0.0f) {
@@ -429,9 +432,11 @@ void SpaceStationWindowScene::draw_limb(const float sun[3], float dt)
         const float ndl = l.nx * sun[0] + l.ny * sun[1];
         const float dayside = smoothstep(-0.25f, 0.2f, ndl);
         const float d = l.d, out = std::max(d, 0.0f);
+        // The atmosphere is brightest at the crest and thins toward the window's sides.
+        const float off = (l.angle + 0.5f * kPi) / 0.6f, taper = std::max(0.35f, 1.0f - 0.65f * off * off);
         Rgb add{};
         if (d > -0.5f) {
-            const float band = std::exp(-sq((d - 0.6f) / 2.0f)) * dayside * 0.6f + std::exp(-out / 4.0f) * dayside * 0.12f;
+            const float band = (std::exp(-sq((d - 0.6f) / (1.2f + 0.8f * taper))) * 0.6f + std::exp(-out / 4.0f) * 0.12f) * dayside * taper;
             const float sunsetBand = smoothstep(-0.3f, -0.05f, ndl) * (1.0f - smoothstep(-0.05f, 0.25f, ndl));
             const float red = std::exp(-sq((d - 0.3f) / 1.5f)) * sunsetBand * 0.75f;
             const float glow =
@@ -451,7 +456,7 @@ void SpaceStationWindowScene::draw_limb(const float sun[3], float dt)
                 const float r2 = 0.5f + 0.5f * std::sin(a0 * 83.0f - t_ * 0.4f + 1.7f * std::sin(a0 * 7.0f - t_ * 0.1f));
                 const float rays = 0.4f + 0.6f * r1 * (0.4f + 0.6f * r2);
                 const float a = aurora_ * (1.0f - smoothstep(-0.4f, -0.12f, ndl)) * std::exp(-spread * spread) * rays *
-                                smoothstep(0.0f, 0.12f, v) * (1.0f - smoothstep(0.3f * top, top, v)) * 0.75f;
+                                smoothstep(0.0f, 0.12f, v) * (1.0f - smoothstep(0.3f * top, top, v)) * 0.95f;
                 const Rgb c = lerp_rgb(green, violet, smoothstep(0.35f, 0.95f, v / top));
                 add.r += c.r * a;
                 add.g += c.g * a;
