@@ -77,6 +77,7 @@ DesertDunesScene::DesertDunesScene()
     adapt.weather_allowed = {Environment::Weather::Clear, Environment::Weather::PartlyCloudy, Environment::Weather::Overcast,
                              Environment::Weather::Storm};
     use_environment({Environment::TimeOfDay::Dusk, Environment::Weather::Clear, Environment::Season::Summer}, adapt);
+    use_music_layer();
 }
 
 void DesertDunesScene::initialize(int width, int height)
@@ -520,7 +521,7 @@ bool DesertDunesScene::render(rgb_matrix::FrameCanvas* canvas)
     begin_frame(dt);
     const float raw = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.1f);
     const auto& L = env();
-    const float sy = cv_.h / 128.0f;
+    const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f;
     const bool changed = environment_changed(backdropKey_);
     if (backdrop_.empty()) {
         start_build();
@@ -539,6 +540,14 @@ bool DesertDunesScene::render(rgb_matrix::FrameCanvas* canvas)
         for (size_t i = 0; i < cv_.px.size(); ++i) cv_.px[i] += (previous_[i] - cv_.px[i]) * fade_;
         fade_ = std::max(0.0f, fade_ - raw / CrossfadeSeconds);
     }
+
+    MusicLayer::Placement bars;
+    bars.base = Horizon * sy;
+    bars.max_height = 43.0f * sy;
+    bars.bar = std::max(1, static_cast<int>(std::lround(2.0f * sx)));
+    bars.gap = std::max(1, static_cast<int>(std::lround(sx)));
+    bars.brightness = 0.55f + 0.45f * (1.0f - L.daylight);
+    paint_music_layer(&sky_, bars);
 
     paint_clouds_behind(cv_, backdrop_, sky_, L, t_, Horizon * sy, 4 * sy, 38 * sy, 13);
     draw_shimmer();
@@ -568,6 +577,7 @@ Scenes::SceneDescriptor DesertDunesScene::get_descriptor() const
     d.music_affinity = 0.05f;
     d.performance_cost = 0.25f;
     environment_->add_variants(d);
+    music_layer_->describe(d);
     return d;
 }
 

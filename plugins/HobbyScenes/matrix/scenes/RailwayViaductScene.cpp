@@ -23,6 +23,7 @@ float far_bank(float x)
 RailwayViaductScene::RailwayViaductScene()
 {
     use_environment({Environment::TimeOfDay::Night, Environment::Weather::Clear, Environment::Season::Summer});
+    use_music_layer();
 }
 
 void RailwayViaductScene::initialize(int width, int height)
@@ -253,6 +254,15 @@ bool RailwayViaductScene::render(rgb_matrix::FrameCanvas* canvas)
         build_backdrop();
     cv_.px = backdrop_;
 
+    const float sx = cv_.w / 128.0f;
+    MusicLayer::Placement bars;
+    bars.base = Horizon * sy;
+    bars.max_height = 55.0f * sy;
+    bars.bar = std::max(1, static_cast<int>(std::lround(2.0f * sx)));
+    bars.gap = std::max(1, static_cast<int>(std::lround(sx)));
+    bars.brightness = 0.55f + 0.45f * (1.0f - L.daylight);
+    paint_music_layer(&sky_, bars);
+
     // Clouds drift behind the ridges: paint them over the sky rows, then put
     // back every pixel the landscape covers.
     paint_clouds_behind(cv_, backdrop_, sky_, L, t_, Horizon * sy, 3 * sy, 50 * sy, 7);
@@ -284,6 +294,7 @@ Scenes::SceneDescriptor RailwayViaductScene::get_descriptor() const
     d.music_affinity = 0.05f;
     d.performance_cost = 0.3f;
     environment_->add_variants(d);
+    music_layer_->describe(d);
     return d;
 }
 
