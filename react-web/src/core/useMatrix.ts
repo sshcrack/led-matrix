@@ -7,6 +7,7 @@ import type { ListPresets, RawPreset, Scene } from '~/apiTypes/list_presets'
 import type { ListScenes } from '~/apiTypes/list_scenes'
 import { useResource } from './useResource'
 import { createPresetPersistence, httpPresetTransport } from './presetPersistence'
+import { useUiUpdateTriggers } from './uiUpdate'
 
 export interface Pack { id: string; name: string; description: string; colors: string[]; available: boolean; missing_scenes: string[] }
 
@@ -110,6 +111,7 @@ export function useMatrixState() {
   const presets = presetsR.data
   const scenes = scenesR.data
   const current = status && presets ? presets[status.current] : undefined
+  useUiUpdateTriggers(!statusR.error, status?.version)
   const sceneByName = useMemo(() => new Map((scenes ?? []).map(s => [s.name, s])), [scenes])
 
   return {
