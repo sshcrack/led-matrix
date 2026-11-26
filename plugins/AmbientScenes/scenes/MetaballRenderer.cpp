@@ -34,6 +34,20 @@ std::tuple<float, float, float> hue_to_rgb(float hue)
     }
 }
 
+// Colour families the liquid drifts through: crimson, amber, back to crimson, then purple,
+// blue and teal. It never passes through yellow-green, which looks muddy on glossy blobs.
+float curated_hue(float h)
+{
+    static constexpr float stops[] = {0.97f, 1.07f, 0.97f, 0.83f, 0.63f, 0.53f, 0.66f, 0.83f, 0.97f};
+    constexpr int count = static_cast<int>(sizeof(stops) / sizeof(stops[0])) - 1;
+    h -= std::floor(h);
+    const float f = h * static_cast<float>(count);
+    const int i = std::min(count - 1, static_cast<int>(f));
+    const float k = f - static_cast<float>(i);
+    const float s = k * k * (3.0f - 2.0f * k);  // linger on each family a little
+    return stops[i] + (stops[i + 1] - stops[i]) * s;
+}
+
 struct Blob {
     float x = 0.0f;
     float y = 0.0f;
@@ -113,7 +127,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
 
     const float user_threshold = std::max(0.000001f, params.threshold);
     const float surface = std::clamp(user_threshold / 0.0003f, 0.15f, 4.0f) * 1.18f;
-    const float base_hue = std::fmod(time_seconds * params.color_speed + audio.section_hue + audio.drop_pulse * 0.02f, 1.0f);
+    const float base_hue = curated_hue(time_seconds * params.color_speed + audio.section_hue + audio.drop_pulse * 0.02f);
     const float inv_width = 1.0f / static_cast<float>(width);
     const float inv_height = 1.0f / static_cast<float>(height);
     const float rim_width = 0.22f +
@@ -125,6 +139,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
     const float h_len = std::sqrt(hx * hx + hy * hy + hz * hz);
     const float spec_power = 30.0f + (params.audio_reactive ? audio.treble * params.audio_strength * 20.0f : 0.0f);
     const float spec_boost = 1.0f + (params.audio_reactive ? audio.beat_pulse * params.audio_strength * 0.8f : 0.0f);
+    const float rim_glow = 0.18f + (params.audio_reactive ? audio.beat_pulse * params.audio_strength * 0.35f : 0.0f);
 
     for (int sy = 0; sy < sample_height; ++sy) {
         const int y = std::min(height - 1, sy * step);
@@ -140,7 +155,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
                 field += contribution;
                 // Shading uses a much softer copy of the field: it gives a merged mass one rounded
                 // surface instead of a dimple around every blob it is made of.
-                const float soft_inv = 1.0f / (dx * dx + dy * dy + blob.radius_squared * 1.4f + 1.0f);
+                const float soft_inv = 1.0f / (dx * dx + dy * dy + blob.radius_squared * 2.4f + 1.0f);
                 const float soft = blob.radius_squared * soft_inv;
                 smooth += soft;
                 grad_x -= 2.0f * soft * soft_inv * dx;
@@ -157,10 +172,10 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
             const float nx = static_cast<float>(x) * inv_width;
             const float ny = static_cast<float>(y) * inv_height;
             // Colour drifts across the panel but never cycles through the field, so blobs read as one liquid.
-            const float hue = base_hue + 0.06f * std::sin(nx * 2.0f * Pi + time_seconds * 0.35f) +
-                              0.05f * std::cos(ny * 2.0f * Pi - time_seconds * 0.27f);
+            const float hue = base_hue + 0.03f * std::sin(nx * 2.0f * Pi + time_seconds * 0.35f) +
+                              0.025f * std::cos(ny * 2.0f * Pi - time_seconds * 0.27f);
             const auto [core_r, core_g, core_b] = hue_to_rgb(hue);
-            const auto [edge_r, edge_g, edge_b] = hue_to_rgb(hue + 0.07f);
+            const auto [edge_r, edge_g, edge_b] = hue_to_rgb(hue - 0.03f);
 
             // Surface normal from the slope of log(smooth field): flat on top, curving down at the rim.
             const float scale = 0.085f * min_dimension / std::max(smooth, 0.0001f);
@@ -181,7 +196,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
                 const float lit = (base + (1.0f - base) * pale) * light;
                 // Small, lone blobs never reach a high field and stay dimmer than the main masses.
                 const float mass = 0.72f + 0.28f * smoothstep(surface * 1.2f, surface * 3.5f, field);
-                return (lit * body * 0.92f + std::min(spec * spec_boost, 0.75f) * body * 0.5f + rim * 0.18f * edge) * mass +
+                return (lit * body * 0.92f + std::min(spec * spec_boost, 0.75f) * body * 0.5f + rim * rim_glow * edge) * mass +
                        aura * 0.16f * edge;
             };
             const std::size_t index = static_cast<std::size_t>((sy * sample_width + sx) * 3);

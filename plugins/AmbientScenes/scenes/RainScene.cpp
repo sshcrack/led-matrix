@@ -120,7 +120,8 @@ void RainScene::build_backdrop()
             if (y < top) {
                 // Dark sky with a faint mist just above the puddle.
                 const float mist = smoothstep(top - h * 0.22f, top, y + 0.5f);
-                level = 0.06f + 0.10f * mist;
+                // Dim looks let the mist rise into the wet street, so the street has no hard top edge.
+                level = 0.06f + (dim ? 0.22f : 0.10f) * mist;
                 position = 0.05f + 0.25f * mist;
             }
             else {
@@ -144,6 +145,14 @@ void RainScene::build_backdrop()
                 c = c + lamp_ * (glow * pool_reach * std::exp(-pool * pool * 1.4f) +
                                  (dim ? 0.22f : 0.09f) * (1.0f - 0.5f * near) * std::exp(-streak * streak));
             }
+            if (dim) {
+                // A far light on the left, out of focus behind the rain, and its blur on the wet street.
+                const float fx = x + 0.5f - w * 0.17f, fy = py - h * 0.44f;
+                const float far = std::exp(-(fx * fx + fy * fy) / (h * h * 0.0035f));
+                const float ry = py - top;
+                const float far_reflection = ry > 0 ? std::exp(-fx * fx / (h * h * 0.002f)) * std::exp(-ry / (h * 0.08f)) : 0.0f;
+                c = c + lamp_ * (0.16f * far + 0.07f * far_reflection);
+            }
             backdrop_[static_cast<size_t>(y * w + x)] = c;
         }
     }
@@ -157,10 +166,11 @@ void RainScene::draw_lamp_post()
     const int w = matrix_width, h = matrix_height;
     const float lx = w * LAMP_X, ly = h * LAMP_Y;
     const int post = static_cast<int>(lx + w * 0.085f);
-    const int foot = static_cast<int>(h * 0.9f);  // stands in the street, below the puddle's far edge
+    // Stands at the kerb where the street begins (dim looks), or out in the street.
+    const bool dim = look_palette_->get().get() != Ambiance::Palette::ORIGINAL;
+    const int foot = dim ? static_cast<int>(h * PUDDLE_TOP) + 3 : static_cast<int>(h * 0.9f);
     const RGB dark{3, 4, 6};
     // In dim looks the lit side of the post and the arm are brighter, so they read against the haze.
-    const bool dim = look_palette_->get().get() != Ambiance::Palette::ORIGINAL;
     const float side = dim ? 0.30f : 0.10f, arm = dim ? 0.24f : 0.04f;
     auto put = [&](int x, int y, const RGB& c) {
         if (x >= 0 && y >= 0 && x < w && y < h)
@@ -196,7 +206,7 @@ void RainScene::initialize(int width, int height)
     for (auto& d : drops_) spawn(d, true);
     droplets_.clear();
     ripples_.clear();
-    beads_.assign(7, {});
+    beads_.assign(5, {});
     for (auto& b : beads_) spawn_bead(b, true);
     time_ = 0;
     build_backdrop();
@@ -217,7 +227,9 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
     std::copy(backdrop_.begin(), backdrop_.end(), buf_.px.begin());
 
     const float speed = speed_->get();
-    const float slant = wind_->get() * 0.35f;
+    // Now and then a gust leans the rain further for a few seconds.
+    const float gust = std::pow(0.5f + 0.5f * std::sin(time_ * 0.21f), 6.0f);
+    const float slant = wind_->get() * 0.35f * (1.0f + 0.8f * gust);
     // Streaks grow with speed, like a camera shutter would smear them.
     const float smear = std::max(0.85f, std::sqrt(speed));
     // Dense rain would sparkle all over the puddle; let only the nearest drops splash.
@@ -299,6 +311,20 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
         ++it;
     }
 
+    if (look_palette_->get().get() != Ambiance::Palette::ORIGINAL) {
+        // The lamp's reflection on the wet street breaks into short shimmering dashes.
+        const float lx = matrix_width * LAMP_X;
+        for (int y = static_cast<int>(top_of_puddle) + 1; y < matrix_height; y += 2) {
+            const float near = (y - top_of_puddle) / (matrix_height - top_of_puddle);
+            const float n = hash(static_cast<uint32_t>(y) * 2654435761u ^ static_cast<uint32_t>(time_ * 5.0f));
+            const float shift =
+                (hash(static_cast<uint32_t>(y) * 40503u ^ static_cast<uint32_t>(time_ * 3.0f)) - 0.5f) * (1.0f + 3.0f * near);
+            const float half = 0.8f + 2.2f * near * n;
+            for (float x = lx + shift - half; x <= lx + shift + half; x += 0.5f)
+                buf_.splat(x - 0.5f, y - 0.5f, lamp_ * (0.10f * (0.4f + 0.6f * n) * (1.0f - 0.4f * near)));
+        }
+    }
+
     if (glass_drops_->get())
         draw_beads(dt);
 
@@ -311,8 +337,8 @@ void RainScene::spawn_bead(Bead& b, bool anywhere)
 {
     b.x = 3.0f + rnd() * (matrix_width - 6.0f);
     b.y = anywhere ? rnd() * matrix_height : -4.0f - rnd() * 40.0f;
-    b.r = 1.1f + rnd() * 1.0f;
-    b.speed = 3.0f + rnd() * 4.0f;
+    b.r = (2.2f + rnd() * 1.4f) * static_cast<float>(matrix_height) / 64.0f;
+    b.speed = (4.0f + rnd() * 6.0f) * static_cast<float>(matrix_height) / 64.0f;
     b.pause = rnd() * 1.0f;
 }
 
@@ -324,7 +350,7 @@ void RainScene::draw_beads(float dt)
             b.pause -= dt;
         }
         else {
-            b.y += b.speed * b.r * dt;
+            b.y += b.speed * dt;
             if (rnd() < dt * 0.12f)
                 b.pause = 0.4f + rnd() * 1.2f;
         }
@@ -332,7 +358,9 @@ void RainScene::draw_beads(float dt)
             spawn_bead(b, false);
         // A faint wet track above the drop, then the drop as a small lens: a soft darker rim,
         // a body lit from below like a lens focusing the street light, and a glint at the top.
-        for (int i = 1; i < 10; ++i) buf_.splat(b.x - 0.5f, b.y - b.r - i - 0.5f, tint(0.8f, 0.10f * (1.0f - i / 10.0f)));
+        const int track = static_cast<int>(b.r * 5.0f);
+        for (int i = 1; i < track; ++i)
+            buf_.splat(b.x - 0.5f, b.y - b.r - i - 0.5f, tint(0.8f, 0.10f * (1.0f - static_cast<float>(i) / track)));
         const RGB body = tint(0.75f, 0.42f) + lamp_ * 0.12f;
         const int reach = static_cast<int>(std::ceil(b.r + 1.5f));
         for (int y = static_cast<int>(b.y) - reach; y <= static_cast<int>(b.y) + reach; ++y)
@@ -346,7 +374,11 @@ void RainScene::draw_beads(float dt)
                 p = p * (1.0f - 0.45f * rim);
                 const float inside = smoothstep(1.15f, 0.55f, d);
                 const float lens = 0.55f + 0.45f * std::clamp(dy / b.r, -1.0f, 1.0f);
-                p = p + body * (inside * lens);
+                // The drop shows the street behind it upside down, a little magnified and brighter.
+                const int sx = std::clamp(static_cast<int>(b.x - dx * 2.2f), 0, matrix_width - 1);
+                const int sy = std::clamp(static_cast<int>(b.y - dy * 2.2f), 0, matrix_height - 1);
+                const RGB behind = backdrop_[static_cast<size_t>(sy * matrix_width + sx)];
+                p = p + (body * (0.5f * lens) + behind * 1.3f) * inside;
             }
         buf_.splat(b.x - b.r * 0.35f - 0.5f, b.y - b.r * 0.45f - 0.5f, (lamp_ * 0.8f + tint(1.0f, 0.4f)) * 0.8f);
     }
@@ -384,7 +416,7 @@ Scenes::SceneDescriptor RainScene::get_descriptor() const
         {"window",
          "Rainy window",
          "Slow blue rain with a compact, low-brightness palette",
-         {{"look_palette", "RAIN"}, {"look_brightness", 0.55f}, {"density", 90}, {"speed", 0.55f}, {"wind", 0.05f}, {"glass_drops", true}},
+         {{"look_palette", "RAIN"}, {"look_brightness", 0.55f}, {"density", 90}, {"speed", 0.55f}, {"wind", 0.12f}, {"glass_drops", true}},
          {"calm", "rain", "blue"},
          0.22f,
          0.32f,

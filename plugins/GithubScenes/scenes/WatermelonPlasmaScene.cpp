@@ -48,13 +48,18 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
         const float u = su * su, g = sv * sv;
         if (palette == Ambiance::Palette::ORIGINAL) {
             // One flowing field splits the panel into pink flesh and green rind of about equal share.
-            // Where they meet, the colour falls to near black, so the two hues never smear together.
-            static constexpr RGB pink{0.92f, 0.07f, 0.40f}, green{0.08f, 0.82f, 0.36f};
+            // Each area is lightest along the seam and settles into a deep tone (plum, bottle green)
+            // inside; the seam itself is a thin dark line, so the two hues never smear together.
+            static constexpr RGB pink{0.95f, 0.10f, 0.42f}, plum{0.38f, 0.02f, 0.22f};
+            static constexpr RGB green{0.12f, 0.85f, 0.40f}, bottle{0.01f, 0.30f, 0.16f};
             const float side = std::sin(3.2f * v + 0.35f * (xp - yp) + t) + 0.12f;
-            const float edge = AudioKit::smoothstep(0.05f, 0.55f, std::abs(side));
-            // Soft ripples inside each area give it structure without changing the overall brightness.
-            const float ripple = 0.62f + 0.38f * (0.5f + 0.5f * std::cos(5.0f * v - 0.4f * yp + 1.3f * t));
-            return (side < 0 ? pink : green) * (edge * ripple * 235.0f * brightness);
+            const float a = std::abs(side);
+            const float seam = AudioKit::smoothstep(0.02f, 0.16f, a);
+            const float near = std::exp(-a * 2.6f);
+            // A faint second ripple shows the flow inside each area.
+            const float ripple = 0.85f + 0.15f * std::cos(5.0f * v - 0.4f * yp + 1.3f * t);
+            const RGB hue = side < 0 ? AudioKit::lerp(plum, pink, near) : AudioKit::lerp(bottle, green, near);
+            return hue * ((0.12f + 0.88f * seam) * ripple * 165.0f * brightness);
         }
         // Palette looks: the two bands become the palette's dark and light ends.
         const auto c = Ambiance::sample(palette, 0.5f + 0.5f * (g - u), std::min(1.0f, (u + g) * 0.8f) * brightness);
