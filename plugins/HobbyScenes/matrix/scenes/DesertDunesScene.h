@@ -18,7 +18,7 @@ class DesertDunesScene final : public HobbySceneBase {
     std::array<float, 12> backdropKey_{};
     std::vector<Grain> grains_;
     std::vector<float> row_;         // scratch row for the heat shimmer
-    std::vector<float> columnTops_;  // middle crests per column: heights, then gust strength (sandstorm veils)
+    std::vector<float> columnTops_;  // sandstorm, per column: middle crest heights, gust strengths, sky glow
     float caravan_ = -1000.0f;       // design x of the lead camel; -1000 while no caravan is out
     float caravanWait_ = 6.0f;
     float spawn_ = 0.0f;
