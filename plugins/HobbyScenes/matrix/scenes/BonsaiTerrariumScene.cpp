@@ -298,7 +298,8 @@ void BonsaiTerrariumScene::build_albedo()
                 const float X = (x + 0.5f - ox_) / scale_, Y = (y + 0.5f - oy_) / scale_;
                 const float dx = (X - pad.x) / rx, dy = (Y - pad.y) / ry;
                 // Flatter underside, domed top, ragged leafy edge.
-                const float shape = 1.0f - dx * dx - sq(dy > 0 ? dy * 1.25f : dy) + (dy > 0 ? 0.75f : 0.45f) * (vnoise(X * 0.55f, Y * 0.55f, 20 + p) - 0.5f);
+                const float shape = 1.0f - dx * dx - sq(dy > 0 ? dy * 1.25f : dy) +
+                                    (dy > 0 ? 0.75f : 0.45f) * (vnoise(X * 0.55f, Y * 0.55f, 20 + p) - 0.5f);
                 if (shape <= 0.0f)
                     continue;
                 const float clump = vnoise(X * 0.9f, Y * 0.9f, 30 + p), top = -dy * 0.85f - dx * 0.3f;
