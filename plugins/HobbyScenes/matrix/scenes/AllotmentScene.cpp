@@ -38,6 +38,7 @@ constexpr std::array<Point, 9> Perches{{{100.5f, FenceY - 8.0f},
 AllotmentScene::AllotmentScene()
 {
     use_environment({Environment::TimeOfDay::Day, Environment::Weather::Clear, Environment::Season::Summer, 38.0f, 0.65f});
+    use_music_layer();
 }
 
 void AllotmentScene::initialize(int width, int height)
@@ -836,6 +837,15 @@ bool AllotmentScene::render(rgb_matrix::FrameCanvas* canvas)
     if (environment_changed(backdropKey_) || backdrop_.empty())
         build_backdrop();
     cv_.px = backdrop_;
+
+    MusicLayer::Placement bars;
+    bars.base = Horizon * sy;
+    bars.max_height = 42.0f * sy;
+    bars.bar = std::max(1, static_cast<int>(std::lround(2.0f * sx)));
+    bars.gap = std::max(1, static_cast<int>(std::lround(sx)));
+    bars.brightness = 0.55f + 0.45f * (1.0f - L.daylight);
+    paint_music_layer(&sky_, bars);
+
     // Lightning lights the whole garden for a moment, not just the figures.
     if (L.flash > 0.01f)
         for (int y = static_cast<int>(Horizon * sy); y < cv_.h; ++y)
@@ -1006,6 +1016,7 @@ Scenes::SceneDescriptor AllotmentScene::get_descriptor() const
     d.music_affinity = 0.05f;
     d.performance_cost = 0.3f;
     environment_->add_variants(d);
+    music_layer_->describe(d);
     return d;
 }
 
