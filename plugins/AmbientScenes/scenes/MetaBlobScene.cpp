@@ -65,7 +65,7 @@ bool MetaBlobScene::render(rgb_matrix::FrameCanvas *canvas)
         }
         if (has_audio && audio.section_counter != last_section_counter) {
             last_section_counter = audio.section_counter;
-            section_target += 0.08f;
+            section_target += 0.015f;
         }
     } else {
         audio_bass = audio_mids = audio_treble = audio_balance = 0.0f;

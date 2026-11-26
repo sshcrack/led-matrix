@@ -87,17 +87,18 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
             x += audio.balance * params.audio_strength * 0.10f;
         // Keep blobs mostly on the panel so large ones are not clipped for long; the whole
         // group wanders slowly so a joined mass does not sit in one footprint.
-        x = std::clamp(0.5f + (x - 0.5f) * 0.72f + 0.10f * std::sin(time_seconds * 0.071f), 0.15f, 0.85f);
-        y = std::clamp(0.5f + (y - 0.5f) * 0.72f + 0.08f * std::cos(time_seconds * 0.053f), 0.15f, 0.85f);
-
-        const float audio_radius = params.audio_reactive
-                                       ? (audio.bass * 0.30f + audio.beat_pulse * 0.10f + audio.drop_pulse * 0.18f) * params.audio_strength
-                                       : 0.0f;
+        // Beats show as highlights (see spec_boost), not as size: a swelling mass would pump the brightness.
+        const float audio_radius = params.audio_reactive ? (audio.bass * 0.12f + audio.drop_pulse * 0.08f) * params.audio_strength : 0.0f;
         const float radius_wave = 0.88f + audio_radius
             + 0.20f * std::sin(time_seconds * speed_scale * 0.9f + phase);
-        // Many blobs share the panel: shrink each so merged masses stay readable.
-        const float crowd = std::min(1.0f, std::sqrt(10.0f / static_cast<float>(blob_count)));
+        // Many blobs share the panel: shrink each so the merged mass keeps dark space around it.
+        const float crowd = std::min(1.0f, 10.0f / static_cast<float>(blob_count));
         const float radius = std::max(2.0f, crowd * min_dimension * (0.058f + 0.020f * static_cast<float>(i % 4)) * radius_wave);
+        // Larger blobs keep further from the edges, so they are not cut off.
+        const float margin_x = std::max(0.15f, 1.6f * radius / static_cast<float>(width));
+        const float margin_y = std::max(0.15f, 1.6f * radius / static_cast<float>(height));
+        x = std::clamp(0.5f + (x - 0.5f) * 0.72f + 0.10f * std::sin(time_seconds * 0.071f), margin_x, 1.0f - margin_x);
+        y = std::clamp(0.5f + (y - 0.5f) * 0.72f + 0.08f * std::cos(time_seconds * 0.053f), margin_y, 1.0f - margin_y);
         blobs.push_back({
             x * static_cast<float>(width),
             y * static_cast<float>(height),
@@ -112,9 +113,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
 
     const float user_threshold = std::max(0.000001f, params.threshold);
     const float surface = std::clamp(user_threshold / 0.0003f, 0.15f, 4.0f) * 1.18f;
-    const float base_hue = std::fmod(
-        time_seconds * params.color_speed + audio.section_hue + audio.drop_pulse * 0.06f,
-        1.0f);
+    const float base_hue = std::fmod(time_seconds * params.color_speed + audio.section_hue + audio.drop_pulse * 0.02f, 1.0f);
     const float inv_width = 1.0f / static_cast<float>(width);
     const float inv_height = 1.0f / static_cast<float>(height);
     const float rim_width = 0.22f +
@@ -125,6 +124,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
     const float hx = lx, hy = ly, hz = lz + 1.0f;  // Blinn half vector towards a viewer straight ahead
     const float h_len = std::sqrt(hx * hx + hy * hy + hz * hz);
     const float spec_power = 30.0f + (params.audio_reactive ? audio.treble * params.audio_strength * 20.0f : 0.0f);
+    const float spec_boost = 1.0f + (params.audio_reactive ? audio.beat_pulse * params.audio_strength * 0.8f : 0.0f);
 
     for (int sy = 0; sy < sample_height; ++sy) {
         const int y = std::min(height - 1, sy * step);
@@ -181,7 +181,8 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
                 const float lit = (base + (1.0f - base) * pale) * light;
                 // Small, lone blobs never reach a high field and stay dimmer than the main masses.
                 const float mass = 0.72f + 0.28f * smoothstep(surface * 1.2f, surface * 3.5f, field);
-                return (lit * body * 0.92f + std::min(spec, 0.6f) * body * 0.5f + rim * 0.18f * edge) * mass + aura * 0.16f * edge;
+                return (lit * body * 0.92f + std::min(spec * spec_boost, 0.75f) * body * 0.5f + rim * 0.18f * edge) * mass +
+                       aura * 0.16f * edge;
             };
             const std::size_t index = static_cast<std::size_t>((sy * sample_width + sx) * 3);
             samples_[index + 0] = byte_from_unit(shade(core_r, edge_r));

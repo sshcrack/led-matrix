@@ -47,17 +47,14 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
         const float sv = std::sin(4.5f * v + 0.5f * yp + t) * 0.5f + 0.5f;
         const float u = su * su, g = sv * sv;
         if (palette == Ambiance::Palette::ORIGINAL) {
-            // Pink and green bands. Where they meet, the colour passes through deep plum and teal
-            // instead of mixing to grey; green sits a little lower so neither hue dominates.
-            static constexpr RGB pink{1.0f, 0.06f, 0.42f}, plum{0.55f, 0.04f, 0.40f}, teal{0.02f, 0.46f, 0.40f}, green{0.05f, 0.76f, 0.36f};
-            // A short transition keeps most of the panel clearly pink or green.
-            const float mix = AudioKit::smoothstep(0.3f, 0.7f, g / (u + g + 1e-4f));
-            const RGB hue = mix < 0.33f   ? AudioKit::lerp(pink, plum, mix / 0.33f)
-                            : mix < 0.67f ? AudioKit::lerp(plum, teal, (mix - 0.33f) / 0.34f)
-                                          : AudioKit::lerp(teal, green, (mix - 0.67f) / 0.33f);
-            // A slow, broad light variation keeps large single-colour areas from going flat.
-            const float shade = 0.72f + 0.28f * std::sin(v * 2.2f + 0.6f * t);
-            return hue * (std::max(u, g) * shade * 255.0f * brightness);
+            // One flowing field splits the panel into pink flesh and green rind of about equal share.
+            // Where they meet, the colour falls to near black, so the two hues never smear together.
+            static constexpr RGB pink{0.92f, 0.07f, 0.40f}, green{0.08f, 0.82f, 0.36f};
+            const float side = std::sin(3.2f * v + 0.35f * (xp - yp) + t) + 0.12f;
+            const float edge = AudioKit::smoothstep(0.05f, 0.55f, std::abs(side));
+            // Soft ripples inside each area give it structure without changing the overall brightness.
+            const float ripple = 0.62f + 0.38f * (0.5f + 0.5f * std::cos(5.0f * v - 0.4f * yp + 1.3f * t));
+            return (side < 0 ? pink : green) * (edge * ripple * 235.0f * brightness);
         }
         // Palette looks: the two bands become the palette's dark and light ends.
         const auto c = Ambiance::sample(palette, 0.5f + 0.5f * (g - u), std::min(1.0f, (u + g) * 0.8f) * brightness);
