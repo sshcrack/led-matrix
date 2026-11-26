@@ -22,6 +22,8 @@ register_plugin(HobbyScenes
         matrix/scenes/DesertDunesScene.cpp
         matrix/scenes/DesertDunesScene.h
         matrix/scenes/SpaceStationWindowScene.cpp
+        matrix/scenes/BonsaiTerrariumScene.cpp
+        matrix/scenes/BonsaiTerrariumScene.h
         matrix/scenes/SpaceStationWindowScene.h
         matrix/scenes/HarbourScene.h
         matrix/scenes/KoiPondScene.cpp
