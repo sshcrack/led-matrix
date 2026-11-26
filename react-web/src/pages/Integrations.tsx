@@ -1,6 +1,7 @@
 import SpotifyConnection from '~/components/spotify/SpotifyConnection'
 import EnvironmentCard from '~/components/environment/EnvironmentCard'
 import HaloCard from '~/components/halo/HaloCard'
+import MusicLayerCard from '~/components/musicLayer/MusicLayerCard'
 import PanelHardwareCard from '~/components/hardware/PanelHardwareCard'
 
 export default function Integrations() {
@@ -11,6 +12,7 @@ export default function Integrations() {
     </div>
     <PanelHardwareCard />
     <SpotifyConnection settings />
+    <MusicLayerCard />
     <EnvironmentCard />
     <HaloCard />
   </div>

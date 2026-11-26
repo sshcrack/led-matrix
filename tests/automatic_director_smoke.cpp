@@ -1,10 +1,12 @@
 #include <shared/common/remote_render_protocol.h>
-#include <shared/matrix/remote_render.h>
 #include <shared/matrix/config/MainConfig.h>
 #include <shared/matrix/input_ids.h>
+#include <shared/matrix/music_layer.h>
+#include <shared/matrix/remote_render.h>
 #include <shared/matrix/runtime_inputs.h>
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <iostream>
 #include <optional>
@@ -829,6 +831,78 @@ int main()
         if (*score_of(chill, "rave") >= *score_of(mixed, "rave")) {
             std::cerr << "Chill mode does not push intense scenes down\n";
             return 67;
+        }
+        RuntimeInputs::clear_all();
+    }
+
+    // Music layer: while music plays, scenery tagged "music-layer" shows
+    // spectrum bars and counts as a gentle music look (no "not music-reactive"
+    // penalty) but stays below dedicated visualizers. The global switch off
+    // turns it back into plain scenery.
+    {
+        RuntimeInputs::clear_all();
+        const std::vector<std::string> scenery{"scenery", "calm"};
+        auto layered_tags = scenery;
+        layered_tags.emplace_back(MusicLayer::Tag);
+        std::vector<std::shared_ptr<Scenes::Scene>> pool{
+            std::make_shared<TestScene>("layered", .15f, .05f, .3f, false, "scenery", .18f, layered_tags),
+            std::make_shared<TestScene>("plain", .15f, .05f, .3f, false, "scenery", .18f, scenery),
+            std::make_shared<TestScene>("visualizer", .6f, 1.f, .3f, false, "music", .7f,
+                                        std::vector<std::string>{"music", "audio-reactive", "music-showcase"}),
+        };
+        auto score_of = [](const std::vector<AutomaticDirector::Candidate>& candidates, const std::string& name) -> float {
+            for (const auto& c : candidates)
+                if (c.scene->get_name() == name)
+                    return c.score;
+            return -1000.0f;
+        };
+        const auto reasons_of = [](const std::vector<AutomaticDirector::Candidate>& candidates, const std::string& name) {
+            for (const auto& c : candidates)
+                if (c.scene->get_name() == name)
+                    return c.reasons;
+            return std::vector<std::string>{};
+        };
+        const auto penalised = [&](const std::vector<AutomaticDirector::Candidate>& candidates, const std::string& name) {
+            const auto r = reasons_of(candidates, name);
+            return std::find(r.begin(), r.end(), "not music-reactive while music plays") != r.end();
+        };
+
+        // No music: the tag changes nothing.
+        AutomaticDirector quiet(5);
+        auto ranked_quiet = quiet.rank(pool, RuntimeInputs::snapshot());
+        if (std::abs(score_of(ranked_quiet, "layered") - score_of(ranked_quiet, "plain")) > 1e-4f) {
+            std::cerr << "music layer changed the score without music\n";
+            return 70;
+        }
+
+        RuntimeInputs::publish(RuntimeInputIds::Audio, {{"loudness", 0.6}, {"loudness_fast", 0.6}, {"bass", 0.5}, {"silence", false}},
+                               std::chrono::seconds(5));
+        if (!MusicLayer::live(RuntimeInputs::snapshot())) {
+            std::cerr << "music layer not live while music plays\n";
+            return 71;
+        }
+        AutomaticDirector on(5);
+        const auto ranked_on = on.rank(pool, RuntimeInputs::snapshot());
+        if (penalised(ranked_on, "layered") || !penalised(ranked_on, "plain") ||
+            score_of(ranked_on, "layered") <= score_of(ranked_on, "plain")) {
+            std::cerr << "layered scenery is not treated as a music look while music plays\n";
+            return 72;
+        }
+        if (score_of(ranked_on, "visualizer") <= score_of(ranked_on, "layered")) {
+            std::cerr << "layered scenery outranks a dedicated visualizer\n";
+            return 73;
+        }
+
+        MusicLayer::publish_global(false);
+        if (MusicLayer::live(RuntimeInputs::snapshot())) {
+            std::cerr << "music layer live although switched off globally\n";
+            return 74;
+        }
+        AutomaticDirector off(5);
+        const auto ranked_off = off.rank(pool, RuntimeInputs::snapshot());
+        if (!penalised(ranked_off, "layered") || std::abs(score_of(ranked_off, "layered") - score_of(ranked_off, "plain")) > 1e-4f) {
+            std::cerr << "globally disabled music layer still changes the ranking\n";
+            return 75;
         }
         RuntimeInputs::clear_all();
     }

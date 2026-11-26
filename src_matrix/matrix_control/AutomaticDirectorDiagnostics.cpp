@@ -44,12 +44,17 @@ nlohmann::json AutomaticDirector::diagnostics() const
     }
     const auto& c = last_context_;
     const auto journey = journey_.frame();
-    return {{"journey", {{"phase", journey.phase}, {"motif", journey.motif},
-                          {"cycle", journey_.cycle()}, {"progress", journey.progress},
-                          {"phase_progress", journey.phase_progress},
-                          {"elapsed_ms", journey_.elapsed_ms()}, {"duration_ms", journey_.duration_ms()},
-                          {"intensity", journey.intensity}, {"motion", journey.motion},
-                          {"dwell_scale", journey.dwell_scale}}},
+    return {{"journey",
+             {{"phase", journey.phase},
+              {"motif", journey.motif},
+              {"cycle", journey_.cycle()},
+              {"progress", journey.progress},
+              {"phase_progress", journey.phase_progress},
+              {"elapsed_ms", journey_.elapsed_ms()},
+              {"duration_ms", journey_.duration_ms()},
+              {"intensity", journey.intensity},
+              {"motion", journey.motion},
+              {"dwell_scale", journey.dwell_scale}}},
             {"director_mode", mode_name(mode_)},
             {"seed", std::to_string(seed_)},
             {"decision_count", decision_count_},
@@ -57,6 +62,7 @@ nlohmann::json AutomaticDirector::diagnostics() const
             {"performance_budget", performance_budget},
             {"context",
              {{"mode", c.mode},
+              {"music_layer", c.music_layer},
               {"music_style",
                [&] {
                    nlohmann::json weights = nlohmann::json::object();

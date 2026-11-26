@@ -23,7 +23,12 @@ bool is_music_look(const Scenes::EffectiveSceneProfile& profile);
 using DirectorContext = AutomaticDirector::Context;
 
 DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, const VisualJourney::Frame& journey);
-Scenes::EffectiveSceneProfile profile_of(const std::shared_ptr<Scenes::Scene>& scene);
+/// A scene tagged MusicLayer::Tag shows spectrum bars while the layer is live:
+/// it then counts as a gentle music look (reactive, affinity just above the
+/// music-look threshold, a little more energy) but stays below dedicated
+/// visualizers. Unchanged otherwise.
+Scenes::EffectiveSceneProfile with_music_layer(Scenes::EffectiveSceneProfile profile, bool music_layer);
+Scenes::EffectiveSceneProfile profile_of(const std::shared_ptr<Scenes::Scene>& scene, bool music_layer = false);
 float effective_cost(const std::shared_ptr<Scenes::Scene>& scene, const Scenes::EffectiveSceneProfile& profile,
                      const std::optional<float>& measured_load, const AutomaticDirector::OffloadRule& offloadable);
 

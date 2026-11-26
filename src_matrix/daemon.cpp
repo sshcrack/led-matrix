@@ -1,6 +1,8 @@
 #include "daemon.h"
 
 #include <Magick++.h>
+
+#include "shared/matrix/music_layer.h"
 #ifdef ENABLE_EMULATOR
 #include <CLI/CLI.hpp>
 #endif
@@ -330,6 +332,9 @@ Daemon::Daemon(int argc, char* argv[])
         if (s.detected_latitude && s.detected_longitude)
             cfg->set_environment_detected(*s.detected_latitude, *s.detected_longitude, s.detected_label);
     });
+
+    // Global music layer switch, mirrored to scenes (and the desktop worker).
+    MusicLayer::publish_global(config_->get_music_layer());
 
     // -------------------------------------------------------------------
     // 9c. Rear halo light (Pro Micro over UART); idle unless enabled

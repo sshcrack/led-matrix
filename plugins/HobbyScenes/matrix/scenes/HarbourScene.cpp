@@ -32,6 +32,7 @@ float ease(float u)
 HarbourScene::HarbourScene()
 {
     use_environment({Environment::TimeOfDay::Dawn, Environment::Weather::Clear, Environment::Season::Summer, 4.0f, 0.22f});
+    use_music_layer();
 }
 
 void HarbourScene::initialize(int width, int height)
@@ -539,6 +540,17 @@ bool HarbourScene::render(rgb_matrix::FrameCanvas* canvas)
         build_backdrop();
     cv_.px = backdrop_;
 
+    // Music: spectrum bars rise off the sea horizon behind the houses, the
+    // headland and the lighthouse; clouds drift in front of them. Softer under
+    // a bright sky, where additive light washes out.
+    MusicLayer::Placement bars;
+    bars.base = Horizon * sy;
+    bars.max_height = 46.0f * sy;
+    bars.bar = std::max(1, static_cast<int>(std::lround(2.0f * sx)));
+    bars.gap = std::max(1, static_cast<int>(std::lround(sx)));
+    bars.brightness = 0.55f + 0.45f * (1.0f - L.daylight);
+    paint_music_layer(&sky_, bars);
+
     paint_clouds_behind(cv_, backdrop_, sky_, L, t_, Horizon * sy, 4 * sy, 50 * sy, 5);
     beam_ += dt * 0.7f;
     draw_lighthouse();
@@ -597,6 +609,7 @@ Scenes::SceneDescriptor HarbourScene::get_descriptor() const
     d.music_affinity = 0.05f;
     d.performance_cost = 0.3f;
     environment_->add_variants(d);
+    music_layer_->describe(d);
     return d;
 }
 

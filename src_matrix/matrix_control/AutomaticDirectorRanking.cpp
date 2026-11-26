@@ -123,7 +123,7 @@ std::vector<AutomaticDirector::Candidate> AutomaticDirector::rank(
             const std::string& preferred = preference != preferences_.end() ? preference->second : no_preference;
             if (preferred == "hidden" || (preferred.empty() && !Scenes::automatic_default(descriptor, variant)))
                 continue;
-            const auto profile = Scenes::effective_profile(descriptor, variant);
+            const auto profile = with_music_layer(Scenes::effective_profile(descriptor, variant), context.music_layer);
             const auto role = presentation_role(profile);
 
             // Holiday scenes (tag "occasion:<id>") only play while their
@@ -494,7 +494,7 @@ tmillis_t AutomaticDirector::presentation_duration(
     context.audio_active = music_led(context);
     const auto descriptor = scene->get_descriptor();
     const auto* variant = Scenes::find_variant(descriptor, scene->get_variant_id());
-    const auto profile = Scenes::effective_profile(descriptor, variant);
+    const auto profile = with_music_layer(Scenes::effective_profile(descriptor, variant), context.music_layer);
 
     float seconds = 30.0f;
     if (has_tag(profile.tags, "spotify-video")) {

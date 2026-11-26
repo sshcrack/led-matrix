@@ -43,6 +43,10 @@ public:
     [[nodiscard]] std::string get_name() const override { return "harbour_dawn"; }
     [[nodiscard]] std::string get_category() const override { return "Ambient"; }
     [[nodiscard]] Scenes::SceneDescriptor get_descriptor() const override;
+    [[nodiscard]] Previews::SceneSpec get_preview_spec() const override
+    {
+        return Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
+    }
 };
 
 }  // namespace Hobbies

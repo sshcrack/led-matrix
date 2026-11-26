@@ -121,6 +121,9 @@ namespace ConfigData
         /// Pace the LED refresh to a fixed period so the brightness does not
         /// dip when other work (uploads, SD writes) slows the refresh down.
         bool steady_brightness = false;
+        /// Spectrum bars behind scenery while music plays (MusicLayer; scenes
+        /// can still turn it off for themselves).
+        bool music_layer = true;
 
         // Custom move assignment operator to handle atomic<bool>
         Root &operator=(Root &&other) noexcept
@@ -144,6 +147,7 @@ namespace ConfigData
                 environment = std::move(other.environment);
                 halo = std::move(other.halo);
                 steady_brightness = other.steady_brightness;
+                music_layer = other.music_layer;
             }
             return *this;
         }
@@ -166,7 +170,8 @@ namespace ConfigData
               update_settings(std::move(other.update_settings)),
               environment(std::move(other.environment)),
               halo(std::move(other.halo)),
-              steady_brightness(other.steady_brightness)
+              steady_brightness(other.steady_brightness),
+              music_layer(other.music_layer)
         {
         }
 

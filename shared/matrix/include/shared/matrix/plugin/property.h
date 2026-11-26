@@ -223,6 +223,9 @@ namespace Plugins {
         {
         }
 
+        /// False until the scene registered the property and its value was loaded.
+        [[nodiscard]] bool is_registered() const { return registered; }
+
         const T &get() const
         {
             if (!registered)

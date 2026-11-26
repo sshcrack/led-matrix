@@ -17,6 +17,7 @@
 #include "shared/matrix/canvas_consts.h"
 #include "shared/matrix/diagnostics.h"
 #include "shared/matrix/interrupt.h"
+#include "shared/matrix/music_layer.h"
 #include "shared/matrix/plugin_loader/loader.h"
 #include "shared/matrix/post.h"
 #include "shared/matrix/remote_render.h"
@@ -348,6 +349,20 @@ std::unique_ptr<Server::router_t> Server::add_other_routes(std::unique_ptr<route
         if (!cfg->set_steady_brightness(body["enabled"].template get<bool>()))
             return reply_with_error(req, "Could not persist the steady brightness setting", restinio::status_internal_server_error());
         return reply_with_json(req, {{"enabled", cfg->get_steady_brightness()}});
+    });
+
+    // Music layer: spectrum bars behind scenery while music plays. Scenes read
+    // the switch through the "music.layer" Runtime Input (MusicLayer::live()).
+    router->http_get("/music_layer", [cfg](auto req, auto) { return reply_with_json(req, {{"enabled", cfg->get_music_layer()}}); });
+
+    router->http_post("/music_layer", [cfg](auto req, auto) {
+        const auto enabled = request_param(req, "enabled");
+        if (!enabled || (*enabled != "true" && *enabled != "false"))
+            return reply_with_error(req, "enabled must be true or false");
+        if (!cfg->set_music_layer(*enabled == "true"))
+            return reply_with_error(req, "Could not persist the music layer setting", restinio::status_internal_server_error());
+        MusicLayer::publish_global(cfg->get_music_layer());
+        return reply_with_json(req, {{"enabled", cfg->get_music_layer()}});
     });
 
     router->http_get("/automatic_director/preferences",
