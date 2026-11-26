@@ -57,10 +57,10 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
             const float a = std::abs(side);
             // The seam thickens and thins along its length instead of being an even outline.
             const float seam = AudioKit::smoothstep(0.02f, 0.10f + 0.10f * (0.5f + 0.5f * std::sin(2.0f * v + 0.6f * xp)), a);
-            const float near = std::exp(-a * 2.0f);
+            const float nearness = std::exp(-a * 2.0f);
             // A faint second ripple shows the flow inside each area.
             const float ripple = 0.85f + 0.15f * std::cos(5.0f * v - 0.4f * yp + 1.3f * t);
-            const RGB hue = side < 0 ? AudioKit::lerp(plum, pink, near) : AudioKit::lerp(bottle, green, near);
+            const RGB hue = side < 0 ? AudioKit::lerp(plum, pink, nearness) : AudioKit::lerp(bottle, green, nearness);
             return hue * ((0.12f + 0.88f * seam) * ripple * 175.0f * brightness);
         }
         // Palette looks: the two bands become the palette's dark and light ends.

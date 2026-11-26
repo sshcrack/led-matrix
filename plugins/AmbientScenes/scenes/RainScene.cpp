@@ -140,20 +140,20 @@ void RainScene::build_backdrop()
                 // Reflected lamp light on the puddle, strongest straight below it.
                 // The cone continues onto the wet ground as a pool, plus a narrow reflection streak.
                 const float pool = (x + 0.5f - lx) / (pool_half + (py - top) * 0.5f);
-                const float near = (py - top) / (h - top);
-                const float streak = (x + 0.5f - lx) / (2.0f + near * 5.0f);
+                const float nearness = (py - top) / (h - top);
+                const float streak = (x + 0.5f - lx) / (2.0f + nearness * 5.0f);
                 c = c + lamp_ * (glow * pool_reach * std::exp(-pool * pool * 1.4f) +
-                                 (dim ? 0.22f : 0.09f) * (1.0f - 0.5f * near) * std::exp(-streak * streak));
+                                 (dim ? 0.22f : 0.09f) * (1.0f - 0.5f * nearness) * std::exp(-streak * streak));
             }
             if (dim) {
                 // A far light on the left, out of focus behind the rain, and its blur on the wet street.
                 const float fx = x + 0.5f - w * 0.17f, fy = py - h * 0.44f;
                 // Out-of-focus lights become discs: a soft edge a little brighter than the middle.
                 const float fd = len(fx, fy) / (h * 0.065f);
-                const float far = smoothstep(1.15f, 0.85f, fd) * (0.65f + 0.35f * smoothstep(0.4f, 0.95f, fd));
+                const float far_light = smoothstep(1.15f, 0.85f, fd) * (0.65f + 0.35f * smoothstep(0.4f, 0.95f, fd));
                 const float ry = py - top;
                 const float far_reflection = ry > 0 ? std::exp(-fx * fx / (h * h * 0.002f)) * std::exp(-ry / (h * 0.08f)) : 0.0f;
-                c = c + lamp_ * (0.34f * far + 0.08f * far_reflection);
+                c = c + lamp_ * (0.34f * far_light + 0.08f * far_reflection);
             }
             backdrop_[static_cast<size_t>(y * w + x)] = c;
         }
@@ -320,13 +320,13 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
         // The lamp's reflection on the wet street breaks into short shimmering dashes.
         const float lx = matrix_width * LAMP_X;
         for (int y = static_cast<int>(top_of_puddle) + 1; y < matrix_height; y += 2) {
-            const float near = (y - top_of_puddle) / (matrix_height - top_of_puddle);
+            const float nearness = (y - top_of_puddle) / (matrix_height - top_of_puddle);
             const float n = hash(static_cast<uint32_t>(y) * 2654435761u ^ static_cast<uint32_t>(time_ * 5.0f));
             const float shift =
-                (hash(static_cast<uint32_t>(y) * 40503u ^ static_cast<uint32_t>(time_ * 3.0f)) - 0.5f) * (1.0f + 3.0f * near);
-            const float half = 0.8f + 2.2f * near * n;
+                (hash(static_cast<uint32_t>(y) * 40503u ^ static_cast<uint32_t>(time_ * 3.0f)) - 0.5f) * (1.0f + 3.0f * nearness);
+            const float half = 0.8f + 2.2f * nearness * n;
             for (float x = lx + shift - half; x <= lx + shift + half; x += 0.5f)
-                buf_.splat(x - 0.5f, y - 0.5f, lamp_ * (0.05f * (0.4f + 0.6f * n) * (1.0f - 0.4f * near)));
+                buf_.splat(x - 0.5f, y - 0.5f, lamp_ * (0.05f * (0.4f + 0.6f * n) * (1.0f - 0.4f * nearness)));
         }
     }
 
