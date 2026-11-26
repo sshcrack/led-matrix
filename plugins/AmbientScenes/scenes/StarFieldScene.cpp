@@ -43,7 +43,7 @@ namespace AmbientScenes {
         }
         time = 0.0f;
         meteor_life_ = 0.0f;
-        meteor_timer_ = 5.0f + 4.0f * std::uniform_real_distribution<float>(0.0f, 1.0f)(gen);
+        meteor_timer_ = 3.0f + 3.0f * std::uniform_real_distribution<float>(0.0f, 1.0f)(gen);
         buf_.resize(width, height);
         build_nebula();
     }
@@ -80,6 +80,8 @@ namespace AmbientScenes {
     AudioKit::RGB StarFieldScene::star_color(float hue, float brightness) const
     {
         brightness = std::clamp(brightness, 0.0f, 1.0f);
+        if (look_palette_->get().get() != Ambiance::Palette::ORIGINAL)
+            brightness = 0.3f + 0.7f * brightness;  // dim looks keep their faint stars above the panel's lowest steps
         const auto palette = look_palette_->get().get();
         if (palette != Ambiance::Palette::ORIGINAL) {
             // Palette ends are dim, so stars are lifted above them to stay points of light.
@@ -123,13 +125,15 @@ namespace AmbientScenes {
                 const float mix = fbm(x * scale * 0.7f + 17.0f, y * scale * 0.7f, seed ^ 0x9E37u);
                 AudioKit::RGB c;
                 if (palette != Ambiance::Palette::ORIGINAL) {
+                    // Palette colours are darker than the original violet and teal; lift them to match.
                     const auto tint = Ambiance::sample(palette, 0.2f + 0.6f * mix, 1.0f);
-                    c = {static_cast<float>(tint.r), static_cast<float>(tint.g), static_cast<float>(tint.b)};
+                    c = AudioKit::RGB{static_cast<float>(tint.r), static_cast<float>(tint.g), static_cast<float>(tint.b)} * 1.6f;
                 }
                 else {
                     c = AudioKit::lerp(AudioKit::RGB{95, 40, 150}, AudioKit::RGB{25, 95, 140}, mix);
                 }
-                nebula_[static_cast<std::size_t>(y * nebula_w_ + x)] = c * (0.22f * density * std::sqrt(look_brightness_->get()));
+                nebula_[static_cast<std::size_t>(y * nebula_w_ + x)] =
+                    c * (0.22f * density * std::sqrt(look_brightness_->get()) * std::max(0.3f, 1.0f - speed->get() * 12.0f));
             }
     }
 
@@ -228,7 +232,7 @@ namespace AmbientScenes {
             const AudioKit::RGB c = star_color(star.hue, brightness);
             // Streak: anti-aliased, fading towards the tail.
             // Only near stars draw strong trails; distant ones leave faint short marks.
-            const float trail = 0.08f + 0.5f * closeness * closeness * closeness;
+            const float trail = (0.08f + 0.5f * closeness * closeness * closeness) * (0.6f + 0.6f * streak_length->get());
             float sx = x - px, sy = y - py;
             float length = AudioKit::len(sx, sy);
             // Cap trails so stars leaving the edge do not become long bright dashes.
@@ -252,7 +256,7 @@ namespace AmbientScenes {
                 buf_.disc(x, y, 1.6f + 1.4f * size, c * (0.10f * size));
             }
             else {
-                buf_.splat(x - 0.5f, y - 0.5f, c * 0.7f);  // distant moving stars stay quiet
+                buf_.splat(x - 0.5f, y - 0.5f, c * (0.7f / (1.0f + 0.6f * streak_length->get())));  // distant moving stars stay quiet
             }
         }
 
@@ -265,18 +269,18 @@ namespace AmbientScenes {
             meteor_dx_ = (unit(gen) < 0.5f ? -1.0f : 1.0f) * (45.0f + 25.0f * unit(gen));
             meteor_dy_ = 30.0f + 20.0f * unit(gen);
             meteor_life_ = 0.9f;
-            meteor_timer_ = 15.0f + 20.0f * unit(gen);
+            meteor_timer_ = 10.0f + 10.0f * unit(gen);
         }
         if (meteor_life_ > 0.0f) {
             meteor_life_ -= dt;
             meteor_x_ += meteor_dx_ * dt;
             meteor_y_ += meteor_dy_ * dt;
             const float fade = std::sin(std::clamp(meteor_life_ / 0.9f, 0.0f, 1.0f) * AudioKit::Pi);
-            const AudioKit::RGB c = star_color(0.4f, 0.9f * fade);
+            const AudioKit::RGB c = star_color(0.4f, fade) * 1.8f;
             const float len = AudioKit::len(meteor_dx_, meteor_dy_);
             for (int i = 0; i < 24; ++i) {
                 const float t = i / 24.0f;
-                buf_.splat(meteor_x_ - meteor_dx_ / len * t * 14.0f - 0.5f, meteor_y_ - meteor_dy_ / len * t * 14.0f - 0.5f,
+                buf_.splat(meteor_x_ - meteor_dx_ / len * t * 18.0f - 0.5f, meteor_y_ - meteor_dy_ / len * t * 18.0f - 0.5f,
                            c * (0.5f * (1.0f - t) * (1.0f - t)));
             }
         }

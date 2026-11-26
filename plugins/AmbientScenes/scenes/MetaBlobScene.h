@@ -20,7 +20,7 @@ private:
     float audio_mids = 0.0f;
     float audio_treble = 0.0f;
     float audio_balance = 0.0f;
-    float beat_pulse = 0.0f;
+    float beat_pulse = 0.0f, beat_shown = 0.0f, drop_shown = 0.0f;
     float drop_pulse = 0.0f;
     float section_hue = 0.0f, section_target = 0.0f;
     uint64_t last_beat_counter = 0;

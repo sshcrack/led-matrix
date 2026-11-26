@@ -91,8 +91,8 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
         y = std::clamp(0.5f + (y - 0.5f) * 0.72f + 0.08f * std::cos(time_seconds * 0.053f), 0.15f, 0.85f);
 
         const float audio_radius = params.audio_reactive
-            ? (audio.bass * 0.30f + audio.beat_pulse * 0.16f + audio.drop_pulse * 0.34f) * params.audio_strength
-            : 0.0f;
+                                       ? (audio.bass * 0.30f + audio.beat_pulse * 0.10f + audio.drop_pulse * 0.18f) * params.audio_strength
+                                       : 0.0f;
         const float radius_wave = 0.88f + audio_radius
             + 0.20f * std::sin(time_seconds * speed_scale * 0.9f + phase);
         // Many blobs share the panel: shrink each so merged masses stay readable.

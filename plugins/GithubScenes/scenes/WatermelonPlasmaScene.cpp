@@ -55,7 +55,9 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
             const RGB hue = mix < 0.33f   ? AudioKit::lerp(pink, plum, mix / 0.33f)
                             : mix < 0.67f ? AudioKit::lerp(plum, teal, (mix - 0.33f) / 0.34f)
                                           : AudioKit::lerp(teal, green, (mix - 0.67f) / 0.33f);
-            return hue * (std::max(u, g) * 255.0f * brightness);
+            // A slow, broad light variation keeps large single-colour areas from going flat.
+            const float shade = 0.72f + 0.28f * std::sin(v * 2.2f + 0.6f * t);
+            return hue * (std::max(u, g) * shade * 255.0f * brightness);
         }
         // Palette looks: the two bands become the palette's dark and light ends.
         const auto c = Ambiance::sample(palette, 0.5f + 0.5f * (g - u), std::min(1.0f, (u + g) * 0.8f) * brightness);

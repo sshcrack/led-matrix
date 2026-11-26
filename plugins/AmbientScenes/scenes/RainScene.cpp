@@ -99,7 +99,7 @@ void RainScene::build_backdrop()
     const float lx = w * LAMP_X;
     const float ly = h * LAMP_Y;
     // Palette looks are dim overall, so their lamp light carries more of the picture.
-    const float glow = palette == Ambiance::Palette::ORIGINAL ? 0.11f : 0.2f;
+    const float glow = palette == Ambiance::Palette::ORIGINAL ? 0.11f : 0.32f;
     const float pool_half = 2.5f + std::max(0.0f, top - ly) * 0.6f;
     const float pool_reach = std::exp(-(top - ly) / (h * 0.7f));
     for (int y = 0; y < h; ++y) {
@@ -155,7 +155,7 @@ void RainScene::draw_lamp_post()
     const int w = matrix_width, h = matrix_height;
     const float lx = w * LAMP_X, ly = h * LAMP_Y;
     const int post = static_cast<int>(lx + w * 0.085f);
-    const int foot = static_cast<int>(h * PUDDLE_TOP + 3);
+    const int foot = static_cast<int>(h * 0.9f);  // stands in the street, below the puddle's far edge
     const RGB dark{3, 4, 6};
     auto put = [&](int x, int y, const RGB& c) {
         if (x >= 0 && y >= 0 && x < w && y < h)
@@ -265,7 +265,8 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
         it->vy += GRAVITY * dt;
         it->x += it->vx * dt;
         it->y += it->vy * dt;
-        const float a = it->life / DROPLET_LIFE;
+        // Fade in over the first frames so a splash spreads instead of flashing.
+        const float a = it->life / DROPLET_LIFE * std::min(1.0f, (DROPLET_LIFE - it->life) / 0.08f);
         const float lit = std::max(light_at(it->x, top_of_puddle - 1.0f), 0.0f);
         buf_.splat(it->x - 0.5f, it->y - 0.5f, (tint(0.75f, 0.22f + 0.3f * it->z) + lamp_ * (0.45f * lit)) * a);
         ++it;
@@ -303,8 +304,8 @@ void RainScene::spawn_bead(Bead& b, bool anywhere)
     b.x = 3.0f + rnd() * (matrix_width - 6.0f);
     b.y = anywhere ? rnd() * matrix_height : -4.0f - rnd() * 40.0f;
     b.r = 1.1f + rnd() * 1.0f;
-    b.speed = 2.5f + rnd() * 6.0f;
-    b.pause = rnd() * 3.0f;
+    b.speed = 3.0f + rnd() * 4.0f;
+    b.pause = rnd() * 1.0f;
 }
 
 void RainScene::draw_beads(float dt)
@@ -316,8 +317,8 @@ void RainScene::draw_beads(float dt)
         }
         else {
             b.y += b.speed * b.r * dt;
-            if (rnd() < dt * 0.35f)
-                b.pause = 0.6f + rnd() * 2.5f;
+            if (rnd() < dt * 0.12f)
+                b.pause = 0.4f + rnd() * 1.2f;
         }
         if (b.y - b.r > matrix_height + 2)
             spawn_bead(b, false);
