@@ -24,7 +24,7 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
     const bool drop_event = drop_edge_.observe(context.drop_counter);
     const bool section_event = section_edge_.observe(context.section_counter);
 
-    const auto current_profile = profile_of(current_scene);
+    const auto current_profile = profile_of(current_scene, context.music_layer);
     const auto fit_error = [&](const Scenes::EffectiveSceneProfile& profile) {
         return std::abs(profile.intensity - context.target_intensity) * 0.62f
             + std::abs(profile.motion - context.target_motion) * 0.38f;
@@ -54,7 +54,7 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
     const auto better_fit = [&](float margin) -> const Candidate* {
         const auto& ranked = ranked_alternatives();
         for (std::size_t i = 0; i < std::min<std::size_t>(5, ranked.size()); ++i) {
-            if (fit_error(profile_of(ranked[i].scene)) + margin < current_error)
+            if (fit_error(profile_of(ranked[i].scene, context.music_layer)) + margin < current_error)
                 return &ranked[i];
         }
         return nullptr;
@@ -69,7 +69,7 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
 
     const auto best_with_tag = [&](std::string_view tag) -> std::shared_ptr<Scenes::Scene> {
         for (const auto& candidate : ranked_alternatives()) {
-            if (has_tag(profile_of(candidate.scene).tags, tag))
+            if (has_tag(profile_of(candidate.scene, context.music_layer).tags, tag))
                 return candidate.scene;
         }
         return nullptr;
@@ -106,7 +106,7 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
     if (music_cuts_allowed() && context.spotify_mv_ready && !track_intro_.music_video_shown
         && context.spotify_progress >= 0.10f && context.spotify_progress <= 0.74f
         && elapsed_ms >= 8000) {
-        if (const auto* candidate = best(); candidate && has_tag(profile_of(candidate->scene).tags, "spotify-video")) {
+        if (const auto* candidate = best(); candidate && has_tag(profile_of(candidate->scene, context.music_layer).tags, "spotify-video")) {
             request("prepared SpotifyMV reached a clean mid-track insertion point", candidate->scene);
             return result;
         }
@@ -131,7 +131,7 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
         const std::uint64_t min_dwell = !current_music ? 4000 : (showcase ? showcase_min_dwell_ms : music_min_dwell_ms);
         const auto best_music = [&](float min_intensity = -1.0f) -> const Candidate* {
             for (const auto& candidate : ranked_alternatives()) {
-                const auto profile = profile_of(candidate.scene);
+                const auto profile = profile_of(candidate.scene, context.music_layer);
                 if (is_music_look(profile) && profile.intensity > min_intensity)
                     return &candidate;
             }
@@ -140,7 +140,7 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
         const auto better_music_fit = [&](float margin) -> const Candidate* {
             const auto& ranked = ranked_alternatives();
             for (std::size_t i = 0; i < std::min<std::size_t>(5, ranked.size()); ++i) {
-                const auto profile = profile_of(ranked[i].scene);
+                const auto profile = profile_of(ranked[i].scene, context.music_layer);
                 if (is_music_look(profile) && fit_error(profile) + margin < current_error)
                     return &ranked[i];
             }
@@ -188,7 +188,7 @@ AutomaticDirector::SwitchOpportunity AutomaticDirector::consider_switch(
             && elapsed_ms >= 10000 && MusicStyle::style_fit(context.style, current_profile.tags) < 0.20f) {
             const auto& ranked = ranked_alternatives();
             for (std::size_t i = 0; i < std::min<std::size_t>(5, ranked.size()); ++i) {
-                const auto profile = profile_of(ranked[i].scene);
+                const auto profile = profile_of(ranked[i].scene, context.music_layer);
                 if (is_music_look(profile) && MusicStyle::style_fit(context.style, profile.tags) >= 0.50f) {
                     request("music style changed to " + std::string(MusicStyle::name(context.style.dominant)),
                             ranked[i].scene);

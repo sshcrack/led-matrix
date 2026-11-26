@@ -12,6 +12,8 @@ void HobbySceneBase::register_properties()
     add_property(speed_);
     if (environment_)
         for (const auto& p : environment_->properties()) add_property(p);
+    if (music_layer_)
+        add_property(music_layer_->property());
 }
 
 void HobbySceneBase::initialize(int width, int height)
@@ -23,6 +25,8 @@ void HobbySceneBase::initialize(int width, int height)
     precip_.reset();
     if (environment_)
         environment_->snap();
+    if (music_layer_)
+        music_layer_->snap();
 }
 
 void HobbySceneBase::begin_frame(float& dt)
@@ -35,6 +39,8 @@ void HobbySceneBase::begin_frame(float& dt)
         // Fewer drops when the Pi is short on time.
         precip_.set_max(static_cast<int>(260 * render_quality_scale()));
     }
+    if (music_layer_)
+        music_layer_->update(raw);
 }
 
 void HobbySceneBase::paint_sky_layers(float horizon, float scroll, float sun_radius, float cloud_top, float cloud_bottom)

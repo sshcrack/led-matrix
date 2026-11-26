@@ -50,7 +50,7 @@ void AutomaticDirector::record_played(const std::shared_ptr<Scenes::Scene>& scen
         return;
     const auto descriptor = scene->get_descriptor();
     const auto* variant = Scenes::find_variant(descriptor, scene->get_variant_id());
-    const auto profile = Scenes::effective_profile(descriptor, variant);
+    const auto profile = with_music_layer(Scenes::effective_profile(descriptor, variant), last_context_.music_layer);
     history_.push_back({scene->get_name(), descriptor.family, scene->get_variant_id(), presentation_role(profile),
                         profile.intensity, profile.motion, is_music_look(profile)});
     while (history_.size() > 8)

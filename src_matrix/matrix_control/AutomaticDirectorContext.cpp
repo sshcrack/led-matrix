@@ -1,10 +1,10 @@
 // AutomaticDirector: runtime-input signals and context derivation.
-#include "AutomaticDirectorInternal.h"
-
 #include <algorithm>
 #include <cmath>
 
+#include "AutomaticDirectorInternal.h"
 #include "shared/matrix/input_ids.h"
+#include "shared/matrix/music_layer.h"
 #include "shared/matrix/remote_render.h"
 
 namespace {
@@ -168,6 +168,7 @@ DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, const
     }
 
     c.style = MusicStyle::describe(runtime_inputs);
+    c.music_layer = MusicLayer::globally_enabled(runtime_inputs) && (c.audio_active || c.spotify);
 
     const float journey_weight = c.audio_active ? 0.18f : (c.spotify ? 0.35f : (silence ? 0.25f : 0.85f));
     c.target_intensity += (journey.intensity - c.target_intensity) * journey_weight;
@@ -175,10 +176,21 @@ DirectorContext context_for(const RuntimeInputs::Snapshot& runtime_inputs, const
     return c;
 }
 
-Scenes::EffectiveSceneProfile profile_of(const std::shared_ptr<Scenes::Scene>& scene)
+Scenes::EffectiveSceneProfile with_music_layer(Scenes::EffectiveSceneProfile profile, bool music_layer)
+{
+    if (!music_layer || !has_tag(profile.tags, MusicLayer::Tag) || presentation_role(profile) != "ambient")
+        return profile;
+    profile.tags.emplace_back("audio-reactive");
+    profile.music_affinity = std::max(profile.music_affinity, 0.72f);
+    profile.intensity = std::min(1.0f, profile.intensity + 0.12f);
+    profile.motion = std::min(1.0f, profile.motion + 0.10f);
+    return profile;
+}
+
+Scenes::EffectiveSceneProfile profile_of(const std::shared_ptr<Scenes::Scene>& scene, bool music_layer)
 {
     const auto descriptor = scene->get_descriptor();
-    return Scenes::effective_profile(descriptor, Scenes::find_variant(descriptor, scene->get_variant_id()));
+    return with_music_layer(Scenes::effective_profile(descriptor, Scenes::find_variant(descriptor, scene->get_variant_id())), music_layer);
 }
 
 /// Only a compatible worker advertising this scene makes Pi cost irrelevant.

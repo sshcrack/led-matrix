@@ -150,6 +150,9 @@ public:
         /// Fused genre metadata + audio character of the current music.
         MusicStyle::Info style;
         std::string mode = "ambient";
+        /// Music plays and the global music layer switch is on: scenes tagged
+        /// MusicLayer::Tag show spectrum bars and count as gentle music looks.
+        bool music_layer = false;
     };
 
 private:

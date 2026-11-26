@@ -175,6 +175,17 @@ namespace Config {
         return change([&](ConfigData::Root& d) { return std::exchange(d.steady_brightness, enabled) != enabled; });
     }
 
+    bool MainConfig::get_music_layer()
+    {
+        std::shared_lock lock(this->data_mutex);
+        return this->data.music_layer;
+    }
+
+    bool MainConfig::set_music_layer(bool enabled)
+    {
+        return change([&](ConfigData::Root& d) { return std::exchange(d.music_layer, enabled) != enabled; });
+    }
+
     std::map<string, string> MainConfig::get_automatic_preferences() {
         std::shared_lock lock(this->data_mutex);
         return this->data.automatic_preferences;

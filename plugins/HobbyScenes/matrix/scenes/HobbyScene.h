@@ -1,13 +1,13 @@
 #pragma once
 
 #include <shared/matrix/audio_state.h>
+#include <shared/matrix/environment/look.h>
+#include <shared/matrix/environment/paint.h>
+#include <shared/matrix/music_layer.h>
 
 #include <array>
 #include <memory>
 #include <random>
-
-#include <shared/matrix/environment/look.h>
-#include <shared/matrix/environment/paint.h>
 
 #include "Draw.h"
 #include "shared/matrix/Scene.h"
@@ -74,6 +74,18 @@ protected:
     bool environment_changed(std::array<float, 12>& key) const;
     // Figure clothing under the current light.
     void light_look(Look& look) const;
+
+    // ---- music layer (spectrum bars behind the scenery while music plays) ---
+    // Call use_music_layer() in the constructor, music_layer_->describe() in
+    // get_descriptor() and paint_music_layer() where the bars belong (usually
+    // right after the cached sky, so clouds and the landscape stay in front).
+    std::unique_ptr<MusicLayer::Layer> music_layer_;
+    void use_music_layer() { music_layer_ = std::make_unique<MusicLayer::Layer>(); }
+    void paint_music_layer(const std::vector<uint8_t>* mask, const MusicLayer::Placement& placement)
+    {
+        if (music_layer_)
+            music_layer_->paint(surface(), mask, placement);
+    }
 
 public:
     void initialize(int width, int height) override;

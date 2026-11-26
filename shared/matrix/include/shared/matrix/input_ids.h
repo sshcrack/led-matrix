@@ -14,4 +14,7 @@ inline constexpr std::string_view MusicGenre = "music.genre";
 // {real_world, latitude?, longitude?, weather_code?, ..., time_override,
 //  weather_override, season_override, occasions}. Read via Environment::current().
 inline constexpr std::string_view Environment = "environment";
+// Global music layer switch (config.json -> music_layer): {enabled}. Read via
+// MusicLayer::globally_enabled(); absent means on.
+inline constexpr std::string_view MusicLayer = "music.layer";
 } // namespace RuntimeInputIds
