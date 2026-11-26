@@ -21,7 +21,7 @@ a `.deb`. CI does this automatically for the cross-compile job.
 ```bash
 # Generate (all, or just the scenes you changed)
 ./scripts/generate_scene_previews.sh --all
-./scripts/generate_scene_previews.sh --scenes "WaveScene,ColorPulseScene"
+./scripts/generate_scene_previews.sh --scenes "wave_pattern,metablob"
 
 # Review the GIFs, then publish (needs `gh auth login`)
 ./scripts/publish_scene_previews.sh

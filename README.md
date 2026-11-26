@@ -752,7 +752,6 @@ GPL-3.0. See [LICENSE](LICENSE).
 ## Acknowledgments
 
 - [rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) by Henner Zeller, the foundation that makes this possible
-- [RGBMatrixAnimations](https://github.com/Footleg/RGBMatrixAnimations) by Footleg, particle animations
 - [matryx-gl](https://github.com/Knifa/matryx-gl) by Knifa, community effects
 - [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) by Microsoft, the crystal-ball app icon
 - Every open-source library in [`vcpkg.json`](vcpkg.json)

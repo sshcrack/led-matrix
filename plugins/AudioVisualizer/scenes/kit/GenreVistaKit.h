@@ -3,7 +3,7 @@
 // Drawing helpers shared by the genre vista scenes (GenreVistaScenes.h).
 // Header-only and allocation-free; everything draws into an AudioKit::Buffer.
 
-#include "AudioSceneKit.h"
+#include <shared/matrix/audio_kit.h>
 
 namespace AudioKit {
 

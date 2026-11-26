@@ -79,12 +79,10 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
     for (int i = 0; i < blob_count; ++i) {
         const float phase = static_cast<float>(i) * 1.731f;
         const float speed_scale = speed_scale_base;
-        float x = 0.5f
-            + params.move_range * 0.42f * std::sin(time_seconds * speed_scale * (0.72f + 0.07f * (i % 5)) + phase)
-            + params.move_range * 0.11f * std::sin(time_seconds * speed_scale * 1.83f + phase * 0.37f);
-        float y = 0.5f
-            + params.move_range * 0.38f * std::cos(time_seconds * speed_scale * (0.61f + 0.05f * (i % 7)) + phase * 0.83f)
-            + params.move_range * 0.13f * std::sin(time_seconds * speed_scale * 1.37f + phase * 0.51f);
+        float x = 0.5f + params.move_range * 0.68f * std::sin(time_seconds * speed_scale * (0.72f + 0.07f * (i % 5)) + phase) +
+                  params.move_range * 0.11f * std::sin(time_seconds * speed_scale * 1.83f + phase * 0.37f);
+        float y = 0.5f + params.move_range * 0.64f * std::cos(time_seconds * speed_scale * (0.61f + 0.05f * (i % 7)) + phase * 0.83f) +
+                  params.move_range * 0.13f * std::sin(time_seconds * speed_scale * 1.37f + phase * 0.51f);
         if (params.audio_reactive)
             x += audio.balance * params.audio_strength * 0.10f;
         x = std::clamp(x, -0.15f, 1.15f);
@@ -95,9 +93,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
             : 0.0f;
         const float radius_wave = 0.88f + audio_radius
             + 0.20f * std::sin(time_seconds * speed_scale * 0.9f + phase);
-        const float radius = std::max(
-            2.0f,
-            min_dimension * (0.075f + 0.022f * static_cast<float>(i % 4)) * radius_wave);
+        const float radius = std::max(2.0f, min_dimension * (0.058f + 0.020f * static_cast<float>(i % 4)) * radius_wave);
         blobs.push_back({
             x * static_cast<float>(width),
             y * static_cast<float>(height),
@@ -120,58 +116,67 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
     const float rim_width = 0.22f +
         (params.audio_reactive ? audio.treble * params.audio_strength * 0.12f : 0.0f);
 
+    // Light from the upper left; the field's gradient gives each blob a rounded, glossy surface.
+    const float lx = -0.45f, ly = -0.62f, lz = 0.64f;
+    const float hx = lx, hy = ly, hz = lz + 1.0f;  // Blinn half vector towards a viewer straight ahead
+    const float h_len = std::sqrt(hx * hx + hy * hy + hz * hz);
+    const float spec_power = 18.0f + (params.audio_reactive ? audio.treble * params.audio_strength * 20.0f : 0.0f);
+
     for (int sy = 0; sy < sample_height; ++sy) {
         const int y = std::min(height - 1, sy * step);
         for (int sx = 0; sx < sample_width; ++sx) {
             const int x = std::min(width - 1, sx * step);
-            float field = 0.0f;
-            float nearest_ratio_squared = 1.0e9f;
+            float field = 0.0f, grad_x = 0.0f, grad_y = 0.0f;
 
             for (const auto &blob : blobs) {
                 const float dx = static_cast<float>(x) - blob.x;
                 const float dy = static_cast<float>(y) - blob.y;
-                const float raw_distance_squared = dx * dx + dy * dy;
-                const float field_distance_squared = raw_distance_squared + 1.0f;
-                field += blob.radius_squared / field_distance_squared;
-                nearest_ratio_squared = std::min(
-                    nearest_ratio_squared,
-                    raw_distance_squared / blob.radius_squared);
+                const float inv = 1.0f / (dx * dx + dy * dy + 1.0f);
+                const float contribution = blob.radius_squared * inv;
+                field += contribution;
+                grad_x -= 2.0f * contribution * inv * dx;
+                grad_y -= 2.0f * contribution * inv * dy;
             }
 
-            const float body = smoothstep(surface * 0.76f, surface * 1.20f, field);
-            const float aura = smoothstep(surface * 0.18f, surface * 0.82f, field) * (1.0f - body * 0.72f);
+            const float body = smoothstep(surface * 0.90f, surface * 1.10f, field);
+            const float aura = smoothstep(surface * 0.30f, surface * 0.95f, field) * (1.0f - body);
             const float rim_distance = std::abs(field - surface) / surface;
-            const float rim = 1.0f - smoothstep(0.0f, rim_width, rim_distance);
-            if (body <= 0.001f && rim <= 0.001f && aura <= 0.001f)
+            const float rim = (1.0f - smoothstep(0.0f, rim_width, rim_distance)) * body;
+            if (body <= 0.001f && aura <= 0.001f)
                 continue;
 
             const float nx = static_cast<float>(x) * inv_width;
             const float ny = static_cast<float>(y) * inv_height;
-            const float hue = base_hue
-                + 0.10f * std::sin(nx * 2.0f * Pi + time_seconds * 0.35f)
-                + 0.08f * std::cos(ny * 2.0f * Pi - time_seconds * 0.27f)
-                + 0.035f * field;
-            const auto [base_r, base_g, base_b] = hue_to_rgb(hue);
-            const auto [rim_r, rim_g, rim_b] = hue_to_rgb(hue + 0.18f);
+            // Colour drifts across the panel but never cycles through the field, so blobs read as one liquid.
+            const float hue = base_hue + 0.06f * std::sin(nx * 2.0f * Pi + time_seconds * 0.35f) +
+                              0.05f * std::cos(ny * 2.0f * Pi - time_seconds * 0.27f);
+            const auto [core_r, core_g, core_b] = hue_to_rgb(hue);
+            const auto [edge_r, edge_g, edge_b] = hue_to_rgb(hue + 0.07f);
 
-            // The old implementation took sqrt() once per blob per pixel. We
-            // retain the same visual metric while taking it only once per
-            // scalar-field sample after the nearest blob has been identified.
-            const float nearest = std::sqrt(std::max(0.0f, nearest_ratio_squared));
-            const float inner_glow = std::clamp((1.20f - nearest) * 0.32f, 0.0f, 0.30f);
-            const float brightness = std::clamp(
-                body * 0.76f + rim * 0.62f + aura * 0.075f + inner_glow,
-                0.0f,
-                1.0f);
-            const float rim_mix = std::clamp(rim * 0.82f, 0.0f, 1.0f);
+            // Surface normal from the gradient of the height 1 - surface/field, which levels
+            // off inside a blob instead of spiking at every centre.
+            const float f_safe = std::max(field, surface * 0.5f);
+            const float scale = 9.0f * surface / (f_safe * f_safe);
+            float n_x = -grad_x * scale, n_y = -grad_y * scale, n_z = 1.0f;
+            const float n_len = std::sqrt(n_x * n_x + n_y * n_y + n_z * n_z);
+            n_x /= n_len;
+            n_y /= n_len;
+            n_z /= n_len;
+            const float diffuse = std::max(0.0f, n_x * lx + n_y * ly + n_z * lz);
+            const float spec = std::pow(std::max(0.0f, (n_x * hx + n_y * hy + n_z * hz) / h_len), spec_power);
 
-            const float mixed_r = base_r * (1.0f - rim_mix) + rim_r * rim_mix;
-            const float mixed_g = base_g * (1.0f - rim_mix) + rim_g * rim_mix;
-            const float mixed_b = base_b * (1.0f - rim_mix) + rim_b * rim_mix;
+            const float depth = std::clamp(1.0f - surface / std::max(field, 0.0001f), 0.0f, 1.0f);
+            const float light = 0.28f + 0.72f * diffuse;
+            const float pale = 0.25f * depth;  // centres are paler, like thick wax
+            const auto shade = [&](float core, float edge) {
+                const float base = edge + (core - edge) * depth;
+                const float lit = (base + (1.0f - base) * pale) * light;
+                return lit * body * 0.92f + spec * body * 0.75f + rim * 0.18f * edge + aura * 0.16f * edge;
+            };
             const std::size_t index = static_cast<std::size_t>((sy * sample_width + sx) * 3);
-            samples_[index + 0] = byte_from_unit(mixed_r * brightness);
-            samples_[index + 1] = byte_from_unit(mixed_g * brightness);
-            samples_[index + 2] = byte_from_unit(mixed_b * brightness);
+            samples_[index + 0] = byte_from_unit(shade(core_r, edge_r));
+            samples_[index + 1] = byte_from_unit(shade(core_g, edge_g));
+            samples_[index + 2] = byte_from_unit(shade(core_b, edge_b));
         }
     }
 

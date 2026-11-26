@@ -5,9 +5,10 @@
 // follower, exactly-once beat/onset/drop/section events and a shared
 // sensitivity property. Subclasses call begin_frame() first in render().
 
+#include <shared/matrix/audio_kit.h>
+
 #include <random>
 
-#include "AudioSceneKit.h"
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/property.h"
 #include "shared/matrix/wrappers.h"
@@ -45,11 +46,7 @@ protected:
     // Lattice step for Buffer::add_field(): per pixel at full quality (desktop
     // worker, previews, an unloaded Pi), coarser as the Pi's adaptive quality
     // drops. The Pi then offloads the scene to a compatible desktop worker.
-    [[nodiscard]] int field_step() const
-    {
-        const float q = render_quality_scale();
-        return q >= 0.95f ? 1 : q >= 0.75f ? 2 : 3;
-    }
+    [[nodiscard]] int field_step() const { return AudioKit::field_step(render_quality_scale()); }
     // Shared per-frame prologue. Returns false when no analysis is available.
     bool begin_frame(AudioState::Snapshot& audio, float& dt);
 };

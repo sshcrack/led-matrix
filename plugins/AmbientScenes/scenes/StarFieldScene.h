@@ -1,10 +1,12 @@
 #pragma once
+#include <shared/matrix/audio_kit.h>
 #include <shared/matrix/utils/AmbiancePalette.h>
+
+#include <random>
+#include <vector>
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
-#include <vector>
-#include <random>
 
 namespace AmbientScenes {
     class StarFieldScene : public Scenes::Scene {
@@ -38,8 +40,11 @@ namespace AmbientScenes {
         PropertyPointer<float> audio_strength = MAKE_PROPERTY_MINMAX("audio_strength", float, 0.8f, 0.0f, 2.0f);
         PropertyPointer<bool> drifting_center = MAKE_PROPERTY("drifting_center", bool, true);
 
-        static void draw_line(rgb_matrix::FrameCanvas* canvas, int x0, int y0, int x1, int y1,
-                              uint8_t r, uint8_t g, uint8_t b, int width, int height);
+        AudioKit::Buffer buf_;
+        std::vector<AudioKit::RGB> nebula_;  // cached backdrop, NEBULA_PAD px larger on each side
+        int nebula_w_ = 0, nebula_h_ = 0;
+        void build_nebula();
+        [[nodiscard]] AudioKit::RGB star_color(float hue, float brightness) const;
 
     public:
         void set_random_seed(uint32_t seed) override { gen.seed(seed); }

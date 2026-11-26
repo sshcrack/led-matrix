@@ -13,6 +13,8 @@ register_plugin(AmbientScenes
         scenes/MetaballRenderer.h
         scenes/StarFieldScene.cpp
         scenes/StarFieldScene.h
+        scenes/RainScene.cpp
+        scenes/RainScene.h
         scenes/SortingVisualizerScene.cpp
         scenes/SortingVisualizerScene.h
         scenes/sorting_simple.cpp
