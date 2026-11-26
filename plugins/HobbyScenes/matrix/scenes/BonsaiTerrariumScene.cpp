@@ -298,7 +298,7 @@ void BonsaiTerrariumScene::build_albedo()
                 const float X = (x + 0.5f - ox_) / scale_, Y = (y + 0.5f - oy_) / scale_;
                 const float dx = (X - pad.x) / rx, dy = (Y - pad.y) / ry;
                 // Flatter underside, domed top, ragged leafy edge.
-                const float shape = 1.0f - dx * dx - sq(dy > 0 ? dy * 1.25f : dy) + 0.45f * (vnoise(X * 0.55f, Y * 0.55f, 20 + p) - 0.5f);
+                const float shape = 1.0f - dx * dx - sq(dy > 0 ? dy * 1.25f : dy) + (dy > 0 ? 0.75f : 0.45f) * (vnoise(X * 0.55f, Y * 0.55f, 20 + p) - 0.5f);
                 if (shape <= 0.0f)
                     continue;
                 const float clump = vnoise(X * 0.9f, Y * 0.9f, 30 + p), top = -dy * 0.85f - dx * 0.3f;
@@ -329,9 +329,12 @@ void BonsaiTerrariumScene::build_albedo()
             const float X = (x + 0.5f - ox_) / scale_, Y = (y + 0.5f - oy_) / scale_;
             const float d = X + Y * 0.55f;
             const float band = std::exp(-sq((d - 66.0f) / 3.0f)) * 0.7f + std::exp(-sq((d - 73.0f) / 1.2f)) * 0.5f +
-                               std::exp(-sq((d - 126.0f) / 2.0f)) * 0.4f;
+                               std::exp(-sq((d - 126.0f) / 2.0f)) * 0.4f +
+                               // Light caught along the inside of the uprights.
+                               (std::exp(-sq((X - 100.6f) / 0.8f)) * 0.9f + std::exp(-sq((X - 27.4f) / 0.7f)) * 0.5f) *
+                                   smoothstep(PaneTop, PaneTop + 6.0f, Y) * smoothstep(PaneBottom - 2.0f, PaneBottom - 14.0f, Y);
             float* q = cv_.at(x, y);
-            for (int k = 0; k < 3; ++k) q[k] += (0.9f - q[k]) * band * 0.10f;
+            for (int k = 0; k < 3; ++k) q[k] += (0.9f - q[k]) * band * 0.14f;
         }
 
     // Brass frame.
@@ -381,15 +384,19 @@ void BonsaiTerrariumScene::build_light()
         sun = mix(sun, {1.0f, 0.80f, 0.68f}, 0.6f * L.twilight);
         ambient = mul(ambient, mix({1, 1, 1}, {0.86f, 0.92f, 1.22f}, L.twilight));
     }
-    beam_ = add(scale(sun, (0.95f - 0.2f * L.daylight) * sunUp),
+    beam_ = add(scale(sun, (0.8f - 0.05f * L.daylight) * sunUp),
                 scale({0.20f, 0.25f, 0.38f}, 0.6f * L.moon_light * (1.0f - smoothstep(-6.0f, 0.0f, L.sun_elevation))));
     // Window patch: long, low and slanted when the sun is low, shorter and
     // steeper by day; it slides across the wall over the day.
     const float e = std::lerp(0.5f, std::clamp(L.sun_elevation / 45.0f, 0.0f, 1.0f), smoothstep(-3.0f, 3.0f, L.sun_elevation));
-    const float top = std::lerp(26.0f, 18.0f, e), height = std::lerp(56.0f, 86.0f, e), width = std::lerp(70.0f, 46.0f, e);
+    const float top = std::lerp(26.0f, 18.0f, e), height = std::lerp(56.0f, 86.0f, e);
+    float width = std::lerp(70.0f, 46.0f, e);
     const float skew = std::lerp(1.1f, 0.4f, e), left = std::lerp(-40.0f, 0.0f, e) + (L.sun_x - 0.5f) * 24.0f;
+    if (L.morning)
+        width *= std::lerp(1.0f, 0.62f, L.twilight);  // dawn: a narrower sweep than the evening patch
     const float shx = 3.0f + 10.0f * skew, shy = 6.0f;
     const float lamp = L.lamp();
+    const Rgb fill = add({0.04f, 0.05f, 0.06f}, scale({0.05f, 0.06f, 0.09f}, L.night));
     const Rgb warm{1.0f, 0.62f, 0.28f};
     Point bulbs[FairyBulbs];
     for (int i = 0; i < FairyBulbs; ++i) bulbs[i] = fairy_bulb(i);
@@ -428,12 +435,18 @@ void BonsaiTerrariumScene::build_light()
             else if (in_box(X - shx, Y - shy))
                 b *= 0.74f - 0.64f * opaque_at(X - shx, Y - shy);  // its shadow on the wall
             Rgb l = add(ambient, scale(beam_, b));
+            // Soft fill on the plants and on the shelf under the case, so the
+            // tree keeps its shape outside the window light and at night.
+            if (in_box(X, Y) && Y < RailTop)
+                l = add(l, scale(fill, 1.0f));
+            else if (Y >= ShelfTop && Y < ShelfBottom && X > BoxLeft - 6 && X < BoxRight + 6)
+                l = add(l, scale(fill, 0.6f));
             if (lamp > 0.01f) {
                 float glow = 0.0f;
                 for (const Point& p : bulbs) glow += 1.0f / (1.0f + (sq(X - p.x) + sq(Y - p.y)) * 0.035f);
                 if (in_box(X, Y))
                     glow += 0.5f;
-                l = add(l, scale(warm, lamp * 0.3f * glow));
+                l = add(l, scale(warm, lamp * 0.22f * glow));
             }
             light_[i * 3] = l.r;
             light_[i * 3 + 1] = l.g;
@@ -554,6 +567,9 @@ void BonsaiTerrariumScene::draw_drops()
         const float fx = X - 0.5f - ix, fy = Y - 0.5f - iy;
         const Rgb shine = lit_at(d.x, d.y, {0.95f, 0.97f, 1.0f});
         const float a = std::clamp((d.r - 0.3f) * 1.1f, 0.0f, 0.95f);
+        if (d.speed > 0.0f)
+            for (int k = 1; k <= 6; ++k)  // short wet tail behind a running drop
+                cv_.blend(static_cast<int>(X), static_cast<int>(Y) - k, shine, 0.35f * (1.0f - k / 7.0f));
         // Bilinear splat of the bright face, a darker refracted edge below big drops.
         cv_.blend(ix, iy, shine, a * (1 - fx) * (1 - fy));
         cv_.blend(ix + 1, iy, shine, a * fx * (1 - fy));
@@ -670,8 +686,8 @@ void BonsaiTerrariumScene::draw_fairy_lights()
         const Point b = fairy_bulb(i);
         const float twinkle = 0.75f + 0.25f * std::sin(t_ * (0.5f + 0.13f * i) + i * 1.9f);
         const float k = lamp * twinkle * (0.35f + 0.65f * hash01(static_cast<uint32_t>(i) * 17U + 5U));
-        cv_.glow(sx(b.x), sy(b.y + 0.4f), px(3.0f), warm, 0.28f * k);
-        cv_.blend(static_cast<int>(sx(b.x)), static_cast<int>(sy(b.y + 0.4f)), {1.0f, 0.88f, 0.62f}, k);
+        cv_.glow(sx(b.x), sy(b.y + 0.4f), px(3.0f), warm, 0.2f * k);
+        cv_.blend(static_cast<int>(sx(b.x)), static_cast<int>(sy(b.y + 0.4f)), {1.0f, 0.88f, 0.62f}, 0.7f * k);
     }
 }
 
