@@ -85,9 +85,10 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
                   params.move_range * 0.13f * std::sin(time_seconds * speed_scale * 1.37f + phase * 0.51f);
         if (params.audio_reactive)
             x += audio.balance * params.audio_strength * 0.10f;
-        // Keep blobs mostly on the panel so large ones are not clipped for long.
-        x = std::clamp(0.5f + (x - 0.5f) * 0.72f, 0.1f, 0.9f);
-        y = std::clamp(0.5f + (y - 0.5f) * 0.72f, 0.1f, 0.9f);
+        // Keep blobs mostly on the panel so large ones are not clipped for long; the whole
+        // group wanders slowly so a joined mass does not sit in one footprint.
+        x = std::clamp(0.5f + (x - 0.5f) * 0.72f + 0.10f * std::sin(time_seconds * 0.071f), 0.1f, 0.9f);
+        y = std::clamp(0.5f + (y - 0.5f) * 0.72f + 0.08f * std::cos(time_seconds * 0.053f), 0.1f, 0.9f);
 
         const float audio_radius = params.audio_reactive
             ? (audio.bass * 0.30f + audio.beat_pulse * 0.16f + audio.drop_pulse * 0.34f) * params.audio_strength

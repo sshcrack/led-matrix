@@ -29,7 +29,7 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
     const float w = static_cast<float>(matrix_width), h = static_cast<float>(matrix_height);
 
     // Per-frame terms of the field, hoisted out of the per-pixel function.
-    const float zoom = 5.0f + std::sin(t * 0.25f);
+    const float zoom = 5.0f + 0.6f * std::sin(t * 0.18f);
     const float pan_x = std::sin(t * 0.25f) * 3.0f, pan_y = std::cos(t * 0.25f) * 3.0f;
     const float dir_x = std::sin(0.25f * t), dir_y = std::cos(0.29f * t);
     const float c1x = std::sin(t * 0.25f) * 4.0f, c1y = std::cos(t * 0.43f) * 4.0f;
@@ -43,8 +43,8 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
         const float yp = (py / h - 0.5f) * zoom + pan_y;
         const float v = std::sin(std::sin(dir_x * xp + dir_y * yp + t) + std::sin(AudioKit::len(xp + c1x, yp + c1y) + t) -
                                  std::cos(AudioKit::len(xp + c2x, yp + c2y) + t));
-        const float su = std::cos(7.0f * v + 0.5f * xp + t) * 0.5f + 0.5f;
-        const float sv = std::sin(7.0f * v + 0.5f * yp + t) * 0.5f + 0.5f;
+        const float su = std::cos(6.0f * v + 0.5f * xp + t) * 0.5f + 0.5f;
+        const float sv = std::sin(6.0f * v + 0.5f * yp + t) * 0.5f + 0.5f;
         const float u = su * su, g = sv * sv;
         if (palette == Ambiance::Palette::ORIGINAL) {
             // Pink and green bands; where they overlap, the stronger one turns pale instead of white or grey.
@@ -52,7 +52,7 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
             static constexpr RGB pale_pink{1.0f, 0.62f, 0.80f}, mint{0.62f, 1.0f, 0.80f};
             const float overlap = u * g;
             const RGB c = pink * (u * (1.0f - 0.6f * g)) + green * (g * (1.0f - 0.6f * u)) +
-                          AudioKit::lerp(mint, pale_pink, 0.5f + (u - g) * 2.0f) * (overlap * 0.6f);
+                          AudioKit::lerp(mint, pale_pink, 0.5f + (u - g) * 2.0f) * (overlap * 0.35f);
             return c * (255.0f * brightness);
         }
         // Palette looks: the two bands become the palette's dark and light ends.

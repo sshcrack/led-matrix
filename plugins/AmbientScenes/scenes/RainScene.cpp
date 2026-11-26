@@ -34,6 +34,8 @@ void RainScene::register_properties()
     add_property(speed_);
     add_property(wind_);
     add_property(splashes_);
+    glass_drops_->label("Drops on glass").description("A few drops run slowly down the window in front of the rain.").group("Rain");
+    add_property(glass_drops_);
     add_property(look_palette_);
     add_property(look_brightness_);
 }
@@ -181,6 +183,8 @@ void RainScene::initialize(int width, int height)
     for (auto& d : drops_) spawn(d, true);
     droplets_.clear();
     ripples_.clear();
+    beads_.assign(7, {});
+    for (auto& b : beads_) spawn_bead(b, true);
     time_ = 0;
     build_backdrop();
 }
@@ -206,13 +210,14 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
     // Dense rain would sparkle all over the puddle; let only the nearest drops splash.
     const float splash_depth = std::clamp(0.3f + (static_cast<float>(drops_.size()) - 120.0f) / 500.0f, 0.3f, 0.78f);
 
+    int splashes_this_frame = 0;  // staggers impacts so the ground never sparkles all at once
     for (auto& d : drops_) {
         const float v = FALL_SPEED * speed * (0.45f + 0.8f * d.z);
         d.y += v * dt;
         d.x += v * slant * dt;
         const float gy = ground_y(d.z);
         if (d.y >= gy) {
-            if (splashes_->get() && d.z > splash_depth && d.x >= 0 && d.x < matrix_width) {
+            if (splashes_->get() && d.z > splash_depth && splashes_this_frame++ < 2 && d.x >= 0 && d.x < matrix_width) {
                 const int n = d.z > 0.7f ? 3 : 2;
                 for (int i = 0; i < n; ++i) {
                     const float side = (i % 2 ? 1.0f : -1.0f) * (0.4f + rnd() * 0.6f);
@@ -277,9 +282,43 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
         ++it;
     }
 
+    if (glass_drops_->get())
+        draw_beads(dt);
+
     buf_.blit(canvas);
     wait_until_next_frame();
     return true;
+}
+
+void RainScene::spawn_bead(Bead& b, bool anywhere)
+{
+    b.x = 3.0f + rnd() * (matrix_width - 6.0f);
+    b.y = anywhere ? rnd() * matrix_height : -4.0f - rnd() * 40.0f;
+    b.r = 1.1f + rnd() * 1.0f;
+    b.speed = 2.5f + rnd() * 6.0f;
+    b.pause = rnd() * 3.0f;
+}
+
+void RainScene::draw_beads(float dt)
+{
+    for (auto& b : beads_) {
+        // Drops on glass stick, then slide on: stop-and-go at their own pace.
+        if (b.pause > 0) {
+            b.pause -= dt;
+        }
+        else {
+            b.y += b.speed * b.r * dt;
+            if (rnd() < dt * 0.35f)
+                b.pause = 0.6f + rnd() * 2.5f;
+        }
+        if (b.y - b.r > matrix_height + 2)
+            spawn_bead(b, false);
+        // A faint wet track above the drop, then the drop: dark rim, light body, a lamp-coloured glint.
+        for (int i = 1; i < 10; ++i) buf_.splat(b.x - 0.5f, b.y - b.r - i - 0.5f, tint(0.8f, 0.10f * (1.0f - i / 10.0f)));
+        buf_.disc(b.x, b.y, b.r + 0.6f, RGB{0, 0, 0}, false);
+        buf_.disc(b.x, b.y, b.r, tint(0.75f, 0.42f) + lamp_ * 0.12f);
+        buf_.splat(b.x - b.r * 0.4f - 0.5f, b.y - b.r * 0.45f - 0.5f, lamp_ * 0.8f + tint(1.0f, 0.4f));
+    }
 }
 
 Scenes::SceneDescriptor RainScene::get_descriptor() const
@@ -314,7 +353,7 @@ Scenes::SceneDescriptor RainScene::get_descriptor() const
         {"window",
          "Rainy window",
          "Slow blue rain with a compact, low-brightness palette",
-         {{"look_palette", "RAIN"}, {"look_brightness", 0.55f}, {"density", 90}, {"speed", 0.55f}, {"wind", 0.05f}},
+         {{"look_palette", "RAIN"}, {"look_brightness", 0.55f}, {"density", 90}, {"speed", 0.55f}, {"wind", 0.05f}, {"glass_drops", true}},
          {"calm", "rain", "blue"},
          0.22f,
          0.32f,

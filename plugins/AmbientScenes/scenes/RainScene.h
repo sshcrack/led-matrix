@@ -22,12 +22,16 @@ class RainScene : public Scenes::Scene {
     PropertyPointer<float> speed_ = MAKE_PROPERTY_MINMAX("speed", float, 1.0f, 0.3f, 2.5f);
     PropertyPointer<float> wind_ = MAKE_PROPERTY_MINMAX("wind", float, 0.15f, -1.0f, 1.0f);
     PropertyPointer<bool> splashes_ = MAKE_PROPERTY("splashes", bool, true);
+    PropertyPointer<bool> glass_drops_ = MAKE_PROPERTY("glass_drops", bool, false);
 
     struct Drop {
         float x = 0, y = 0, z = 0;  // z: 0 far .. 1 near
     };
     struct Droplet {
         float x = 0, y = 0, vx = 0, vy = 0, life = 0, z = 0;
+    };
+    struct Bead {  // a drop running down the window glass in front of the scene
+        float x = 0, y = 0, r = 1, speed = 0, pause = 0;
     };
     struct Ripple {
         float x = 0, y = 0, age = 0, z = 0;
@@ -37,6 +41,7 @@ class RainScene : public Scenes::Scene {
     std::vector<Drop> drops_;
     std::vector<Droplet> droplets_;
     std::vector<Ripple> ripples_;
+    std::vector<Bead> beads_;
     std::vector<AudioKit::RGB> backdrop_;
     std::vector<float> light_;  // street-lamp light per pixel, 0..1
     AudioKit::RGB lamp_;
@@ -49,6 +54,8 @@ class RainScene : public Scenes::Scene {
     void spawn(Drop& d, bool anywhere);
     void build_backdrop();
     void draw_lamp_post();
+    void spawn_bead(Bead& b, bool anywhere);
+    void draw_beads(float dt);
     [[nodiscard]] float light_at(float x, float y) const;
 
 public:
