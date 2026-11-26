@@ -98,11 +98,15 @@ Planet make_planet()
             const float warp = fbm(x, y, z, 3, 1.3f), warp2 = fbm(x, y, z, 3, 1.43f);
             const float height = fbm(x + 0.6f * warp, y + 0.6f * warp2, z - 0.5f * warp, 6, 1.6f);
             const float land = smoothstep(0.50f, 0.53f, height);
-            const float coast = smoothstep(0.42f, 0.50f, height) * (1 - land);
+            const float coast = smoothstep(0.46f, 0.50f, height) * (1 - land);
             const float detail = fbm(x, y, z, 4, 6.0f);
             const float moist = fbm(x + 3, y, z, 4, 2.2f);
             const float desert = smoothstep(0.5f, 0.65f, moist * 0.6f + 0.4f * std::clamp(1 - std::abs(alat - 24) / 20, 0.0f, 1.0f));
-            Rgb c = lerp_rgb(lerp_rgb(green, forest, detail), sand, desert);
+            const float patches = fbm(x - 2, y + 1, z, 3, 4.5f);
+            const Rgb ochre{0.52f, 0.36f, 0.22f}, steppe{0.40f, 0.40f, 0.24f};
+            const Rgb dryland = lerp_rgb(sand, ochre, smoothstep(0.4f, 0.65f, patches));
+            Rgb c = lerp_rgb(lerp_rgb(green, forest, smoothstep(0.3f, 0.7f, detail)), steppe, 0.6f * smoothstep(0.5f, 0.7f, patches));
+            c = lerp_rgb(c, dryland, desert);
             c = lerp_rgb(c, tundra, smoothstep(52, 62, alat + 8 * detail));
             c = lerp_rgb(lerp_rgb(deep, shallow, coast), c, land);
             const float icecap = smoothstep(68, 74, alat + 6 * detail);
@@ -115,13 +119,15 @@ Planet make_planet()
             const int i = ty * Planet::W + tx;
             const float spark = std::pow(hash01(static_cast<uint32_t>(i) * 2654435761U + 5U), 10.0f);
             const float coastal = smoothstep(0.45f, 0.53f, height) * (1 - smoothstep(0.53f, 0.6f, height));
-            float light = land * (1 - icecap) * (0.5f * smoothstep(0.62f, 0.75f, cities) + 1.5f * spark);
+            const float road = 1.0f - std::abs(2.0f * fbm(x + 9, y, z - 3, 3, 9.0f) - 1.0f);  // thin ridges link the towns
+            float light =
+                land * (1 - icecap) * (0.5f * smoothstep(0.62f, 0.75f, cities) + 1.5f * spark + 0.35f * smoothstep(0.93f, 0.98f, road));
             light *= smoothstep(0.5f, 0.65f, cluster + 0.15f * coastal) * (1 - smoothstep(55, 65, alat)) * (1 - 0.7f * desert);
 
             p.surface[static_cast<size_t>(i) * 3] = c.r;
             p.surface[static_cast<size_t>(i) * 3 + 1] = c.g;
             p.surface[static_cast<size_t>(i) * 3 + 2] = c.b;
-            p.clouds[static_cast<size_t>(i)] = 0.95f * smoothstep(0.54f, 0.70f, cloud + band);
+            p.clouds[static_cast<size_t>(i)] = 0.92f * smoothstep(0.56f, 0.74f, cloud + band);
             p.lights[static_cast<size_t>(i)] = light;
             p.water[static_cast<size_t>(i)] = (1 - land) * (1 - icecap);
         }
@@ -238,7 +244,7 @@ void SpaceStationWindowScene::build_geometry()
             const float ring = std::clamp(1.0f - std::abs(d - FrameWidth * 0.5f) / (FrameWidth * 0.5f), 0.0f, 1.0f);
             const float roundness = std::sqrt(ring);
             const Rgb metal{0.21f, 0.22f, 0.245f};
-            c = lerp_rgb(c, scale(metal, 0.55f + 0.45f * (1.0f - vertical)), smoothstep(0.0f, 0.25f, ring) * (0.6f + 0.4f * roundness));
+            c = lerp_rgb(c, scale(metal, 0.55f + 0.25f * (1.0f - vertical)), smoothstep(0.0f, 0.25f, ring) * (0.6f + 0.4f * roundness));
             // Dark seal between glass and frame, then the bright inner lip.
             c = scale(c, 1.0f - 0.6f * std::exp(-sq((d - 0.6f) / 0.5f)));
             c = lerp_rgb(c, Rgb{0.36f, 0.38f, 0.42f}, 0.45f * std::exp(-sq((d - 1.6f) / 0.6f)));
@@ -336,9 +342,9 @@ void SpaceStationWindowScene::draw_earth(const float sun[3])
     const float spin = spin_ * Planet::W, drift = (spin_ + cloudDrift_) * Planet::W;
     float half[3] = {sun[0], sun[1], sun[2] + 1.0f};
     normalize3(half);
-    const Rgb cloudWhite{0.95f, 0.96f, 1.0f}, sunset{1.0f, 0.55f, 0.30f}, atmosphere{0.35f, 0.6f, 1.0f};
+    const Rgb cloudWhite{0.95f, 0.96f, 1.0f}, atmosphere{0.35f, 0.6f, 1.0f};
     const Rgb city{1.0f, 0.72f, 0.35f}, moonlit{0.6f, 0.7f, 1.0f};
-    const float nightClouds = 0.02f + 0.08f * L.moon_light;
+    const float nightClouds = 0.035f + 0.08f * L.moon_light;
     float daySum = 0.0f;
     for (const auto& e : earth_) {
         Tap s = tap(e.tx + spin, e.ty), c = tap(e.tx + drift, e.ty);
@@ -352,12 +358,11 @@ void SpaceStationWindowScene::draw_earth(const float sun[3])
 
         Rgb lit{};
         if (day > 0.0f) {
-            const Rgb col = lerp_rgb(ground, cloudWhite, cl);
+            const Rgb col = lerp_rgb(ground, scale(cloudWhite, 0.72f + 0.28f * cl), cl);
             const float lambert = ndl > 0.0f ? std::pow(ndl, 0.7f) : 0.0f;
             lit = scale(col, 0.25f + 0.85f * lambert);
-            const float term = smoothstep(-0.05f, 0.02f, ndl) * (1.0f - smoothstep(0.02f, 0.10f, ndl));
-            const float grey = (col.r + col.g + col.b) / 3.0f;
-            lit = lerp_rgb(scale(lit, 1.0f - 0.5f * term), scale(sunset, grey * 1.2f), 0.5f * term);
+            const float term = smoothstep(-0.04f, 0.01f, ndl) * (1.0f - smoothstep(0.01f, 0.07f, ndl));
+            lit = {lit.r * (1.0f + 0.6f * term), lit.g * (1.0f - 0.05f * term), lit.b * (1.0f - 0.35f * term)};
             // Sun glint on open water.
             const float ndh = e.nx * half[0] + e.ny * half[1] + e.nz * half[2];
             if (fine && ndh > 0.93f) {
@@ -373,8 +378,17 @@ void SpaceStationWindowScene::draw_earth(const float sun[3])
         Rgb dark{};
         if (day < 1.0f) {
             const float li = sample(pl.lights, s) * 1.3f * (1.0f - 0.75f * cl);
-            dark = {city.r * li + moonlit.r * cl * nightClouds, city.g * li + moonlit.g * cl * nightClouds,
-                    city.b * li + moonlit.b * cl * nightClouds};
+            // Cloud tops stay faintly visible: moonlight, plus a violet-grey dusk just past the terminator.
+            const float dusk = smoothstep(-0.22f, -0.02f, ndl) * 0.12f;
+            const float glowCl = cl * (nightClouds + dusk);
+            dark = {city.r * li + moonlit.r * glowCl + 0.55f * dusk * cl, city.g * li + moonlit.g * glowCl,
+                    city.b * li + moonlit.b * glowCl + 0.3f * dusk * cl};
+            // A dim blue-grey rim of atmosphere outlines the night side.
+            const float edge = 1.0f - e.nz;
+            const float rim = edge * edge * edge * 0.10f;
+            dark.r += 0.25f * rim;
+            dark.g += 0.35f * rim;
+            dark.b += 0.6f * rim;
         }
         const Rgb out = lerp_rgb(dark, lit, day);
         float* p = &cv_.px[static_cast<size_t>(e.index) * 3];
@@ -414,10 +428,11 @@ void SpaceStationWindowScene::draw_limb(const float sun[3], float dt)
         const float d = l.d, out = std::max(d, 0.0f);
         Rgb add{};
         if (d > -0.5f) {
-            const float band = std::exp(-out / 1.8f) * dayside * 0.9f;
+            const float band = std::exp(-sq((d - 0.6f) / 2.0f)) * dayside * 0.6f + std::exp(-out / 4.0f) * dayside * 0.12f;
             const float sunsetBand = smoothstep(-0.3f, -0.05f, ndl) * (1.0f - smoothstep(-0.05f, 0.25f, ndl));
-            const float red = std::exp(-out / 1.2f) * sunsetBand * 0.9f;
-            const float glow = std::exp(-sq((d - 2.0f) / 0.8f)) * (1.0f - dayside) * 0.12f;
+            const float red = std::exp(-sq((d - 0.3f) / 1.5f)) * sunsetBand * 0.75f;
+            const float glow =
+                std::exp(-sq((d - 2.0f) / 1.0f)) * (1.0f - dayside) * 0.10f + std::exp(-sq(d / 1.6f)) * (1.0f - dayside) * 0.06f;
             add = {blue.r * band + orange.r * red + airglow.r * glow, blue.g * band + orange.g * red + airglow.g * glow,
                    blue.b * band + orange.b * red + airglow.b * glow};
         }
@@ -431,9 +446,9 @@ void SpaceStationWindowScene::draw_limb(const float sun[3], float dt)
                 const float spread = (a0 - auroraCenter_) / auroraWidth_;
                 const float r1 = 0.5f + 0.5f * std::sin(a0 * 47.0f + 2.3f * std::sin(a0 * 13.0f + t_ * 0.3f) + t_ * 0.5f);
                 const float r2 = 0.5f + 0.5f * std::sin(a0 * 83.0f - t_ * 0.4f + 1.7f * std::sin(a0 * 7.0f - t_ * 0.1f));
-                const float rays = 0.25f + 0.75f * r1 * (0.4f + 0.6f * r2);
+                const float rays = 0.4f + 0.6f * r1 * (0.4f + 0.6f * r2);
                 const float a = aurora_ * (1.0f - dayside) * std::exp(-spread * spread) * rays * smoothstep(0.0f, 0.12f, v) *
-                                (1.0f - smoothstep(0.3f * top, top, v)) * 0.8f;
+                                (1.0f - smoothstep(0.3f * top, top, v)) * 0.6f;
                 const Rgb c = lerp_rgb(green, violet, smoothstep(0.35f, 0.95f, v / top));
                 add.r += c.r * a;
                 add.g += c.g * a;
@@ -473,7 +488,8 @@ void SpaceStationWindowScene::draw_satellite(float dt, float sunlit)
     if (dx * dx + dy * dy < 1.0f)
         return;  // behind the planet
     const float flare = satFlare_ > -1.0f ? std::exp(-sq(satFlare_ / 0.8f)) : 0.0f;
-    const float b = (0.45f + 0.15f * sunlit) + 1.3f * flare;
+    const float progress = std::clamp(satLife_ * std::abs(satVx_) / (cv_.w + 4.0f), 0.0f, 1.0f);
+    const float b = (0.35f + 0.12f * sunlit) * std::sin(kPi * progress) + 1.0f * flare;
     const int x = static_cast<int>(satX_), y = static_cast<int>(satY_);
     if (x < 0 || y < 0 || x >= cv_.w || y >= cv_.h)
         return;
@@ -498,7 +514,7 @@ void SpaceStationWindowScene::draw_lightning(float dt, const float sun[3])
             const int strikes = 1 + static_cast<int>(rnd() * 3.0f);
             for (int s = 0; s < strikes; ++s)
                 flashes_.push_back({x + (rnd() - 0.5f) * 4 * scale_, y + (rnd() - 0.5f) * 2 * scale_, -0.25f * s - 0.1f * rnd(),
-                                    (1.2f + 1.5f * rnd()) * scale_ * e.nz});
+                                    (1.8f + 1.8f * rnd()) * scale_ * e.nz});
             break;
         }
     }
@@ -507,7 +523,7 @@ void SpaceStationWindowScene::draw_lightning(float dt, const float sun[3])
         if (f.life < 0.0f || f.life > 0.35f)
             continue;
         const float flicker = (std::sin(f.life * 90.0f) > -0.2f ? 1.0f : 0.3f) * (1.0f - f.life / 0.35f);
-        cv_.glow(f.x, f.y, f.size + 1.0f, Rgb{0.75f, 0.82f, 1.0f}, 0.55f * flicker);
+        cv_.glow(f.x, f.y, f.size + 1.5f, Rgb{0.8f, 0.87f, 1.0f}, 0.9f * flicker);
     }
     std::erase_if(flashes_, [](const Flash& f) { return f.life > 0.35f; });
 }
@@ -566,7 +582,7 @@ bool SpaceStationWindowScene::render(rgb_matrix::FrameCanvas* canvas)
     draw_limb(sun, raw);
     draw_lightning(raw, sun);
     draw_satellite(raw, sunlit_);
-    draw_frame(0.25f + 0.6f * sunlit_);
+    draw_frame(0.2f + 0.35f * sunlit_);
     present(canvas);
     wait_until_next_frame();
     return true;
