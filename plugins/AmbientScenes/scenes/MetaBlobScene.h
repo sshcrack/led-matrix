@@ -22,7 +22,7 @@ private:
     float audio_balance = 0.0f;
     float beat_pulse = 0.0f;
     float drop_pulse = 0.0f;
-    float section_hue = 0.0f;
+    float section_hue = 0.0f, section_target = 0.0f;
     uint64_t last_beat_counter = 0;
     uint64_t last_drop_counter = 0;
     uint64_t last_section_counter = 0;

@@ -85,15 +85,18 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
                   params.move_range * 0.13f * std::sin(time_seconds * speed_scale * 1.37f + phase * 0.51f);
         if (params.audio_reactive)
             x += audio.balance * params.audio_strength * 0.10f;
-        x = std::clamp(x, -0.15f, 1.15f);
-        y = std::clamp(y, -0.15f, 1.15f);
+        // Keep blobs mostly on the panel so large ones are not clipped for long.
+        x = std::clamp(0.5f + (x - 0.5f) * 0.8f, 0.06f, 0.94f);
+        y = std::clamp(0.5f + (y - 0.5f) * 0.8f, 0.06f, 0.94f);
 
         const float audio_radius = params.audio_reactive
             ? (audio.bass * 0.30f + audio.beat_pulse * 0.16f + audio.drop_pulse * 0.34f) * params.audio_strength
             : 0.0f;
         const float radius_wave = 0.88f + audio_radius
             + 0.20f * std::sin(time_seconds * speed_scale * 0.9f + phase);
-        const float radius = std::max(2.0f, min_dimension * (0.058f + 0.020f * static_cast<float>(i % 4)) * radius_wave);
+        // Many blobs share the panel: shrink each so merged masses stay readable.
+        const float crowd = std::min(1.0f, std::sqrt(10.0f / static_cast<float>(blob_count)));
+        const float radius = std::max(2.0f, crowd * min_dimension * (0.058f + 0.020f * static_cast<float>(i % 4)) * radius_wave);
         blobs.push_back({
             x * static_cast<float>(width),
             y * static_cast<float>(height),
@@ -171,7 +174,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
             const auto shade = [&](float core, float edge) {
                 const float base = edge + (core - edge) * depth;
                 const float lit = (base + (1.0f - base) * pale) * light;
-                return lit * body * 0.92f + spec * body * 0.75f + rim * 0.18f * edge + aura * 0.16f * edge;
+                return lit * body * 0.92f + std::min(spec, 0.7f) * body * 0.6f + rim * 0.18f * edge + aura * 0.16f * edge;
             };
             const std::size_t index = static_cast<std::size_t>((sy * sample_width + sx) * 3);
             samples_[index + 0] = byte_from_unit(shade(core_r, edge_r));

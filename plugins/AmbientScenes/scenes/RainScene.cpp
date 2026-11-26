@@ -87,7 +87,8 @@ void RainScene::build_backdrop()
         lamp_ = RGB{255, 178, 105} * look_brightness_->get();
     }
     else {
-        const auto c = Ambiance::sample(palette, 1.0f, look_brightness_->get());
+        // Dim looks keep the lamp a little brighter than the rest, so the scene keeps its focus.
+        const auto c = Ambiance::sample(palette, 1.0f, std::sqrt(look_brightness_->get()));
         lamp_ = {static_cast<float>(c.r), static_cast<float>(c.g), static_cast<float>(c.b)};
     }
     const float top = h * PUDDLE_TOP;
@@ -122,12 +123,12 @@ void RainScene::build_backdrop()
             }
             RGB c = tint(position, level);
             if (py < top) {
-                c = c + lamp_ * (0.07f * cone);  // the lamp's glow in the wet air
+                c = c + lamp_ * (0.11f * cone);  // the lamp's glow in the wet air
             }
             else {
                 // Reflected lamp light on the puddle, strongest straight below it.
-                const float rx = (x + 0.5f - lx) / (3.0f + (py - top) * 0.35f);
-                c = c + lamp_ * (0.10f * std::exp(-rx * rx * 1.5f));
+                const float rx = (x + 0.5f - lx) / (5.0f + (py - top) * 0.5f);
+                c = c + lamp_ * (0.15f * std::exp(-rx * rx * 1.2f));
             }
             backdrop_[static_cast<size_t>(y * w + x)] = c;
         }
@@ -200,6 +201,8 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
     const float slant = wind_->get() * 0.35f;
     // Streaks grow with speed, like a camera shutter would smear them.
     const float smear = std::sqrt(speed);
+    // Dense rain would sparkle all over the puddle; let only the nearest drops splash.
+    const float splash_depth = std::clamp(0.3f + (static_cast<float>(drops_.size()) - 120.0f) / 500.0f, 0.3f, 0.65f);
 
     for (auto& d : drops_) {
         const float v = FALL_SPEED * speed * (0.45f + 0.8f * d.z);
@@ -207,7 +210,7 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
         d.x += v * slant * dt;
         const float gy = ground_y(d.z);
         if (d.y >= gy) {
-            if (splashes_->get() && d.z > 0.3f && d.x >= 0 && d.x < matrix_width) {
+            if (splashes_->get() && d.z > splash_depth && d.x >= 0 && d.x < matrix_width) {
                 const int n = d.z > 0.7f ? 3 : 2;
                 for (int i = 0; i < n; ++i) {
                     const float side = (i % 2 ? 1.0f : -1.0f) * (0.4f + rnd() * 0.6f);
@@ -222,7 +225,7 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
 
         // Streak: bright head, tail fading upwards, drawn with sub-pixel splats.
         const float length = (2.5f + 10.0f * d.z) * smear;
-        const float brightness = 0.22f + 0.62f * d.z;
+        const float brightness = 0.12f + 0.68f * d.z * d.z + 0.1f * d.z;
         const float lit = light_at(d.x, d.y);
         const RGB head = tint(0.55f + 0.45f * d.z, brightness * (0.75f - 0.35f * lit)) + lamp_ * (lit * (0.30f + 0.5f * d.z));
         const int samples = std::max(2, static_cast<int>(length * 1.6f));
@@ -248,7 +251,7 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
         it->y += it->vy * dt;
         const float a = it->life / DROPLET_LIFE;
         const float lit = std::max(light_at(it->x, top_of_puddle - 1.0f), 0.0f);
-        buf_.splat(it->x - 0.5f, it->y - 0.5f, (tint(0.85f, 0.35f + 0.5f * it->z) + lamp_ * (0.6f * lit)) * a);
+        buf_.splat(it->x - 0.5f, it->y - 0.5f, (tint(0.75f, 0.22f + 0.3f * it->z) + lamp_ * (0.45f * lit)) * a);
         ++it;
     }
 
@@ -262,7 +265,7 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
         const float rx = 1.0f + k * (5.0f + 7.0f * it->z);
         const float ry = rx * (0.22f + 0.12f * it->z);  // flattened by perspective
         const float lit = light_at(it->x, top_of_puddle - 1.0f);
-        const RGB c = (tint(0.7f, 0.18f + 0.3f * it->z) + lamp_ * (0.45f * lit)) * ((1.0f - k) * (1.0f - k));
+        const RGB c = (tint(0.7f, 0.2f + 0.3f * it->z) + lamp_ * (0.6f * lit)) * ((1.0f - k) * (1.0f - k));
         const int points = std::max(8, static_cast<int>(rx * 5.0f));
         for (int i = 0; i < points; ++i) {
             const float a = Tau * static_cast<float>(i) / static_cast<float>(points);
@@ -308,7 +311,7 @@ Scenes::SceneDescriptor RainScene::get_descriptor() const
         {"window",
          "Rainy window",
          "Slow blue rain with a compact, low-brightness palette",
-         {{"look_palette", "RAIN"}, {"look_brightness", 0.45f}, {"density", 90}, {"speed", 0.55f}, {"wind", 0.05f}},
+         {{"look_palette", "RAIN"}, {"look_brightness", 0.55f}, {"density", 90}, {"speed", 0.55f}, {"wind", 0.05f}},
          {"calm", "rain", "blue"},
          0.22f,
          0.32f,

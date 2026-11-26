@@ -23,7 +23,8 @@ void Scenes::WatermelonPlasmaScene::initialize(int width, int height)
 }
 
 bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
-    time_ += std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.1f) * speed_->get();
+    // 0.75: slow enough for the larger forms to linger.
+    time_ += std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.1f) * speed_->get() * 0.75f;
     const float t = time_;
     const float w = static_cast<float>(matrix_width), h = static_cast<float>(matrix_height);
 
@@ -46,10 +47,15 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
         const float sv = std::sin(9.0f * v + 0.5f * yp + t) * 0.5f + 0.5f;
         const float u = su * su, g = sv * sv;
         if (palette == Ambiance::Palette::ORIGINAL)
-            return RGB{u, g, (u + g) * 0.5f} * (255.0f * brightness);
+            // Where both bands meet, fade towards pale pink and mint instead of white.
+            return RGB{u * (1.0f - 0.38f * g), g * (1.0f - 0.38f * u), (u + g) * 0.42f} * (255.0f * brightness);
         // Palette looks: the two bands become the palette's dark and light ends.
         const auto c = Ambiance::sample(palette, 0.5f + 0.5f * (g - u), std::min(1.0f, (u + g) * 0.8f) * brightness);
-        return {static_cast<float>(c.r), static_cast<float>(c.g), static_cast<float>(c.b)};
+        // Glowing cores where the bands overlap, in the palette's brightest colour.
+        const auto hot = Ambiance::sample(palette, 1.0f, brightness);
+        const float core = (u * g) * (u * g) * 1.6f;
+        return RGB{static_cast<float>(c.r), static_cast<float>(c.g), static_cast<float>(c.b)} +
+               RGB{static_cast<float>(hot.r), static_cast<float>(hot.g), static_cast<float>(hot.b)} * core;
     });
     buf_.blit(canvas);
 

@@ -83,7 +83,7 @@ namespace AmbientScenes {
             // Palette ends are dim, so stars are lifted above them to stay points of light.
             const auto tint = Ambiance::sample(palette, hue, 1.0f);
             return AudioKit::RGB{static_cast<float>(tint.r), static_cast<float>(tint.g), static_cast<float>(tint.b)} *
-                   (1.5f * brightness * look_brightness_->get());
+                   (1.25f * brightness * look_brightness_->get());
         }
         AudioKit::RGB c{255, 255, 255};
         if (colored_stars->get()) {
@@ -107,7 +107,11 @@ namespace AmbientScenes {
         for (int y = 0; y < nebula_h_; ++y)
             for (int x = 0; x < nebula_w_; ++x) {
                 // Patchy clouds: only the denser parts of the noise glow, leaving dark sky between.
-                const float density = AudioKit::smoothstep(0.50f, 0.85f, fbm(x * scale, y * scale, seed));
+                // One off-centre region is denser and brighter, a second point of interest.
+                const float fx = (x - nebula_w_ * 0.30f) / (nebula_w_ * 0.28f), fy = (y - nebula_h_ * 0.34f) / (nebula_h_ * 0.24f);
+                const float core = std::exp(-(fx * fx + fy * fy));
+                const float density =
+                    AudioKit::smoothstep(0.50f - 0.12f * core, 0.85f, fbm(x * scale, y * scale, seed)) * (1.0f + 1.2f * core);
                 if (density <= 0.0f)
                     continue;
                 const float mix = fbm(x * scale * 0.7f + 17.0f, y * scale * 0.7f, seed ^ 0x9E37u);
@@ -119,7 +123,7 @@ namespace AmbientScenes {
                 else {
                     c = AudioKit::lerp(AudioKit::RGB{95, 40, 150}, AudioKit::RGB{25, 95, 140}, mix);
                 }
-                nebula_[static_cast<std::size_t>(y * nebula_w_ + x)] = c * (0.16f * density * look_brightness_->get());
+                nebula_[static_cast<std::size_t>(y * nebula_w_ + x)] = c * (0.16f * density * std::sqrt(look_brightness_->get()));
             }
     }
 
@@ -179,9 +183,11 @@ namespace AmbientScenes {
             }
         }
 
+        // Flight speed swells and eases off slowly, so fast flights get quieter intervals.
+        const float cruise = 0.8f + 0.25f * std::sin(time * 0.31f) + 0.1f * std::sin(time * 0.77f + 1.3f);
         for (auto& star : stars) {
             const float audio_warp = audio_reactive->get() ? 1.0f + audio_bass * audio_strength->get() * 1.8f + beat_flash * 0.62f + drop_flash * 1.25f : 1.0f;
-            const float movement = std::max(0.001f, speed->get()) * dt * 60.0f * audio_warp;
+            const float movement = std::max(0.001f, speed->get()) * dt * 60.0f * audio_warp * cruise;
             star.update(movement);
             if (star.z <= 0.025f) star.respawn(depth, gen);
 
@@ -207,13 +213,20 @@ namespace AmbientScenes {
 
             const AudioKit::RGB c = star_color(star.hue, brightness);
             // Streak: anti-aliased, fading towards the tail.
-            const float sx = x - px, sy = y - py;
-            const float length = AudioKit::len(sx, sy);
+            float sx = x - px, sy = y - py;
+            float length = AudioKit::len(sx, sy);
+            // Cap trails so stars leaving the edge do not become long bright dashes.
+            const float max_length = 3.0f + 9.0f * streak_length->get();
+            if (length > max_length) {
+                sx *= max_length / length;
+                sy *= max_length / length;
+                length = max_length;
+            }
             if (streak_length->get() > 0.01f && length > 0.75f) {
                 const int samples = std::min(64, static_cast<int>(length * 2.0f) + 1);
                 for (int i = 1; i <= samples; ++i) {
                     const float t = static_cast<float>(i) / static_cast<float>(samples);
-                    buf_.splat(x - sx * t - 0.5f, y - sy * t - 0.5f, c * (0.55f * (1.0f - t) / std::max(1.0f, length * 0.25f)));
+                    buf_.splat(x - sx * t - 0.5f, y - sy * t - 0.5f, c * (0.45f * (1.0f - t) * (1.0f - t) / std::max(1.0f, length * 0.3f)));
                 }
             }
             // Near stars grow into soft discs with a faint halo; far ones are sub-pixel points.
