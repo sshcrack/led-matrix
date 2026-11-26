@@ -9,7 +9,6 @@ register_plugin(AudioVisualizer
         scenes/AudioParticleScene.h
         scenes/MusicDirectorScene.cpp
         scenes/MusicDirectorScene.h
-        scenes/kit/AudioSceneKit.h
         scenes/AmbientMusicScenes.h
         scenes/AudioRidgelineScene.cpp
         scenes/AudioPondScene.cpp

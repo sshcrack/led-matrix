@@ -22,7 +22,7 @@ void MetaBlobScene::initialize(int width, int height)
     Scene::initialize(width, height);
     time = 0.0f;
     audio_bass = audio_mids = audio_treble = audio_balance = 0.0f;
-    beat_pulse = drop_pulse = section_hue = 0.0f;
+    beat_pulse = drop_pulse = section_hue = section_target = beat_shown = drop_shown = 0.0f;
     last_beat_counter = last_drop_counter = last_section_counter = 0;
 
     // Metaballs are deliberately one of the stress-test scenes on a Pi 4.
@@ -65,7 +65,7 @@ bool MetaBlobScene::render(rgb_matrix::FrameCanvas *canvas)
         }
         if (has_audio && audio.section_counter != last_section_counter) {
             last_section_counter = audio.section_counter;
-            section_hue += 0.17f;
+            section_target += 0.015f;
         }
     } else {
         audio_bass = audio_mids = audio_treble = audio_balance = 0.0f;
@@ -90,8 +90,13 @@ bool MetaBlobScene::render(rgb_matrix::FrameCanvas *canvas)
     audio.mids = audio_mids;
     audio.treble = audio_treble;
     audio.balance = audio_balance;
-    audio.beat_pulse = beat_pulse;
-    audio.drop_pulse = drop_pulse;
+    // Pulses swell in over a few frames, so the liquid breathes with the beat instead of jumping.
+    beat_shown += (beat_pulse - beat_shown) * (1.0f - std::exp(-dt * 14.0f));
+    drop_shown += (drop_pulse - drop_shown) * (1.0f - std::exp(-dt * 3.0f));
+    audio.beat_pulse = beat_shown;
+    audio.drop_pulse = drop_shown;
+    // Ease palette changes on new song sections instead of switching at once.
+    section_hue += (section_target - section_hue) * (1.0f - std::exp(-dt * 0.5f));
     audio.section_hue = section_hue;
 
     const auto &frame = renderer_.render(params, audio, time, render_quality_scale());
@@ -151,15 +156,33 @@ Scenes::SceneDescriptor AmbientScenes::MetaBlobScene::get_descriptor() const
     d.music_affinity = 0.58f;
     d.performance_cost = 0.55f;
     d.variants = {
-        {"calm", "Slow liquid", "Large relaxed blobs with gentle color motion",
+        {"calm",
+         "Slow liquid",
+         "Large relaxed blobs with gentle color motion",
          {{"num_blobs", 7}, {"speed", 0.12f}, {"move_range", 0.34f}, {"color_speed", 0.015f}, {"audio_reactive", false}},
-         {"calm", "organic"}, 0.20f, 0.25f, 0.15f, 0.48f},
-        {"dense", "Liquid field", "More blobs, faster mixing and richer color movement",
-         {{"num_blobs", 15}, {"speed", 0.42f}, {"move_range", 0.72f}, {"color_speed", 0.060f}},
-         {"dense", "fluid"}, 0.58f, 0.58f, 0.40f, 0.64f},
-        {"music", "Music liquid", "Organic shapes breathe and push with the track",
+         {"calm", "organic"},
+         0.20f,
+         0.25f,
+         0.15f,
+         0.48f},
+        {"dense",
+         "Liquid field",
+         "More blobs merging and splitting slowly",
+         {{"num_blobs", 15}, {"speed", 0.18f}, {"move_range", 0.75f}, {"color_speed", 0.006f}},
+         {"dense", "fluid"},
+         0.58f,
+         0.58f,
+         0.40f,
+         0.64f},
+        {"music",
+         "Music liquid",
+         "Organic shapes breathe and push with the track",
          {{"num_blobs", 11}, {"speed", 0.28f}, {"audio_reactive", true}, {"audio_strength", 1.15f}},
-         {"music", "beat-driven"}, 0.62f, 0.60f, 1.0f, 0.60f},
+         {"music", "beat-driven"},
+         0.62f,
+         0.60f,
+         1.0f,
+         0.60f},
     };
     return d;
 }

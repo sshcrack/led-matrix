@@ -1,10 +1,12 @@
 #pragma once
+#include <shared/matrix/audio_kit.h>
 #include <shared/matrix/utils/AmbiancePalette.h>
+
+#include <random>
+#include <vector>
 
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
-#include <vector>
-#include <random>
 
 namespace AmbientScenes {
     class StarFieldScene : public Scenes::Scene {
@@ -23,6 +25,7 @@ namespace AmbientScenes {
         std::vector<Star> stars;
         std::mt19937 gen{std::random_device{}()};
         float time = 0.0f;
+        float meteor_timer_ = 0.0f, meteor_life_ = 0.0f, meteor_x_ = 0.0f, meteor_y_ = 0.0f, meteor_dx_ = 0.0f, meteor_dy_ = 0.0f;
         float audio_bass = 0.0f, audio_mids = 0.0f, audio_treble = 0.0f;
         float audio_balance = 0.0f, audio_width = 0.0f, hihat_detail = 0.0f;
         uint64_t last_beat_counter = 0, last_drop_counter = 0, last_section_counter = 0;
@@ -38,8 +41,16 @@ namespace AmbientScenes {
         PropertyPointer<float> audio_strength = MAKE_PROPERTY_MINMAX("audio_strength", float, 0.8f, 0.0f, 2.0f);
         PropertyPointer<bool> drifting_center = MAKE_PROPERTY("drifting_center", bool, true);
 
-        static void draw_line(rgb_matrix::FrameCanvas* canvas, int x0, int y0, int x1, int y1,
-                              uint8_t r, uint8_t g, uint8_t b, int width, int height);
+        AudioKit::Buffer buf_;
+        std::vector<AudioKit::RGB> nebula_;  // cached backdrop, NEBULA_PAD px larger on each side
+        int nebula_w_ = 0, nebula_h_ = 0;
+        // Far-away stars that stay put and anchor the view while the field flies past.
+        struct FixedStar {
+            float x, y, brightness, hue, phase;
+        };
+        std::vector<FixedStar> fixed_;
+        void build_nebula();
+        [[nodiscard]] AudioKit::RGB star_color(float hue, float brightness) const;
 
     public:
         void set_random_seed(uint32_t seed) override { gen.seed(seed); }

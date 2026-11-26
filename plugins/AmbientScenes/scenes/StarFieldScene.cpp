@@ -42,24 +42,118 @@ namespace AmbientScenes {
             star.previous_z = std::min(depth, star.z + speed->get());
         }
         time = 0.0f;
+        meteor_life_ = 0.0f;
+        meteor_timer_ = 3.0f + 3.0f * std::uniform_real_distribution<float>(0.0f, 1.0f)(gen);
+        buf_.resize(width, height);
+        build_nebula();
     }
 
-    void StarFieldScene::draw_line(rgb_matrix::FrameCanvas* canvas, int x0, int y0, int x1, int y1,
-                                   uint8_t r, uint8_t g, uint8_t b, int width, int height) {
-        int dx = std::abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-        int dy = -std::abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-        int err = dx + dy;
-        for (;;) {
-            if (x0 >= 0 && x0 < width && y0 >= 0 && y0 < height) canvas->SetPixel(x0, y0, r, g, b);
-            if (x0 == x1 && y0 == y1) break;
-            const int e2 = 2 * err;
-            if (e2 >= dy) { err += dy; x0 += sx; }
-            if (e2 <= dx) { err += dx; y0 += sy; }
+    namespace {
+    constexpr int NEBULA_PAD = 12;
+
+    float value_noise(float x, float y, uint32_t seed)
+    {
+        const int ix = static_cast<int>(std::floor(x)), iy = static_cast<int>(std::floor(y));
+        const float fx = x - ix, fy = y - iy;
+        const auto h = [&](int a, int b) {
+            return AudioKit::hash(static_cast<uint32_t>(a) * 73856093u ^ static_cast<uint32_t>(b) * 19349663u ^ seed);
+        };
+        const float sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+        const float top = h(ix, iy) + (h(ix + 1, iy) - h(ix, iy)) * sx;
+        const float bottom = h(ix, iy + 1) + (h(ix + 1, iy + 1) - h(ix, iy + 1)) * sx;
+        return top + (bottom - top) * sy;
+    }
+
+    float fbm(float x, float y, uint32_t seed)
+    {
+        float sum = 0, amp = 0.5f;
+        for (int o = 0; o < 4; ++o) {
+            sum += value_noise(x, y, seed + static_cast<uint32_t>(o) * 101u) * amp;
+            x *= 2.03f;
+            y *= 2.03f;
+            amp *= 0.5f;
         }
+        return sum / 0.9375f;
+    }
+    }  // namespace
+
+    AudioKit::RGB StarFieldScene::star_color(float hue, float brightness) const
+    {
+        brightness = std::clamp(brightness, 0.0f, 1.0f);
+        if (look_palette_->get().get() != Ambiance::Palette::ORIGINAL)
+            brightness = 0.45f + 0.55f * brightness;  // dim looks keep their faint stars above the panel's lowest steps
+        const auto palette = look_palette_->get().get();
+        if (palette != Ambiance::Palette::ORIGINAL) {
+            // Palette ends are dim, so stars are lifted above them to stay points of light.
+            const auto tint = Ambiance::sample(palette, 0.55f + 0.45f * hue, 1.0f);
+            AudioKit::RGB c{static_cast<float>(tint.r), static_cast<float>(tint.g), static_cast<float>(tint.b)};
+            // A few stars keep their own temperature: pale gold at one end, blue-white at the other.
+            if (hue > 0.86f)
+                c = AudioKit::lerp(c, AudioKit::RGB{200, 168, 120}, 0.65f);
+            else if (hue < 0.12f)
+                c = AudioKit::lerp(c, AudioKit::RGB{150, 175, 220}, 0.5f);
+            return c * (1.6f * brightness * std::sqrt(look_brightness_->get()));
+        }
+        AudioKit::RGB c{255, 255, 255};
+        if (colored_stars->get()) {
+            // Star temperatures: mostly blue-white, some white, a few warm.
+            static constexpr AudioKit::RGB blue{165, 195, 255}, white{238, 240, 255}, warm{255, 214, 160};
+            c = hue < 0.55f ? AudioKit::lerp(blue, white, hue / 0.55f) : AudioKit::lerp(white, warm, (hue - 0.55f) / 0.45f);
+            if (section_hue > 0.0f)
+                c = AudioKit::lerp(c, AudioKit::hsv(std::fmod(0.55f + section_hue, 1.0f), 0.45f, 1.0f), 0.3f);
+        }
+        return c * (brightness * look_brightness_->get());
     }
 
-    bool StarFieldScene::render(rgb_matrix::FrameCanvas *canvas) {
-        canvas->Clear();
+    void StarFieldScene::build_nebula()
+    {
+        nebula_w_ = matrix_width + 2 * NEBULA_PAD;
+        nebula_h_ = matrix_height + 2 * NEBULA_PAD;
+        nebula_.assign(static_cast<std::size_t>(nebula_w_ * nebula_h_), {});
+        const uint32_t seed = static_cast<uint32_t>(gen());
+        std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+        fixed_.resize(static_cast<std::size_t>(std::max(4, matrix_width * matrix_height / 450)));
+        for (auto& f : fixed_)
+            f = {unit(gen) * matrix_width, unit(gen) * matrix_height, 0.45f + 0.55f * unit(gen) * unit(gen), unit(gen), unit(gen) * 6.28f};
+        const auto palette = look_palette_->get().get();
+        const float scale = 1.0f / 34.0f;
+        for (int y = 0; y < nebula_h_; ++y)
+            for (int x = 0; x < nebula_w_; ++x) {
+                // Patchy clouds: only the denser parts of the noise glow, leaving dark sky between.
+                // One off-centre region is denser and brighter, a second point of interest.
+                const float fx = (x - nebula_w_ * 0.40f) / (nebula_w_ * 0.26f), fy = (y - nebula_h_ * 0.56f) / (nebula_h_ * 0.22f);
+                const float core = std::exp(-(fx * fx + fy * fy));
+                // One band runs diagonally across the sky, corner to corner from lower left to upper right;
+                // clouds away from it fade out, so it reads as one shape.
+                const float band_d = (static_cast<float>(x) / nebula_w_ + static_cast<float>(y) / nebula_h_ - 1.0f) / 0.30f;
+                const float band = std::exp(-band_d * band_d);
+                const float density = AudioKit::smoothstep(0.38f - 0.12f * core - 0.06f * band, 0.92f, fbm(x * scale, y * scale, seed)) *
+                                      (0.12f + 1.2f * band + 1.0f * core);
+                if (density <= 0.0f)
+                    continue;
+                // Thin dark dust lanes cut through the glow (ridges of a second noise).
+                const float ridge = 1.0f - std::abs(2.0f * fbm(x * scale * 1.6f + 40.0f, y * scale * 1.6f, seed ^ 0x51u) - 1.0f);
+                const float dust = AudioKit::smoothstep(0.80f, 0.97f, ridge);
+                const float mix = fbm(x * scale * 0.7f + 17.0f, y * scale * 0.7f, seed ^ 0x9E37u);
+                AudioKit::RGB c;
+                if (palette != Ambiance::Palette::ORIGINAL) {
+                    // Palette colours are darker than the original violet and teal; lift them to match.
+                    const auto tint = Ambiance::sample(palette, 0.1f + 0.85f * AudioKit::smoothstep(0.1f, 0.9f, mix), 1.0f);
+                    c = AudioKit::RGB{static_cast<float>(tint.r), static_cast<float>(tint.g), static_cast<float>(tint.b)} * 3.0f;
+                    // A rose accent in part of the cloud gives it a second hue.
+                    c = AudioKit::lerp(c, AudioKit::RGB{150, 60, 120}, 0.55f * AudioKit::smoothstep(0.6f, 0.85f, mix));
+                }
+                else {
+                    c = AudioKit::lerp(AudioKit::RGB{95, 40, 150}, AudioKit::RGB{25, 95, 140}, mix);
+                }
+                nebula_[static_cast<std::size_t>(y * nebula_w_ + x)] =
+                    c * (0.28f * density * (1.0f - 0.45f * dust) * std::sqrt(look_brightness_->get()) *
+                         std::max(0.3f, 1.0f - speed->get() * 12.0f));
+            }
+    }
+
+    bool StarFieldScene::render(rgb_matrix::FrameCanvas* canvas)
+    {
         const float dt = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, MAX_FRAME_STEP_SECONDS);
         time += dt;
         if (audio_reactive->get()) {
@@ -96,61 +190,145 @@ namespace AmbientScenes {
         const float scale = static_cast<float>(std::min(matrix_width, matrix_height)) *
             (0.48f + audio_width * spatialStrength * 0.055f);
 
+        // Nebula backdrop drifts a little with the vanishing point, far behind the stars.
+        {
+            // It also drifts on its own, a few pixels over minutes.
+            const float ox = NEBULA_PAD + (cx - matrix_width * 0.5f) * 0.25f + 7.0f * std::sin(time * 0.017f);
+            const float oy = NEBULA_PAD + (cy - matrix_height * 0.5f) * 0.25f;
+            const int ix = std::clamp(static_cast<int>(std::floor(ox)), 0, 2 * NEBULA_PAD - 1);
+            const int iy = std::clamp(static_cast<int>(std::floor(oy)), 0, 2 * NEBULA_PAD - 1);
+            const float fx = std::clamp(ox - ix, 0.0f, 1.0f), fy = std::clamp(oy - iy, 0.0f, 1.0f);
+            for (int y = 0; y < matrix_height; ++y) {
+                const AudioKit::RGB* r0 = &nebula_[static_cast<std::size_t>((y + iy) * nebula_w_ + ix)];
+                const AudioKit::RGB* r1 = r0 + nebula_w_;
+                for (int x = 0; x < matrix_width; ++x) {
+                    const auto top = r0[x] * (1 - fx) + r0[x + 1] * fx;
+                    const auto bottom = r1[x] * (1 - fx) + r1[x + 1] * fx;
+                    buf_.at(x, y) = top * (1 - fy) + bottom * fy;
+                }
+            }
+        }
+
+        // Fixed background stars belong to calm drifts; in warp flight everything streams past.
+        const bool fixed_sky = streak_length->get() < 0.95f;
+        for (std::size_t i = 0; fixed_sky && i < fixed_.size(); ++i) {
+            const auto& f = fixed_[i];
+            // The first few are the brightest stars of the sky, with a wider halo.
+            const bool lead = i < 5;
+            const float b = (lead ? 1.0f : f.brightness) * (0.85f + 0.15f * std::sin(time * 0.9f + f.phase));
+            const AudioKit::RGB c = star_color(f.hue, b);
+            // Background stars drift sideways at different rates: slow parallax between their layers.
+            const float fx = std::fmod(f.x + time * (0.12f + 0.25f * f.hue), static_cast<float>(matrix_width));
+            buf_.disc(fx, f.y, lead ? 0.85f : 0.6f, c);
+            buf_.disc(fx, f.y, lead ? 3.2f : 2.2f, c * (lead ? 0.11f : 0.07f));
+        }
+
+        // Flight speed swells and eases off slowly, so fast flights get quieter intervals.
+        const float swell = 0.5f + 0.5f * std::sin(time * 0.26f);
+        // Long streak settings read as warp flight: longer, brighter trails, a glow ahead and short surges.
+        const float warp = std::clamp((streak_length->get() - 0.7f) / 0.3f, 0.0f, 1.0f);
+        const float surge = std::pow(swell, 8.0f);
+        const float cruise = 0.45f + 0.65f * swell * swell + 0.5f * warp * surge;
+
+        if (warp > 0.0f) {
+            const float reach = 0.30f * static_cast<float>(std::min(matrix_width, matrix_height));
+            const AudioKit::RGB glow = AudioKit::RGB{45, 70, 190} * (0.14f * warp * (0.6f + 0.4f * swell));
+            buf_.add_field(0, matrix_height, AudioKit::field_step(render_quality_scale()), [&](float px, float py) {
+                const float d = AudioKit::len(px - cx, py - cy) / reach;
+                return glow * (1.0f / (1.0f + d * d * 6.0f));
+            });
+        }
         for (auto& star : stars) {
             const float audio_warp = audio_reactive->get() ? 1.0f + audio_bass * audio_strength->get() * 1.8f + beat_flash * 0.62f + drop_flash * 1.25f : 1.0f;
-            const float movement = std::max(0.001f, speed->get()) * dt * 60.0f * audio_warp;
+            const float movement = std::max(0.001f, speed->get()) * dt * 60.0f * audio_warp * cruise;
             star.update(movement);
             if (star.z <= 0.025f) star.respawn(depth, gen);
 
             const float inv_z = 1.0f / star.z;
             const float inv_prev = 1.0f / std::max(star.z + std::max(0.001f, speed->get()) * streak_length->get() * 6.0f, 0.025f);
-            const int x = static_cast<int>(cx + star.x * scale * inv_z);
-            const int y = static_cast<int>(cy + star.y * scale * inv_z);
-            const int px = static_cast<int>(cx + star.x * scale * inv_prev);
-            const int py = static_cast<int>(cy + star.y * scale * inv_prev);
+            const float x = cx + star.x * scale * inv_z;
+            const float y = cy + star.y * scale * inv_z;
+            const float px = cx + star.x * scale * inv_prev;
+            const float py = cy + star.y * scale * inv_prev;
 
             if (x < -8 || x >= matrix_width + 8 || y < -8 || y >= matrix_height + 8) {
                 star.respawn(depth, gen);
                 continue;
             }
 
-            float brightness = std::clamp((depth - star.z) / depth, 0.05f, 1.0f);
-            brightness = std::sqrt(brightness);
+            // Stars fade in from the far end of the volume instead of popping up.
+            const float closeness = std::clamp((depth - star.z) / depth, 0.0f, 1.0f);
+            float brightness = std::sqrt(closeness) * std::min(1.0f, closeness * 6.0f);
             if (audio_reactive->get()) brightness *= 1.0f + audio_treble * audio_strength->get() * 0.48f +
                 beat_flash * 0.22f + hihat_detail * audio_strength->get() * 0.20f + drop_flash * 0.20f;
             if (enable_twinkle->get()) brightness *= 0.82f + (0.18f + hihat_detail * 0.12f) *
                 std::sin(time * (7.0f + hihat_detail * 9.0f) + star.hue * 31.0f);
 
-            uint8_t r, g, b;
-            if (colored_stars->get()) {
-                const float hue = 0.55f + section_hue + (star.hue - 0.5f) * 0.18f + hihat_detail * 0.025f;
-                // shared helper takes degrees; hue here is a 0-1 fraction
-                color::hsv_to_rgb(hue * 360.0f, 0.28f, std::clamp(brightness, 0.0f, 1.0f), r, g, b);
-            } else {
-                r = g = b = static_cast<uint8_t>(255.0f * std::clamp(brightness, 0.0f, 1.0f));
+            const AudioKit::RGB c = star_color(star.hue, brightness);
+            // Streak: anti-aliased, fading towards the tail.
+            // Only near stars draw strong trails; distant ones leave faint short marks.
+            const float trail = (0.08f + 0.5f * closeness * closeness * closeness) * (0.6f + 0.6f * streak_length->get());
+            float sx = x - px, sy = y - py;
+            float length = AudioKit::len(sx, sy);
+            // Cap trails so stars leaving the edge do not become long bright dashes.
+            const float outer = std::min(1.0f, AudioKit::len(x - cx, y - cy) / (0.5f * scale));
+            const float max_length = 3.0f + 12.0f * streak_length->get() * closeness + (16.0f + 10.0f * surge) * warp * outer;
+            if (length > max_length) {
+                sx *= max_length / length;
+                sy *= max_length / length;
+                length = max_length;
             }
-
-            if (look_palette_->get().get() != Ambiance::Palette::ORIGINAL) {
-                const auto tint = Ambiance::sample(look_palette_->get().get(), star.hue,
-                    std::clamp(brightness, 0.0f, 1.0f) * look_brightness_->get());
-                r = tint.r; g = tint.g; b = tint.b;
-            } else {
-                r *= look_brightness_->get(); g *= look_brightness_->get(); b *= look_brightness_->get();
-            }
-            if (streak_length->get() > 0.01f)
-                draw_line(canvas, px, py, x, y, r / 2, g / 2, b / 2, matrix_width, matrix_height);
-            if (x >= 0 && x < matrix_width && y >= 0 && y < matrix_height) {
-                canvas->SetPixel(x, y, r, g, b);
-                if (star.z < depth * 0.22f) {
-                    const uint8_t gr = r / 4, gg = g / 4, gb = b / 4;
-                    if (x > 0) canvas->SetPixel(x - 1, y, gr, gg, gb);
-                    if (x + 1 < matrix_width) canvas->SetPixel(x + 1, y, gr, gg, gb);
-                    if (y > 0) canvas->SetPixel(x, y - 1, gr, gg, gb);
-                    if (y + 1 < matrix_height) canvas->SetPixel(x, y + 1, gr, gg, gb);
+            if (streak_length->get() > 0.01f && length > 0.75f) {
+                const int samples = std::min(64, static_cast<int>(length * 2.0f) + 1);
+                for (int i = 1; i <= samples; ++i) {
+                    const float t = static_cast<float>(i) / static_cast<float>(samples);
+                    // Warp trails cool from a white head to a blue tail.
+                    const AudioKit::RGB tc = warp > 0.0f ? AudioKit::lerp(c, AudioKit::RGB{70, 110, 255} * (c.g / 255.0f), t * warp) : c;
+                    buf_.splat(
+                        x - sx * t - 0.5f, y - sy * t - 0.5f,
+                        tc * (trail * (1.0f - t) * (1.0f - t) * (1.0f + 0.5f * warp) / std::max(1.0f, length * (0.3f - 0.22f * warp))));
                 }
+            }
+            // Near stars grow into soft discs with a faint halo; far ones are sub-pixel points.
+            const float size = std::clamp((0.30f - star.z / depth) * 4.5f, 0.0f, 1.0f);
+            if (size > 0.0f) {
+                buf_.disc(x, y, 0.45f + 0.75f * size, c * 0.85f);
+                buf_.disc(x, y, 1.6f + 1.4f * size, c * (0.10f * size));
+            }
+            else {
+                buf_.splat(x - 0.5f, y - 0.5f,
+                           c * ((0.7f + 0.5f * warp) / (1.0f + 0.6f * streak_length->get())));  // distant moving stars stay quiet
             }
         }
 
+        // Now and then a faint meteor crosses the sky.
+        meteor_timer_ -= dt;
+        if (meteor_timer_ <= 0.0f && meteor_life_ <= 0.0f) {
+            std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+            meteor_x_ = matrix_width * (0.15f + 0.7f * unit(gen));
+            meteor_y_ = matrix_height * 0.25f * unit(gen);
+            meteor_dx_ = (unit(gen) < 0.5f ? -1.0f : 1.0f) * (45.0f + 25.0f * unit(gen));
+            meteor_dy_ = 30.0f + 20.0f * unit(gen);
+            meteor_life_ = 0.9f;
+            meteor_timer_ = 10.0f + 10.0f * unit(gen);
+        }
+        if (meteor_life_ > 0.0f) {
+            meteor_life_ -= dt;
+            meteor_x_ += meteor_dx_ * dt;
+            meteor_y_ += meteor_dy_ * dt;
+            const float fade = std::sin(std::clamp(meteor_life_ / 0.9f, 0.0f, 1.0f) * AudioKit::Pi);
+            const AudioKit::RGB c = star_color(0.4f, fade) * 2.4f;
+            const float len = AudioKit::len(meteor_dx_, meteor_dy_);
+            constexpr float tail = 22.0f;
+            for (int i = 0; i < 44; ++i) {
+                const float t = i / 44.0f;
+                buf_.splat(meteor_x_ - meteor_dx_ / len * t * tail - 0.5f, meteor_y_ - meteor_dy_ / len * t * tail - 0.5f,
+                           c * (0.5f * (1.0f - t) * (1.0f - t)));
+            }
+            buf_.disc(meteor_x_, meteor_y_, 0.6f, c * 0.8f);
+        }
+
+        buf_.blit(canvas);
         wait_until_next_frame();
         return true;
     }
@@ -194,22 +372,51 @@ Scenes::SceneDescriptor AmbientScenes::StarFieldScene::get_descriptor() const {
     d.tags = {"ambient", "space", "depth", "particles", "audio-reactive"};
     d.intensity = 0.45f; d.motion = 0.72f; d.music_affinity = 0.68f; d.performance_cost = 0.30f;
     d.variants = {
-        {"calm", "Calm drift", "Sparse, slow stars for a quiet background",
+        {"calm",
+         "Calm drift",
+         "Sparse, slow stars for a quiet background",
          {{"num_stars", 68}, {"speed", 0.012f}, {"streak_length", 0.30f}, {"drifting_center", true}, {"audio_reactive", false}},
-         {"calm", "minimal"}, 0.22f, 0.35f, 0.20f, 0.24f},
-        {"warp", "Warp drive", "Dense fast streaks with a strong sense of depth",
-         {{"num_stars", 155}, {"speed", 0.072f}, {"streak_length", 1.35f}, {"enable_twinkle", false}},
-         {"energetic", "depth"}, 0.88f, 0.96f, 0.55f, 0.42f},
-        {"music", "Music flight", "Balanced starfield with beat-driven acceleration",
+         {"calm", "minimal"},
+         0.22f,
+         0.35f,
+         0.20f,
+         0.24f},
+        {"warp",
+         "Warp drive",
+         "Dense fast streaks with a strong sense of depth",
+         {{"num_stars", 90}, {"speed", 0.04f}, {"streak_length", 1.0f}, {"enable_twinkle", false}},
+         {"energetic", "depth"},
+         0.88f,
+         0.96f,
+         0.55f,
+         0.42f},
+        {"music",
+         "Music flight",
+         "Balanced starfield with beat-driven acceleration",
          {{"num_stars", 112}, {"speed", 0.030f}, {"streak_length", 0.82f}, {"audio_reactive", true}, {"audio_strength", 1.15f}},
-         {"music", "beat-driven"}, 0.72f, 0.86f, 1.0f, 0.36f},
+         {"music", "beat-driven"},
+         0.72f,
+         0.86f,
+         1.0f,
+         0.36f},
     };
     d.variants.push_back({"evening", "Evening starlight", "Sparse amber stars with almost no flight trails",
         {{"look_palette", "EMBER"}, {"look_brightness", 0.42f}, {"num_stars", 42}, {"speed", 0.006f}, {"streak_length", 0.05f}, {"audio_reactive", false}},
         {"calm", "warm", "amber"}, 0.12f, 0.14f, 0.0f, 0.18f});
-    d.variants.push_back({"deep_space", "Deep space drift", "Cool distant stars and restrained violet trails",
-        {{"look_palette", "SPACE"}, {"look_brightness", 0.55f}, {"num_stars", 72}, {"speed", 0.009f}, {"streak_length", 0.18f}, {"audio_reactive", false}},
-        {"calm", "space", "indigo"}, 0.18f, 0.22f, 0.0f, 0.22f});
+    d.variants.push_back({"deep_space",
+                          "Deep space drift",
+                          "Cool distant stars and restrained violet trails",
+                          {{"look_palette", "SPACE"},
+                           {"look_brightness", 0.55f},
+                           {"num_stars", 56},
+                           {"speed", 0.009f},
+                           {"streak_length", 0.18f},
+                           {"audio_reactive", false}},
+                          {"calm", "space", "indigo"},
+                          0.18f,
+                          0.22f,
+                          0.0f,
+                          0.22f});
     Scenes::set_off_by_default(d, {"warp", "evening", "deep_space"});
     return d;
 }

@@ -1,6 +1,6 @@
 #include "GithubScenes.h"
+
 #include "scenes/WatermelonPlasmaScene.h"
-#include "scenes/WaveScene.h"
 
 using namespace Scenes;
 
@@ -14,7 +14,6 @@ vector<std::unique_ptr<SceneWrapper>> GithubScenes::create_scenes() {
     auto created = vector<std::unique_ptr<SceneWrapper>>();
 
     created.push_back(std::make_unique<WatermelonPlasmaSceneWrapper>());
-    created.push_back(std::make_unique<WaveSceneWrapper>());
 
     return created;
 }

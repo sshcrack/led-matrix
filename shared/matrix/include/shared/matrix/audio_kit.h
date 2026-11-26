@@ -1,8 +1,8 @@
 #pragma once
 
-// Small header-only toolkit shared by the "ambient music" scenes
-// (ridgeline, pond, reef, skyline). Everything here is CPU-cheap: a float
-// accumulation buffer, an auto-gain spectrum follower and event helpers.
+// Small header-only toolkit for software-drawn scenes in any plugin. Everything
+// here is CPU-cheap: a float accumulation buffer with anti-aliased drawing,
+// an auto-gain spectrum follower and audio event helpers.
 
 #include <shared/matrix/audio_state.h>
 
@@ -32,7 +32,10 @@ inline RGB lerp(const RGB& a, const RGB& b, float t)
 
 // sqrt(x²+y²). std::hypot guards against overflow and is a libm call on the
 // Pi; at matrix scale a plain sqrt (one instruction) is exact enough.
-inline float len(float x, float y) { return std::sqrt(x * x + y * y); }
+inline float len(float x, float y)
+{
+    return std::sqrt(x * x + y * y);
+}
 
 inline RGB hsv(float h, float s, float v)
 {
@@ -76,9 +79,16 @@ inline float smoothstep(float a, float b, float x)
     return t * t * (3.0f - 2.0f * t);
 }
 
+// Lattice step for Buffer::add_field() at a render quality (Scene::render_quality_scale()):
+// every pixel at full quality, coarser as the Pi's adaptive quality drops.
+inline int field_step(float quality)
+{
+    return quality >= 0.95f ? 1 : quality >= 0.75f ? 2 : 3;
+}
+
 // Float RGB accumulation buffer; blitted to the canvas once per frame.
 class Buffer {
-    std::vector<RGB> lattice_;  // scratch for add_field()
+    std::vector<RGB> lattice_;               // scratch for add_field()
     mutable std::vector<std::uint8_t> rgb_;  // reused RGB888 conversion storage
 
 public:
@@ -165,8 +175,7 @@ public:
         const int gw = (w - 1) / step + 2, gh = (y1 - 1 - y0) / step + 2;
         lattice_.resize(static_cast<size_t>(gw * gh));
         for (int gy = 0; gy < gh; ++gy)
-            for (int gx = 0; gx < gw; ++gx)
-                lattice_[static_cast<size_t>(gy * gw + gx)] = f(gx * step + 0.5f, y0 + gy * step + 0.5f);
+            for (int gx = 0; gx < gw; ++gx) lattice_[static_cast<size_t>(gy * gw + gx)] = f(gx * step + 0.5f, y0 + gy * step + 0.5f);
         const float inv = 1.0f / static_cast<float>(step);
         for (int y = y0; y < y1; ++y) {
             const int gy = (y - y0) / step;
@@ -190,7 +199,7 @@ public:
     {
         rgb_.resize(px.size() * 3);
         for (std::size_t i = 0; i < px.size(); ++i) {
-            const auto &p = px[i];
+            const auto& p = px[i];
             rgb_[i * 3] = static_cast<std::uint8_t>(std::clamp(p.r, 0.0f, 255.0f));
             rgb_[i * 3 + 1] = static_cast<std::uint8_t>(std::clamp(p.g, 0.0f, 255.0f));
             rgb_[i * 3 + 2] = static_cast<std::uint8_t>(std::clamp(p.b, 0.0f, 255.0f));
@@ -321,6 +330,9 @@ struct HueCycle {
     }
 };
 
-inline float feature(const AudioState::Snapshot& a, AudioProtocol::Feature f) { return std::clamp(a.feature(f), 0.0f, 1.0f); }
+inline float feature(const AudioState::Snapshot& a, AudioProtocol::Feature f)
+{
+    return std::clamp(a.feature(f), 0.0f, 1.0f);
+}
 
 }  // namespace AudioKit
