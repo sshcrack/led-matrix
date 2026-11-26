@@ -86,7 +86,7 @@ Planet make_planet()
     p.water.resize(static_cast<size_t>(n));
     const Rgb green{0.16f, 0.30f, 0.12f}, forest{0.10f, 0.20f, 0.09f}, sand{0.62f, 0.50f, 0.32f};
     const Rgb tundra{0.38f, 0.36f, 0.30f}, ice{0.90f, 0.93f, 0.97f};
-    const Rgb deep{0.02f, 0.07f, 0.20f}, shallow{0.05f, 0.22f, 0.36f};
+    const Rgb deep{0.02f, 0.07f, 0.20f}, shallow{0.07f, 0.30f, 0.42f};
     for (int ty = 0; ty < Planet::H; ++ty) {
         const float lat = (0.5f - (ty + 0.5f) / Planet::H) * kPi;
         const float alat = std::abs(lat) * 180.0f / kPi;
@@ -97,8 +97,10 @@ Planet make_planet()
             const float x = std::cos(lat) * std::cos(lon), y = std::sin(lat), z = std::cos(lat) * std::sin(lon);
             const float warp = fbm(x, y, z, 3, 1.3f), warp2 = fbm(x, y, z, 3, 1.43f);
             const float height = fbm(x + 0.6f * warp, y + 0.6f * warp2, z - 0.5f * warp, 6, 1.6f);
-            const float land = smoothstep(0.50f, 0.53f, height);
-            const float coast = smoothstep(0.46f, 0.50f, height) * (1 - land);
+            // Inland seas and lakes cut into the larger continents.
+            const float lakes = smoothstep(0.64f, 0.67f, fbm(x + 5, y - 2, z + 1, 4, 3.2f)) * smoothstep(0.55f, 0.60f, height);
+            const float land = smoothstep(0.50f, 0.52f, height) * (1.0f - lakes);
+            const float coast = smoothstep(0.475f, 0.495f, height) * (1 - land) * (1.0f - lakes);
             const float detail = fbm(x, y, z, 4, 6.0f);
             const float moist = fbm(x + 3, y, z, 4, 2.2f);
             const float desert = smoothstep(0.5f, 0.65f, moist * 0.6f + 0.4f * std::clamp(1 - std::abs(alat - 24) / 20, 0.0f, 1.0f));
@@ -113,7 +115,8 @@ Planet make_planet()
             c = lerp_rgb(c, ice, icecap);
 
             const float swirl = fbm(x, y * 2.5f, z, 3, 1.5f);
-            const float cloud = fbm(x + 1.2f * swirl, y + 0.6f * swirl, z - 1.2f * swirl, 6, 3.6f);
+            const float cloud = fbm(x + 1.2f * swirl, y + 0.6f * swirl, z - 1.2f * swirl, 6, 3.6f) +
+                                0.08f * (fbm(x - 6, y * 2.0f, z + 2, 3, 14.0f) - 0.5f);  // breaks up the big decks
 
             const float cities = fbm(x + 7, y, z, 3, 30.0f), cluster = fbm(x - 4, y, z, 3, 2.0f);
             const int i = ty * Planet::W + tx;
@@ -121,13 +124,13 @@ Planet make_planet()
             const float coastal = smoothstep(0.45f, 0.53f, height) * (1 - smoothstep(0.53f, 0.6f, height));
             const float road = 1.0f - std::abs(2.0f * fbm(x + 9, y, z - 3, 3, 9.0f) - 1.0f);  // thin ridges link the towns
             float light =
-                land * (1 - icecap) * (0.5f * smoothstep(0.62f, 0.75f, cities) + 1.5f * spark + 0.35f * smoothstep(0.93f, 0.98f, road));
+                land * (1 - icecap) * (0.5f * smoothstep(0.62f, 0.75f, cities) + 1.5f * spark + 0.18f * smoothstep(0.94f, 0.98f, road));
             light *= smoothstep(0.5f, 0.65f, cluster + 0.15f * coastal) * (1 - smoothstep(55, 65, alat)) * (1 - 0.7f * desert);
 
             p.surface[static_cast<size_t>(i) * 3] = c.r;
             p.surface[static_cast<size_t>(i) * 3 + 1] = c.g;
             p.surface[static_cast<size_t>(i) * 3 + 2] = c.b;
-            p.clouds[static_cast<size_t>(i)] = 0.92f * smoothstep(0.56f, 0.74f, cloud + band);
+            p.clouds[static_cast<size_t>(i)] = 0.9f * smoothstep(0.57f, 0.77f, cloud + band);
             p.lights[static_cast<size_t>(i)] = light;
             p.water[static_cast<size_t>(i)] = (1 - land) * (1 - icecap);
         }
@@ -247,7 +250,7 @@ void SpaceStationWindowScene::build_geometry()
             c = lerp_rgb(c, scale(metal, 0.55f + 0.25f * (1.0f - vertical)), smoothstep(0.0f, 0.25f, ring) * (0.6f + 0.4f * roundness));
             // Dark seal between glass and frame, then the bright inner lip.
             c = scale(c, 1.0f - 0.6f * std::exp(-sq((d - 0.6f) / 0.5f)));
-            c = lerp_rgb(c, Rgb{0.36f, 0.38f, 0.42f}, 0.45f * std::exp(-sq((d - 1.6f) / 0.6f)));
+            c = lerp_rgb(c, Rgb{0.36f, 0.38f, 0.42f}, 0.3f * std::exp(-sq((d - 1.6f) / 0.6f)));
             frame_[i * 3] = c.r;
             frame_[i * 3 + 1] = c.g;
             frame_[i * 3 + 2] = c.b;
@@ -358,7 +361,7 @@ void SpaceStationWindowScene::draw_earth(const float sun[3])
 
         Rgb lit{};
         if (day > 0.0f) {
-            const Rgb col = lerp_rgb(ground, scale(cloudWhite, 0.72f + 0.28f * cl), cl);
+            const Rgb col = lerp_rgb(ground, scale(cloudWhite, 0.62f + 0.38f * cl * cl), cl);
             const float lambert = ndl > 0.0f ? std::pow(ndl, 0.7f) : 0.0f;
             lit = scale(col, 0.25f + 0.85f * lambert);
             const float term = smoothstep(-0.04f, 0.01f, ndl) * (1.0f - smoothstep(0.01f, 0.07f, ndl));
@@ -377,15 +380,15 @@ void SpaceStationWindowScene::draw_earth(const float sun[3])
         }
         Rgb dark{};
         if (day < 1.0f) {
-            const float li = sample(pl.lights, s) * 1.3f * (1.0f - 0.75f * cl);
+            const float li = sample(pl.lights, s) * 1.3f * (1.0f - 0.85f * cl);
             // Cloud tops stay faintly visible: moonlight, plus a violet-grey dusk just past the terminator.
-            const float dusk = smoothstep(-0.22f, -0.02f, ndl) * 0.12f;
+            const float dusk = smoothstep(-0.15f, -0.02f, ndl) * 0.07f;
             const float glowCl = cl * (nightClouds + dusk);
             dark = {city.r * li + moonlit.r * glowCl + 0.55f * dusk * cl, city.g * li + moonlit.g * glowCl,
-                    city.b * li + moonlit.b * glowCl + 0.3f * dusk * cl};
+                    city.b * li + moonlit.b * glowCl + 0.15f * dusk * cl};
             // A dim blue-grey rim of atmosphere outlines the night side.
             const float edge = 1.0f - e.nz;
-            const float rim = edge * edge * edge * 0.10f;
+            const float rim = edge * edge * 0.12f + 0.02f;
             dark.r += 0.25f * rim;
             dark.g += 0.35f * rim;
             dark.b += 0.6f * rim;
@@ -407,14 +410,14 @@ void SpaceStationWindowScene::draw_limb(const float sun[3], float dt)
         auroraTime_ -= dt;
         if (auroraTime_ <= 0.0f) {
             auroraTarget_ = 0.0f;
-            auroraWait_ = 25.0f + 40.0f * rnd();
+            auroraWait_ = 30.0f + 40.0f * rnd();
         }
     }
     else if (auroraWait_ <= 0.0f) {
         auroraTarget_ = 0.6f + 0.4f * rnd();
         auroraTime_ = 18.0f + 18.0f * rnd();
         auroraCenter_ = -0.5f * kPi + (rnd() - 0.5f) * 0.7f;
-        auroraWidth_ = 0.25f + 0.2f * rnd();
+        auroraWidth_ = 0.2f + 0.15f * rnd();
     }
     aurora_ += (auroraTarget_ - aurora_) * std::min(1.0f, dt * 0.25f);
     auroraCenter_ += dt * 0.004f;
@@ -441,14 +444,14 @@ void SpaceStationWindowScene::draw_limb(const float sun[3], float dt)
             const float a0 = l.angle;
             const float fold = 0.12f * std::sin(a0 * 5.0f + t_ * 0.15f);
             const float top = 0.55f + 0.45f * (0.5f + 0.5f * std::sin(a0 * 21.0f + t_ * 0.2f + 1.3f * std::sin(a0 * 8.0f)));
-            const float v = (d + 4.0f) / 16.0f + fold;  // 0 at the curtain's foot .. 1 at its top
+            const float v = (d + 2.5f) / 16.0f + fold;  // 0 at the curtain's foot .. 1 at its top
             if (v > 0.0f && v < top) {
                 const float spread = (a0 - auroraCenter_) / auroraWidth_;
                 const float r1 = 0.5f + 0.5f * std::sin(a0 * 47.0f + 2.3f * std::sin(a0 * 13.0f + t_ * 0.3f) + t_ * 0.5f);
                 const float r2 = 0.5f + 0.5f * std::sin(a0 * 83.0f - t_ * 0.4f + 1.7f * std::sin(a0 * 7.0f - t_ * 0.1f));
                 const float rays = 0.4f + 0.6f * r1 * (0.4f + 0.6f * r2);
-                const float a = aurora_ * (1.0f - dayside) * std::exp(-spread * spread) * rays * smoothstep(0.0f, 0.12f, v) *
-                                (1.0f - smoothstep(0.3f * top, top, v)) * 0.6f;
+                const float a = aurora_ * (1.0f - smoothstep(-0.4f, -0.12f, ndl)) * std::exp(-spread * spread) * rays *
+                                smoothstep(0.0f, 0.12f, v) * (1.0f - smoothstep(0.3f * top, top, v)) * 0.75f;
                 const Rgb c = lerp_rgb(green, violet, smoothstep(0.35f, 0.95f, v / top));
                 add.r += c.r * a;
                 add.g += c.g * a;
