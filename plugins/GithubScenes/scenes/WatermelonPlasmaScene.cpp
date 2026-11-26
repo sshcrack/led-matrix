@@ -23,8 +23,8 @@ void Scenes::WatermelonPlasmaScene::initialize(int width, int height)
 }
 
 bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
-    // 0.75: slow enough for the larger forms to linger.
-    time_ += std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.1f) * speed_->get() * 0.6f;
+    // Slow enough for the larger forms to linger on an ambient panel.
+    time_ += std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.1f) * speed_->get() * 0.22f;
     const float t = time_;
     const float w = static_cast<float>(matrix_width), h = static_cast<float>(matrix_height);
 
@@ -43,17 +43,19 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
         const float yp = (py / h - 0.5f) * zoom + pan_y;
         const float v = std::sin(std::sin(dir_x * xp + dir_y * yp + t) + std::sin(AudioKit::len(xp + c1x, yp + c1y) + t) -
                                  std::cos(AudioKit::len(xp + c2x, yp + c2y) + t));
-        const float su = std::cos(6.0f * v + 0.5f * xp + t) * 0.5f + 0.5f;
-        const float sv = std::sin(6.0f * v + 0.5f * yp + t) * 0.5f + 0.5f;
+        const float su = std::cos(4.5f * v + 0.5f * xp + t) * 0.5f + 0.5f;
+        const float sv = std::sin(4.5f * v + 0.5f * yp + t) * 0.5f + 0.5f;
         const float u = su * su, g = sv * sv;
         if (palette == Ambiance::Palette::ORIGINAL) {
-            // Pink and green bands; where they overlap, the stronger one turns pale instead of white or grey.
-            static constexpr RGB pink{1.0f, 0.06f, 0.42f}, green{0.04f, 1.0f, 0.42f};
-            static constexpr RGB pale_pink{1.0f, 0.62f, 0.80f}, mint{0.62f, 1.0f, 0.80f};
-            const float overlap = u * g;
-            const RGB c = pink * (u * (1.0f - 0.6f * g)) + green * (g * (1.0f - 0.6f * u)) +
-                          AudioKit::lerp(mint, pale_pink, 0.5f + (u - g) * 2.0f) * (overlap * 0.35f);
-            return c * (255.0f * brightness);
+            // Pink and green bands. Where they meet, the colour passes through deep plum and teal
+            // instead of mixing to grey; green sits a little lower so neither hue dominates.
+            static constexpr RGB pink{1.0f, 0.06f, 0.42f}, plum{0.55f, 0.04f, 0.40f}, teal{0.02f, 0.46f, 0.40f}, green{0.05f, 0.76f, 0.36f};
+            // A short transition keeps most of the panel clearly pink or green.
+            const float mix = AudioKit::smoothstep(0.3f, 0.7f, g / (u + g + 1e-4f));
+            const RGB hue = mix < 0.33f   ? AudioKit::lerp(pink, plum, mix / 0.33f)
+                            : mix < 0.67f ? AudioKit::lerp(plum, teal, (mix - 0.33f) / 0.34f)
+                                          : AudioKit::lerp(teal, green, (mix - 0.67f) / 0.33f);
+            return hue * (std::max(u, g) * 255.0f * brightness);
         }
         // Palette looks: the two bands become the palette's dark and light ends.
         const auto c = Ambiance::sample(palette, 0.5f + 0.5f * (g - u), std::min(1.0f, (u + g) * 0.8f) * brightness);

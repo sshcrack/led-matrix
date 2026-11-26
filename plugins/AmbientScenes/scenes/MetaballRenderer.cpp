@@ -87,8 +87,8 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
             x += audio.balance * params.audio_strength * 0.10f;
         // Keep blobs mostly on the panel so large ones are not clipped for long; the whole
         // group wanders slowly so a joined mass does not sit in one footprint.
-        x = std::clamp(0.5f + (x - 0.5f) * 0.72f + 0.10f * std::sin(time_seconds * 0.071f), 0.1f, 0.9f);
-        y = std::clamp(0.5f + (y - 0.5f) * 0.72f + 0.08f * std::cos(time_seconds * 0.053f), 0.1f, 0.9f);
+        x = std::clamp(0.5f + (x - 0.5f) * 0.72f + 0.10f * std::sin(time_seconds * 0.071f), 0.15f, 0.85f);
+        y = std::clamp(0.5f + (y - 0.5f) * 0.72f + 0.08f * std::cos(time_seconds * 0.053f), 0.15f, 0.85f);
 
         const float audio_radius = params.audio_reactive
             ? (audio.bass * 0.30f + audio.beat_pulse * 0.16f + audio.drop_pulse * 0.34f) * params.audio_strength
@@ -130,7 +130,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
         const int y = std::min(height - 1, sy * step);
         for (int sx = 0; sx < sample_width; ++sx) {
             const int x = std::min(width - 1, sx * step);
-            float field = 0.0f, grad_x = 0.0f, grad_y = 0.0f;
+            float field = 0.0f, smooth = 0.0f, grad_x = 0.0f, grad_y = 0.0f;
 
             for (const auto &blob : blobs) {
                 const float dx = static_cast<float>(x) - blob.x;
@@ -138,8 +138,13 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
                 const float inv = 1.0f / (dx * dx + dy * dy + 1.0f);
                 const float contribution = blob.radius_squared * inv;
                 field += contribution;
-                grad_x -= 2.0f * contribution * inv * dx;
-                grad_y -= 2.0f * contribution * inv * dy;
+                // Shading uses a much softer copy of the field: it gives a merged mass one rounded
+                // surface instead of a dimple around every blob it is made of.
+                const float soft_inv = 1.0f / (dx * dx + dy * dy + blob.radius_squared * 1.4f + 1.0f);
+                const float soft = blob.radius_squared * soft_inv;
+                smooth += soft;
+                grad_x -= 2.0f * soft * soft_inv * dx;
+                grad_y -= 2.0f * soft * soft_inv * dy;
             }
 
             const float body = smoothstep(surface * 0.90f, surface * 1.10f, field);
@@ -157,10 +162,8 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
             const auto [core_r, core_g, core_b] = hue_to_rgb(hue);
             const auto [edge_r, edge_g, edge_b] = hue_to_rgb(hue + 0.07f);
 
-            // Surface normal from the gradient of the height 1 - surface/field, which levels
-            // off inside a blob instead of spiking at every centre.
-            const float f_safe = std::max(field, surface * 0.5f);
-            const float scale = 9.0f * surface / (f_safe * f_safe);
+            // Surface normal from the slope of log(smooth field): flat on top, curving down at the rim.
+            const float scale = 0.085f * min_dimension / std::max(smooth, 0.0001f);
             float n_x = -grad_x * scale, n_y = -grad_y * scale, n_z = 1.0f;
             const float n_len = std::sqrt(n_x * n_x + n_y * n_y + n_z * n_z);
             n_x /= n_len;
@@ -169,7 +172,8 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
             const float diffuse = std::max(0.0f, n_x * lx + n_y * ly + n_z * lz);
             const float spec = std::pow(std::max(0.0f, (n_x * hx + n_y * hy + n_z * hz) / h_len), spec_power);
 
-            const float depth = std::clamp(1.0f - surface / std::max(field, 0.0001f), 0.0f, 1.0f);
+            // Capped, so the core colour is one smooth fill rather than a ring around every blob centre.
+            const float depth = std::clamp(1.0f - surface / std::clamp(field, 0.0001f, surface * 2.2f), 0.0f, 1.0f);
             const float light = 0.28f + 0.72f * diffuse;
             const float pale = 0.25f * depth;  // centres are paler, like thick wax
             const auto shade = [&](float core, float edge) {

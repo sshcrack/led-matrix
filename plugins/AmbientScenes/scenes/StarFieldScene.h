@@ -25,6 +25,7 @@ namespace AmbientScenes {
         std::vector<Star> stars;
         std::mt19937 gen{std::random_device{}()};
         float time = 0.0f;
+        float meteor_timer_ = 0.0f, meteor_life_ = 0.0f, meteor_x_ = 0.0f, meteor_y_ = 0.0f, meteor_dx_ = 0.0f, meteor_dy_ = 0.0f;
         float audio_bass = 0.0f, audio_mids = 0.0f, audio_treble = 0.0f;
         float audio_balance = 0.0f, audio_width = 0.0f, hihat_detail = 0.0f;
         uint64_t last_beat_counter = 0, last_drop_counter = 0, last_section_counter = 0;

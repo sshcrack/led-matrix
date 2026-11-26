@@ -42,6 +42,8 @@ namespace AmbientScenes {
             star.previous_z = std::min(depth, star.z + speed->get());
         }
         time = 0.0f;
+        meteor_life_ = 0.0f;
+        meteor_timer_ = 5.0f + 4.0f * std::uniform_real_distribution<float>(0.0f, 1.0f)(gen);
         buf_.resize(width, height);
         build_nebula();
     }
@@ -81,9 +83,9 @@ namespace AmbientScenes {
         const auto palette = look_palette_->get().get();
         if (palette != Ambiance::Palette::ORIGINAL) {
             // Palette ends are dim, so stars are lifted above them to stay points of light.
-            const auto tint = Ambiance::sample(palette, hue, 1.0f);
+            const auto tint = Ambiance::sample(palette, 0.55f + 0.45f * hue, 1.0f);
             return AudioKit::RGB{static_cast<float>(tint.r), static_cast<float>(tint.g), static_cast<float>(tint.b)} *
-                   (1.25f * brightness * look_brightness_->get());
+                   (1.6f * brightness * std::sqrt(look_brightness_->get()));
         }
         AudioKit::RGB c{255, 255, 255};
         if (colored_stars->get()) {
@@ -105,7 +107,7 @@ namespace AmbientScenes {
         std::uniform_real_distribution<float> unit(0.0f, 1.0f);
         fixed_.resize(static_cast<std::size_t>(std::max(4, matrix_width * matrix_height / 450)));
         for (auto& f : fixed_)
-            f = {unit(gen) * matrix_width, unit(gen) * matrix_height, 0.35f + 0.45f * unit(gen) * unit(gen), unit(gen), unit(gen) * 6.28f};
+            f = {unit(gen) * matrix_width, unit(gen) * matrix_height, 0.45f + 0.55f * unit(gen) * unit(gen), unit(gen), unit(gen) * 6.28f};
         const auto palette = look_palette_->get().get();
         const float scale = 1.0f / 34.0f;
         for (int y = 0; y < nebula_h_; ++y)
@@ -115,7 +117,7 @@ namespace AmbientScenes {
                 const float fx = (x - nebula_w_ * 0.30f) / (nebula_w_ * 0.28f), fy = (y - nebula_h_ * 0.34f) / (nebula_h_ * 0.24f);
                 const float core = std::exp(-(fx * fx + fy * fy));
                 const float density =
-                    AudioKit::smoothstep(0.50f - 0.12f * core, 0.85f, fbm(x * scale, y * scale, seed)) * (1.0f + 1.2f * core);
+                    AudioKit::smoothstep(0.42f - 0.12f * core, 0.92f, fbm(x * scale, y * scale, seed)) * (1.0f + 1.2f * core);
                 if (density <= 0.0f)
                     continue;
                 const float mix = fbm(x * scale * 0.7f + 17.0f, y * scale * 0.7f, seed ^ 0x9E37u);
@@ -127,7 +129,7 @@ namespace AmbientScenes {
                 else {
                     c = AudioKit::lerp(AudioKit::RGB{95, 40, 150}, AudioKit::RGB{25, 95, 140}, mix);
                 }
-                nebula_[static_cast<std::size_t>(y * nebula_w_ + x)] = c * (0.16f * density * std::sqrt(look_brightness_->get()));
+                nebula_[static_cast<std::size_t>(y * nebula_w_ + x)] = c * (0.22f * density * std::sqrt(look_brightness_->get()));
             }
     }
 
@@ -226,11 +228,11 @@ namespace AmbientScenes {
             const AudioKit::RGB c = star_color(star.hue, brightness);
             // Streak: anti-aliased, fading towards the tail.
             // Only near stars draw strong trails; distant ones leave faint short marks.
-            const float trail = 0.08f + 0.32f * closeness * closeness * closeness;
+            const float trail = 0.08f + 0.5f * closeness * closeness * closeness;
             float sx = x - px, sy = y - py;
             float length = AudioKit::len(sx, sy);
             // Cap trails so stars leaving the edge do not become long bright dashes.
-            const float max_length = 3.0f + 6.0f * streak_length->get();
+            const float max_length = 3.0f + 12.0f * streak_length->get() * closeness;
             if (length > max_length) {
                 sx *= max_length / length;
                 sy *= max_length / length;
@@ -251,6 +253,31 @@ namespace AmbientScenes {
             }
             else {
                 buf_.splat(x - 0.5f, y - 0.5f, c * 0.7f);  // distant moving stars stay quiet
+            }
+        }
+
+        // Now and then a faint meteor crosses the sky.
+        meteor_timer_ -= dt;
+        if (meteor_timer_ <= 0.0f && meteor_life_ <= 0.0f) {
+            std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+            meteor_x_ = matrix_width * (0.15f + 0.7f * unit(gen));
+            meteor_y_ = matrix_height * 0.25f * unit(gen);
+            meteor_dx_ = (unit(gen) < 0.5f ? -1.0f : 1.0f) * (45.0f + 25.0f * unit(gen));
+            meteor_dy_ = 30.0f + 20.0f * unit(gen);
+            meteor_life_ = 0.9f;
+            meteor_timer_ = 15.0f + 20.0f * unit(gen);
+        }
+        if (meteor_life_ > 0.0f) {
+            meteor_life_ -= dt;
+            meteor_x_ += meteor_dx_ * dt;
+            meteor_y_ += meteor_dy_ * dt;
+            const float fade = std::sin(std::clamp(meteor_life_ / 0.9f, 0.0f, 1.0f) * AudioKit::Pi);
+            const AudioKit::RGB c = star_color(0.4f, 0.9f * fade);
+            const float len = AudioKit::len(meteor_dx_, meteor_dy_);
+            for (int i = 0; i < 24; ++i) {
+                const float t = i / 24.0f;
+                buf_.splat(meteor_x_ - meteor_dx_ / len * t * 14.0f - 0.5f, meteor_y_ - meteor_dy_ / len * t * 14.0f - 0.5f,
+                           c * (0.5f * (1.0f - t) * (1.0f - t)));
             }
         }
 
@@ -310,7 +337,7 @@ Scenes::SceneDescriptor AmbientScenes::StarFieldScene::get_descriptor() const {
         {"warp",
          "Warp drive",
          "Dense fast streaks with a strong sense of depth",
-         {{"num_stars", 120}, {"speed", 0.06f}, {"streak_length", 1.0f}, {"enable_twinkle", false}},
+         {{"num_stars", 80}, {"speed", 0.06f}, {"streak_length", 1.0f}, {"enable_twinkle", false}},
          {"energetic", "depth"},
          0.88f,
          0.96f,

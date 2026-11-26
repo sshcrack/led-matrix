@@ -16,7 +16,7 @@ constexpr float RIPPLE_LIFE = 0.9f;
 constexpr float DROPLET_LIFE = 0.35f;
 constexpr float GRAVITY = 160.0f;
 // A street lamp above the top edge lights a cone of rain.
-constexpr float LAMP_X = 0.68f;
+constexpr float LAMP_X = 0.62f;
 constexpr float LAMP_Y = 0.13f;
 }  // namespace
 
@@ -53,7 +53,7 @@ RGB RainScene::tint(float position, float brightness) const
         // Palette looks are dim by design; lift them less so drops stay visible.
         brightness = std::clamp(brightness, 0.0f, 1.0f) * std::sqrt(look_brightness_->get());
         const auto c = Ambiance::sample(palette, position, 1.0f);
-        return RGB{static_cast<float>(c.r), static_cast<float>(c.g), static_cast<float>(c.b)} * brightness;
+        return RGB{static_cast<float>(c.r), static_cast<float>(c.g), static_cast<float>(c.b)} * (1.4f * brightness);
     }
     brightness = std::clamp(brightness, 0.0f, 1.0f) * look_brightness_->get();
     static constexpr RGB dark{14, 20, 34}, mid{78, 104, 140}, light{205, 220, 240};
@@ -92,21 +92,25 @@ void RainScene::build_backdrop()
     }
     else {
         // Dim looks keep the lamp a little brighter than the rest, so the scene keeps its focus.
-        const auto c = Ambiance::sample(palette, 1.0f, std::sqrt(look_brightness_->get()));
+        const auto c = Ambiance::sample(palette, 1.0f, 1.0f);
         lamp_ = {static_cast<float>(c.r), static_cast<float>(c.g), static_cast<float>(c.b)};
     }
     const float top = h * PUDDLE_TOP;
     const float lx = w * LAMP_X;
     const float ly = h * LAMP_Y;
+    // Palette looks are dim overall, so their lamp light carries more of the picture.
+    const float glow = palette == Ambiance::Palette::ORIGINAL ? 0.11f : 0.2f;
+    const float pool_half = 2.5f + std::max(0.0f, top - ly) * 0.6f;
+    const float pool_reach = std::exp(-(top - ly) / (h * 0.7f));
     for (int y = 0; y < h; ++y) {
         // The cone widens downwards from the lamp head and fades with distance.
         const float py = y + 0.5f;
         const float below = py - ly;
-        const float half = 2.5f + std::max(0.0f, below) * 0.45f;
+        const float half = 2.5f + std::max(0.0f, below) * 0.6f;
         const float reach = below < 0 ? std::exp(-below * below * 0.08f) * 0.5f : std::exp(-below / (h * 0.7f));
         for (int x = 0; x < w; ++x) {
             const float dx = (x + 0.5f - lx) / half;
-            const float cone = std::exp(-dx * dx * 2.2f) * reach;
+            const float cone = std::exp(-dx * dx * 1.4f) * reach;
             if (py < top)
                 light_[static_cast<size_t>(y * w + x)] = cone;
 
@@ -127,12 +131,16 @@ void RainScene::build_backdrop()
             }
             RGB c = tint(position, level);
             if (py < top) {
-                c = c + lamp_ * (0.11f * cone);  // the lamp's glow in the wet air
+                c = c + lamp_ * (glow * cone);  // the lamp's glow in the wet air
             }
             else {
                 // Reflected lamp light on the puddle, strongest straight below it.
-                const float rx = (x + 0.5f - lx) / (5.0f + (py - top) * 0.5f);
-                c = c + lamp_ * (0.15f * std::exp(-rx * rx * 1.2f));
+                // The cone continues onto the wet ground as a pool, plus a narrow reflection streak.
+                const float pool = (x + 0.5f - lx) / (pool_half + (py - top) * 0.5f);
+                const float near = (py - top) / (h - top);
+                const float streak = (x + 0.5f - lx) / (2.0f + near * 5.0f);
+                c = c +
+                    lamp_ * (glow * pool_reach * std::exp(-pool * pool * 1.4f) + 0.09f * (1.0f - 0.5f * near) * std::exp(-streak * streak));
             }
             backdrop_[static_cast<size_t>(y * w + x)] = c;
         }
