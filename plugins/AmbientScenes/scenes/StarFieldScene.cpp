@@ -102,6 +102,10 @@ namespace AmbientScenes {
         nebula_h_ = matrix_height + 2 * NEBULA_PAD;
         nebula_.assign(static_cast<std::size_t>(nebula_w_ * nebula_h_), {});
         const uint32_t seed = static_cast<uint32_t>(gen());
+        std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+        fixed_.resize(static_cast<std::size_t>(std::max(4, matrix_width * matrix_height / 700)));
+        for (auto& f : fixed_)
+            f = {unit(gen) * matrix_width, unit(gen) * matrix_height, 0.35f + 0.45f * unit(gen) * unit(gen), unit(gen), unit(gen) * 6.28f};
         const auto palette = look_palette_->get().get();
         const float scale = 1.0f / 34.0f;
         for (int y = 0; y < nebula_h_; ++y)
@@ -183,8 +187,16 @@ namespace AmbientScenes {
             }
         }
 
+        for (const auto& f : fixed_) {
+            const float b = f.brightness * (0.85f + 0.15f * std::sin(time * 0.9f + f.phase));
+            const AudioKit::RGB c = star_color(f.hue, b);
+            buf_.disc(f.x, f.y, 0.55f, c);
+            buf_.disc(f.x, f.y, 2.2f, c * 0.07f);
+        }
+
         // Flight speed swells and eases off slowly, so fast flights get quieter intervals.
-        const float cruise = 0.8f + 0.25f * std::sin(time * 0.31f) + 0.1f * std::sin(time * 0.77f + 1.3f);
+        const float swell = 0.5f + 0.5f * std::sin(time * 0.26f);
+        const float cruise = 0.45f + 0.65f * swell * swell;
         for (auto& star : stars) {
             const float audio_warp = audio_reactive->get() ? 1.0f + audio_bass * audio_strength->get() * 1.8f + beat_flash * 0.62f + drop_flash * 1.25f : 1.0f;
             const float movement = std::max(0.001f, speed->get()) * dt * 60.0f * audio_warp * cruise;
@@ -216,7 +228,7 @@ namespace AmbientScenes {
             float sx = x - px, sy = y - py;
             float length = AudioKit::len(sx, sy);
             // Cap trails so stars leaving the edge do not become long bright dashes.
-            const float max_length = 3.0f + 9.0f * streak_length->get();
+            const float max_length = 3.0f + 6.0f * streak_length->get();
             if (length > max_length) {
                 sx *= max_length / length;
                 sy *= max_length / length;
@@ -226,7 +238,7 @@ namespace AmbientScenes {
                 const int samples = std::min(64, static_cast<int>(length * 2.0f) + 1);
                 for (int i = 1; i <= samples; ++i) {
                     const float t = static_cast<float>(i) / static_cast<float>(samples);
-                    buf_.splat(x - sx * t - 0.5f, y - sy * t - 0.5f, c * (0.45f * (1.0f - t) * (1.0f - t) / std::max(1.0f, length * 0.3f)));
+                    buf_.splat(x - sx * t - 0.5f, y - sy * t - 0.5f, c * (0.35f * (1.0f - t) * (1.0f - t) / std::max(1.0f, length * 0.3f)));
                 }
             }
             // Near stars grow into soft discs with a faint halo; far ones are sub-pixel points.
@@ -236,7 +248,7 @@ namespace AmbientScenes {
                 buf_.disc(x, y, 1.6f + 1.4f * size, c * (0.10f * size));
             }
             else {
-                buf_.splat(x - 0.5f, y - 0.5f, c);
+                buf_.splat(x - 0.5f, y - 0.5f, c * 0.7f);  // distant moving stars stay quiet
             }
         }
 

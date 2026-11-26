@@ -13,7 +13,7 @@ private:
     PropertyPointer<float> move_range = MAKE_PROPERTY_MINMAX("move_range", float, 0.5f, 0.05f, 1.0f);
     PropertyPointer<bool> audio_reactive = MAKE_PROPERTY("audio_reactive", bool, false);
     PropertyPointer<float> audio_strength = MAKE_PROPERTY_MINMAX("audio_strength", float, 0.75f, 0.0f, 2.0f);
-    PropertyPointer<float> color_speed = MAKE_PROPERTY_MINMAX("color_speed", float, 0.033f, 0.0f, 0.25f);
+    PropertyPointer<float> color_speed = MAKE_PROPERTY_MINMAX("color_speed", float, 0.015f, 0.0f, 0.25f);
 
     float time = 0.0f;
     float audio_bass = 0.0f;

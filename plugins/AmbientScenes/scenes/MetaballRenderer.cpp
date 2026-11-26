@@ -86,8 +86,8 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
         if (params.audio_reactive)
             x += audio.balance * params.audio_strength * 0.10f;
         // Keep blobs mostly on the panel so large ones are not clipped for long.
-        x = std::clamp(0.5f + (x - 0.5f) * 0.8f, 0.06f, 0.94f);
-        y = std::clamp(0.5f + (y - 0.5f) * 0.8f, 0.06f, 0.94f);
+        x = std::clamp(0.5f + (x - 0.5f) * 0.72f, 0.1f, 0.9f);
+        y = std::clamp(0.5f + (y - 0.5f) * 0.72f, 0.1f, 0.9f);
 
         const float audio_radius = params.audio_reactive
             ? (audio.bass * 0.30f + audio.beat_pulse * 0.16f + audio.drop_pulse * 0.34f) * params.audio_strength
@@ -123,7 +123,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
     const float lx = -0.45f, ly = -0.62f, lz = 0.64f;
     const float hx = lx, hy = ly, hz = lz + 1.0f;  // Blinn half vector towards a viewer straight ahead
     const float h_len = std::sqrt(hx * hx + hy * hy + hz * hz);
-    const float spec_power = 18.0f + (params.audio_reactive ? audio.treble * params.audio_strength * 20.0f : 0.0f);
+    const float spec_power = 30.0f + (params.audio_reactive ? audio.treble * params.audio_strength * 20.0f : 0.0f);
 
     for (int sy = 0; sy < sample_height; ++sy) {
         const int y = std::min(height - 1, sy * step);
@@ -174,7 +174,9 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
             const auto shade = [&](float core, float edge) {
                 const float base = edge + (core - edge) * depth;
                 const float lit = (base + (1.0f - base) * pale) * light;
-                return lit * body * 0.92f + std::min(spec, 0.7f) * body * 0.6f + rim * 0.18f * edge + aura * 0.16f * edge;
+                // Small, lone blobs never reach a high field and stay dimmer than the main masses.
+                const float mass = 0.72f + 0.28f * smoothstep(surface * 1.2f, surface * 3.5f, field);
+                return (lit * body * 0.92f + std::min(spec, 0.6f) * body * 0.5f + rim * 0.18f * edge) * mass + aura * 0.16f * edge;
             };
             const std::size_t index = static_cast<std::size_t>((sy * sample_width + sx) * 3);
             samples_[index + 0] = byte_from_unit(shade(core_r, edge_r));

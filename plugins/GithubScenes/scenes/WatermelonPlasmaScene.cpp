@@ -24,13 +24,13 @@ void Scenes::WatermelonPlasmaScene::initialize(int width, int height)
 
 bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
     // 0.75: slow enough for the larger forms to linger.
-    time_ += std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.1f) * speed_->get() * 0.75f;
+    time_ += std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.1f) * speed_->get() * 0.6f;
     const float t = time_;
     const float w = static_cast<float>(matrix_width), h = static_cast<float>(matrix_height);
 
     // Per-frame terms of the field, hoisted out of the per-pixel function.
     const float zoom = 5.0f + std::sin(t * 0.25f);
-    const float pan_x = std::sin(t * 0.25f) * 5.0f, pan_y = std::cos(t * 0.25f) * 5.0f;
+    const float pan_x = std::sin(t * 0.25f) * 3.0f, pan_y = std::cos(t * 0.25f) * 3.0f;
     const float dir_x = std::sin(0.25f * t), dir_y = std::cos(0.29f * t);
     const float c1x = std::sin(t * 0.25f) * 4.0f, c1y = std::cos(t * 0.43f) * 4.0f;
     const float c2x = std::cos(t * 0.36f) * 6.0f, c2y = std::sin(t * 0.39f) * 5.3f;
@@ -43,17 +43,23 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
         const float yp = (py / h - 0.5f) * zoom + pan_y;
         const float v = std::sin(std::sin(dir_x * xp + dir_y * yp + t) + std::sin(AudioKit::len(xp + c1x, yp + c1y) + t) -
                                  std::cos(AudioKit::len(xp + c2x, yp + c2y) + t));
-        const float su = std::cos(9.0f * v + 0.5f * xp + t) * 0.5f + 0.5f;
-        const float sv = std::sin(9.0f * v + 0.5f * yp + t) * 0.5f + 0.5f;
+        const float su = std::cos(7.0f * v + 0.5f * xp + t) * 0.5f + 0.5f;
+        const float sv = std::sin(7.0f * v + 0.5f * yp + t) * 0.5f + 0.5f;
         const float u = su * su, g = sv * sv;
-        if (palette == Ambiance::Palette::ORIGINAL)
-            // Where both bands meet, fade towards pale pink and mint instead of white.
-            return RGB{u * (1.0f - 0.38f * g), g * (1.0f - 0.38f * u), (u + g) * 0.42f} * (255.0f * brightness);
+        if (palette == Ambiance::Palette::ORIGINAL) {
+            // Pink and green bands; where they overlap, the stronger one turns pale instead of white or grey.
+            static constexpr RGB pink{1.0f, 0.06f, 0.42f}, green{0.04f, 1.0f, 0.42f};
+            static constexpr RGB pale_pink{1.0f, 0.62f, 0.80f}, mint{0.62f, 1.0f, 0.80f};
+            const float overlap = u * g;
+            const RGB c = pink * (u * (1.0f - 0.6f * g)) + green * (g * (1.0f - 0.6f * u)) +
+                          AudioKit::lerp(mint, pale_pink, 0.5f + (u - g) * 2.0f) * (overlap * 0.6f);
+            return c * (255.0f * brightness);
+        }
         // Palette looks: the two bands become the palette's dark and light ends.
         const auto c = Ambiance::sample(palette, 0.5f + 0.5f * (g - u), std::min(1.0f, (u + g) * 0.8f) * brightness);
         // Glowing cores where the bands overlap, in the palette's brightest colour.
         const auto hot = Ambiance::sample(palette, 1.0f, brightness);
-        const float core = (u * g) * (u * g) * 1.6f;
+        const float core = (u * g) * (u * g) * 0.9f;
         return RGB{static_cast<float>(c.r), static_cast<float>(c.g), static_cast<float>(c.b)} +
                RGB{static_cast<float>(hot.r), static_cast<float>(hot.g), static_cast<float>(hot.b)} * core;
     });

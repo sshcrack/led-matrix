@@ -46,12 +46,14 @@ float RainScene::ground_y(float z) const
 
 RGB RainScene::tint(float position, float brightness) const
 {
-    brightness = std::clamp(brightness, 0.0f, 1.0f) * look_brightness_->get();
     const auto palette = look_palette_->get().get();
     if (palette != Ambiance::Palette::ORIGINAL) {
+        // Palette looks are dim by design; lift them less so drops stay visible.
+        brightness = std::clamp(brightness, 0.0f, 1.0f) * std::sqrt(look_brightness_->get());
         const auto c = Ambiance::sample(palette, position, 1.0f);
         return RGB{static_cast<float>(c.r), static_cast<float>(c.g), static_cast<float>(c.b)} * brightness;
     }
+    brightness = std::clamp(brightness, 0.0f, 1.0f) * look_brightness_->get();
     static constexpr RGB dark{14, 20, 34}, mid{78, 104, 140}, light{205, 220, 240};
     position = std::clamp(position, 0.0f, 1.0f);
     const RGB c = position < 0.5f ? lerp(dark, mid, position * 2) : lerp(mid, light, position * 2 - 1);
@@ -200,9 +202,9 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
     const float speed = speed_->get();
     const float slant = wind_->get() * 0.35f;
     // Streaks grow with speed, like a camera shutter would smear them.
-    const float smear = std::sqrt(speed);
+    const float smear = std::max(0.85f, std::sqrt(speed));
     // Dense rain would sparkle all over the puddle; let only the nearest drops splash.
-    const float splash_depth = std::clamp(0.3f + (static_cast<float>(drops_.size()) - 120.0f) / 500.0f, 0.3f, 0.65f);
+    const float splash_depth = std::clamp(0.3f + (static_cast<float>(drops_.size()) - 120.0f) / 500.0f, 0.3f, 0.78f);
 
     for (auto& d : drops_) {
         const float v = FALL_SPEED * speed * (0.45f + 0.8f * d.z);
@@ -224,7 +226,8 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
         }
 
         // Streak: bright head, tail fading upwards, drawn with sub-pixel splats.
-        const float length = (2.5f + 10.0f * d.z) * smear;
+        // Far rain stays short and faint; only near drops draw long streaks.
+        const float length = (1.5f + 12.0f * d.z * d.z) * smear;
         const float brightness = 0.12f + 0.68f * d.z * d.z + 0.1f * d.z;
         const float lit = light_at(d.x, d.y);
         const RGB head = tint(0.55f + 0.45f * d.z, brightness * (0.75f - 0.35f * lit)) + lamp_ * (lit * (0.30f + 0.5f * d.z));

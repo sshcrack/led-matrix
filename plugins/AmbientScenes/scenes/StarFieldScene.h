@@ -43,6 +43,11 @@ namespace AmbientScenes {
         AudioKit::Buffer buf_;
         std::vector<AudioKit::RGB> nebula_;  // cached backdrop, NEBULA_PAD px larger on each side
         int nebula_w_ = 0, nebula_h_ = 0;
+        // Far-away stars that stay put and anchor the view while the field flies past.
+        struct FixedStar {
+            float x, y, brightness, hue, phase;
+        };
+        std::vector<FixedStar> fixed_;
         void build_nebula();
         [[nodiscard]] AudioKit::RGB star_color(float hue, float brightness) const;
 
