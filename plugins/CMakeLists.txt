@@ -75,6 +75,7 @@ function(register_plugin PLUGIN_NAME)
             configure_desktop_plugin_target(${PLUGIN_NAME} ${PLUGIN_NAME})
 
             if(NOT ${PLUGIN_NAME} STREQUAL "ExampleScenes")
+                set_property(GLOBAL APPEND PROPERTY INSTALLED_PLUGINS_lib/led-matrix-desktop/plugins ${PLUGIN_NAME})
                 install(TARGETS ${PLUGIN_NAME}
                     RUNTIME DESTINATION lib/led-matrix-desktop/plugins/${PLUGIN_NAME}
                     LIBRARY DESTINATION lib/led-matrix-desktop/plugins/${PLUGIN_NAME}
@@ -109,6 +110,7 @@ function(register_plugin PLUGIN_NAME)
                 )
             endif()
             set_property(GLOBAL APPEND PROPERTY SCENE_WORKER_PLUGIN_TARGETS ${WORKER_TARGET})
+            set_property(GLOBAL APPEND PROPERTY INSTALLED_PLUGINS_lib/led-matrix-desktop/scene-plugins ${PLUGIN_NAME})
             install(TARGETS ${WORKER_TARGET}
                 RUNTIME DESTINATION lib/led-matrix-desktop/scene-plugins/${PLUGIN_NAME}
                 LIBRARY DESTINATION lib/led-matrix-desktop/scene-plugins/${PLUGIN_NAME}
@@ -131,6 +133,7 @@ function(register_plugin PLUGIN_NAME)
         INSTALL_RPATH "$ORIGIN/../.."
         BUILD_WITH_INSTALL_RPATH TRUE
     )
+    set_property(GLOBAL APPEND PROPERTY INSTALLED_PLUGINS_lib/led-matrix/plugins ${PLUGIN_NAME})
     install(TARGETS ${PLUGIN_NAME}
         RUNTIME DESTINATION lib/led-matrix/plugins/${PLUGIN_NAME}
         LIBRARY DESTINATION lib/led-matrix/plugins/${PLUGIN_NAME}
@@ -143,4 +146,31 @@ subdirlist(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 foreach(P_DIR ${SUBDIRS})
     get_filename_component(P_DIR_NAME ${P_DIR} NAME)
     add_subdirectory(${P_DIR_NAME})
+endforeach()
+
+# `install` only adds and overwrites files, so a plugin that was removed or
+# renamed in the source would stay in an existing install tree and still be
+# loaded, built against an older ABI of the shared libraries (a crash at
+# startup). Remove plugin directories this build does not install.
+if(ENABLE_DESKTOP)
+    set(PLUGIN_INSTALL_ROOTS lib/led-matrix-desktop/plugins lib/led-matrix-desktop/scene-plugins)
+else()
+    set(PLUGIN_INSTALL_ROOTS lib/led-matrix/plugins)
+endif()
+foreach(PLUGIN_ROOT ${PLUGIN_INSTALL_ROOTS})
+    get_property(KEEP_PLUGINS GLOBAL PROPERTY INSTALLED_PLUGINS_${PLUGIN_ROOT})
+    install(CODE "
+        set(_root \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${PLUGIN_ROOT}\")
+        set(_keep \"${KEEP_PLUGINS}\")
+        if(IS_DIRECTORY \"\${_root}\")
+            file(GLOB _entries LIST_DIRECTORIES true RELATIVE \"\${_root}\" \"\${_root}/*\")
+            foreach(_entry IN LISTS _entries)
+                list(FIND _keep \"\${_entry}\" _index)
+                if(IS_DIRECTORY \"\${_root}/\${_entry}\" AND _index EQUAL -1)
+                    message(STATUS \"Removing stale plugin: \${_root}/\${_entry}\")
+                    file(REMOVE_RECURSE \"\${_root}/\${_entry}\")
+                endif()
+            endforeach()
+        endif()
+    ")
 endforeach()
