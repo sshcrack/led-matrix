@@ -26,6 +26,7 @@ class DesertDunesScene final : public HobbySceneBase {
         float mirror = 1.0f;           // the dune field is mirrored so the light rakes across the long slopes
         float lx = 0, ly = 1, lz = 0;  // light direction in dune-field coordinates
         float tanElevation = 1.0f;
+        float pan = 0.0f;  // sideways offset of the view into the dune field
         float ambient = 0.5f, direct = 1.0f, fog = 1.0f;
         Rgb sand{}, shade{};
         int next = -1;  // next column to build; -1 while idle
