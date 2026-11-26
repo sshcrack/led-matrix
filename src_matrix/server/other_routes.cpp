@@ -450,8 +450,15 @@ restinio::request_handling_status_t Server::handle_web_request(const restinio::r
     }
 
     std::filesystem::path file_path = web_dir / requested_path;
-    if (!std::filesystem::exists(file_path))
-        file_path = web_dir / "index.html"; // Fallback to index.html if not found
+    if (!std::filesystem::exists(file_path)) {
+        // Only client-side routes (no file extension) fall back to the SPA shell. A missing
+        // file, typically a hashed chunk of the previous build requested by a tab opened before
+        // an update, must 404: answering it with index.html makes the module import fail on a
+        // MIME error the app cannot tell apart from a real bug.
+        if (std::filesystem::path(std::string(requested_path)).has_extension())
+            return reply_with_error(req, "File not found", restinio::status_not_found());
+        file_path = web_dir / "index.html";
+    }
 
     // Ensure the requested path is within the web directory
     std::error_code ec;
@@ -480,11 +487,14 @@ restinio::request_handling_status_t Server::handle_web_request(const restinio::r
                         .append_header_date_field()
                         .append_header(restinio::http_field::content_type, content_type);
 
-    if (content_type == "application/javascript" || content_type == "text/css" || file_path.extension() == ".ico")
-        response.append_header(restinio::http_field::cache_control, "public, max-age=31536000");
+    // Only Vite's content-hashed output under assets/ may be cached for good: its names change
+    // with its content. Everything else keeps its name across builds (index.html, sw.js,
+    // registerSW.js, the manifest, icons) and must be revalidated, or the browser keeps an old
+    // shell or service worker that points at the previous build after an update.
+    const auto relative = canonical_file.lexically_relative(canonical_web);
+    if (!relative.empty() && *relative.begin() == "assets")
+        response.append_header(restinio::http_field::cache_control, "public, max-age=31536000, immutable");
     else
-        // index.html (and the SPA fallback) name the hashed bundles; without this the browser's
-        // heuristic cache keeps serving an old shell that points at old assets after an update.
         response.append_header(restinio::http_field::cache_control, "no-cache");
 
     Server::add_cors_headers(response);

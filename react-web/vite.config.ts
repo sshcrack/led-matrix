@@ -29,6 +29,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registered from main.tsx (core/uiUpdate.ts) so an open tab can ask for update checks.
+      injectRegister: false,
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'LED Matrix Controller',
@@ -56,6 +58,8 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // Drop the previous build's precache once the new worker takes over.
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         // API calls are deliberately not cached: the app must see real failures to show "matrix offline".
         navigateFallbackDenylist: [/^\/(status|list_|live_frame|plugin_ui|scene_preview|environment|automatic_director|diagnostics|api)/],

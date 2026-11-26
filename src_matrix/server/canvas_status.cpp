@@ -1,9 +1,13 @@
 #include "canvas_status.h"
-#include "desktop_ws.h"
-#include "shared/matrix/utils/shared.h"
-#include "shared/matrix/server/server_utils.h"
+
 #include <spdlog/spdlog.h>
+
 #include <nlohmann/json.hpp>
+
+#include "desktop_ws.h"
+#include "shared/common/Version.h"
+#include "shared/matrix/server/server_utils.h"
+#include "shared/matrix/utils/shared.h"
 
 std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_ptr<router_t> router, Config::MainConfig* cfg)
 {
@@ -63,7 +67,9 @@ std::unique_ptr<Server::router_t> Server::add_canvas_status_routes(std::unique_p
                                      {"current", cfg->get_curr_id()},
                                      {"operation_mode", cfg->get_operation_mode()},
                                      {"director_mode", cfg->get_automatic_director_mode()},
-                                     {"automatic_active", cfg->is_automatic_mode()}});
+                                     {"automatic_active", cfg->is_automatic_mode()},
+                                     // The web UI reloads itself when this changes (daemon updated).
+                                     {"version", Common::Version::getCurrentVersion().toString()}});
     });
 
     return router;
