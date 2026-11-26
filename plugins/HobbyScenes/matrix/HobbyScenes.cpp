@@ -2,6 +2,7 @@
 
 #include "scenes/ActivityScenes.h"
 #include "scenes/AllotmentScene.h"
+#include "scenes/BonsaiTerrariumScene.h"
 #include "scenes/DesertDunesScene.h"
 #include "scenes/HarbourScene.h"
 #include "scenes/HikingScenes.h"
@@ -35,6 +36,7 @@ vector<std::unique_ptr<SceneWrapper>> HobbyPlugin::create_scenes()
     wrappers.push_back(std::make_unique<HobbySceneWrapper<HarbourScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<DesertDunesScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<SpaceStationWindowScene>>());
+    wrappers.push_back(std::make_unique<HobbySceneWrapper<BonsaiTerrariumScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<KoiPondScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<AllotmentScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<CyclingScene>>());
