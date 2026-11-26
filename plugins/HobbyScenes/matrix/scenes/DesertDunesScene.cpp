@@ -110,6 +110,9 @@ void DesertDunesScene::build_backdrop()
     const float low = moon ? 0.8f : 1.6f - std::clamp(L.sun_elevation / 50.0f, 0.0f, 1.0f);
     const float contrast = low * (1.0f - 0.75f * L.overcast) * (moon ? 0.6f * L.moon_light + 0.2f : 1.0f);
     const Rgb sand{0.86f, 0.62f, 0.38f};
+    // The air near the horizon tints the far ridges, so the rows separate by distance.
+    const size_t hz = (static_cast<size_t>(std::clamp(horizon - 2.0f, 0.0f, bg.h - 1.0f)) * bg.w + bg.w / 2) * 3;
+    const Rgb horizonSky{skyStage[hz], skyStage[hz + 1], skyStage[hz + 2]};
 
     for (const auto& layer : kLayers) {
         Rgb base = lit(sand, layer.depth);
@@ -119,6 +122,7 @@ void DesertDunesScene::build_backdrop()
             const Rgb silver = scale(Rgb{0.62f, 0.72f, 1.0f}, luma * (1.3f + 0.9f * L.moon_light));
             base = mix(base, silver, 0.7f * L.night);
         }
+        base = mix(base, horizonSky, 0.28f * layer.depth * layer.depth * (1.0f - L.night) * (1.0f - L.storm));
         // Shadows are a cool plum lit by the sky, never black; farther rows lose contrast.
         const float luma = 0.3f * base.r + 0.55f * base.g + 0.15f * base.b;
         const Rgb shade_color =
@@ -127,7 +131,8 @@ void DesertDunesScene::build_backdrop()
         const float lit_gain = 0.92f + 0.22f * contrast;
         const float shade_strength = (1.0f - 0.55f * fade);
         // Warm light rakes along the crests that face a low sun.
-        const Rgb shoulder_light = mix(scale(base, 1.3f), scale(from_env(L.sun_color), 0.9f), moon ? 0.0f : 0.35f * L.twilight);
+        const Rgb shoulder_light =
+            mix(scale(base, moon ? 1.8f : 1.3f), scale(from_env(L.sun_color), 0.9f), moon ? 0.0f : 0.35f * L.twilight);
         // With the light on the right, the gentle windward slopes only dim a little, and less so with a high sun.
         const float windward_dim = 0.12f + 0.22f * std::clamp(low - 0.3f, 0.0f, 1.0f);
         // A high sun skims the steep slip faces, so they read darker than the gentle slopes.
@@ -154,12 +159,16 @@ void DesertDunesScene::build_backdrop()
                         depth = full * (1.0f - (u - c) / (1.0f - c)) * std::min(1.0f, (u - c) / 0.07f + 0.05f);
                     else
                         continue;
-                    slip = std::max(slip, 1.0f - smoothstep(depth - 1.5f, depth + 0.5f, under));
+                    // The shadow lightens toward its foot, so big faces don't end as flat dark wedges.
+                    slip = std::max(slip, (1.0f - smoothstep(depth - 1.5f, depth + 0.5f, under)) *
+                                              (1.0f - 0.35f * std::clamp(under / std::max(full, 1.0f), 0.0f, 1.0f)));
                 }
                 const float dark = (side < 0.0f ? slip : windward_dim * (1.0f - slip) + 0.45f * overhead * slip) * shade_strength;
                 const float glare = side < 0.0f ? 0.0f : 0.12f * (1.0f - overhead) * slip;
                 // A pale lit shoulder just under each crest on the light's side.
-                const float shoulder = (1.0f - slip) * std::exp(-under / 2.5f) * (side < 0.0f ? 0.5f : 0.3f) * (0.4f + 0.6f * contrast);
+                // At night a thin moonlit rim traces each crest.
+                const float shoulder = (1.0f - slip) * std::exp(-under / (moon ? 1.6f : 2.5f)) *
+                                       ((side < 0.0f ? 0.5f : 0.3f) * (0.4f + 0.6f * contrast) + (moon ? 0.6f : 0.0f));
                 const float below = std::clamp(under / (layer.amp + 8.0f), 0.0f, 1.0f);
                 float gain = lit_gain * (1.0f - 0.15f * below);
                 // Wind ripples on the near slopes, fading with distance below the crest and broken up.
@@ -192,11 +201,11 @@ void DesertDunesScene::draw_shimmer()
     if (heat < 0.05f)
         return;
     const float sy = cv_.h / 128.0f, sx = cv_.w / 128.0f;
-    const int y0 = static_cast<int>((Horizon - 2) * sy), y1 = static_cast<int>((Horizon + 12) * sy);
+    const int y0 = static_cast<int>((Horizon - 4) * sy), y1 = static_cast<int>((Horizon + 16) * sy);
     row_.resize(static_cast<size_t>(cv_.w * 3));
     for (int y = std::max(0, y0); y < std::min(cv_.h, y1); ++y) {
         const float fade = 1.0f - std::fabs((y - (y0 + y1) * 0.5f) / ((y1 - y0) * 0.5f));
-        const float shift = heat * fade * 0.7f * sx * std::sin(t_ * 2.3f + y * 1.7f) * std::sin(t_ * 0.9f + y * 0.6f);
+        const float shift = heat * fade * 1.4f * sx * std::sin(t_ * 2.3f + y * 1.7f) * std::sin(t_ * 0.9f + y * 0.6f);
         std::copy_n(cv_.at(0, y), row_.size(), row_.begin());
         for (int x = 0; x < cv_.w; ++x) {
             const float src = std::clamp(x - shift, 0.0f, cv_.w - 1.001f);
@@ -325,22 +334,28 @@ void DesertDunesScene::draw_sandstorm()
     const auto& L = env();
     if (L.storm < 0.02f)
         return;
-    // A haze hides the distance; translucent sheets of dust race sideways over the crests.
-    // Every half minute or so the wind drops for a moment and the land shows through.
+    // A haze hides the distance while low gusts of sand sweep sideways through the middle
+    // rows. Every so often the wind drops for a while and the ridges and the caravan show.
     // Daylight still glows through the dust, so it stays warm ochre instead of mud.
     const Rgb dust = mix(lit({0.78f, 0.55f, 0.32f}, 0.4f), scale(Rgb{0.80f, 0.56f, 0.32f}, 0.25f + 0.6f * L.daylight), 0.6f);
-    const float lull = smoothstep(0.55f, 0.95f, std::sin(t_ * 0.22f));
-    const float sy = cv_.h / 128.0f;
+    const Rgb gust = scale(dust, 1.6f);
+    const float lull = smoothstep(0.2f, 0.8f, std::sin(t_ * 0.3f));
+    const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f;
     for (int y = 0; y < cv_.h; ++y) {
         const float dy = (y + 0.5f) / sy;
-        // Most dust far away and over the crests; the nearest ridge stays readable.
-        const float distance = 1.0f - 0.7f * smoothstep(Horizon + 20.0f, 128.0f, dy);
-        const float crests = std::exp(-((dy - Horizon - 18.0f) * (dy - Horizon - 18.0f)) / 500.0f);
-        const float bend = 1.7f * std::sin(dy * 0.09f + t_ * 0.4f);
-        const float haze = L.storm * (0.42f * distance) * (1.0f - 0.45f * lull);
+        const float distance = 1.0f - 0.75f * smoothstep(Horizon + 10.0f, 128.0f, dy);
+        const float haze = L.storm * 0.34f * distance * (1.0f - 0.55f * lull);
+        // Two drifting bands of blowing sand, one over the far crests and one lower down.
+        const float b1 = dy - Horizon - 6.0f - 3.0f * std::sin(t_ * 0.5f);
+        const float b2 = dy - Horizon - 30.0f - 4.0f * std::sin(t_ * 0.37f + 1.3f);
+        const float bands = std::exp(-b1 * b1 / 60.0f) + 0.8f * std::exp(-b2 * b2 / 80.0f);
+        const float bend = 1.2f * std::sin(dy * 0.15f + t_ * 0.5f);
         for (int x = 0; x < cv_.w; ++x) {
-            const float sheet = smoothstep(0.3f, 0.95f, 0.5f + 0.5f * std::sin(x * 0.07f / (cv_.w / 128.0f) - t_ * 2.2f + bend));
-            cv_.blend(x, y, dust, std::min(0.85f, haze + L.storm * 0.45f * sheet * crests * (1.0f - 0.7f * lull)));
+            const float dx = (x + 0.5f) / sx;
+            const float sheet = smoothstep(0.45f, 1.0f, 0.5f + 0.5f * std::sin(dx * 0.06f - t_ * 2.6f + bend)) *
+                                (0.6f + 0.4f * std::sin(dx * 0.021f - t_ * 0.9f));
+            cv_.blend(x, y, dust, std::min(0.8f, haze));
+            cv_.blend(x, y, gust, std::min(0.75f, L.storm * 0.85f * sheet * bands * (1.0f - 0.75f * lull)));
         }
     }
 }
