@@ -31,7 +31,7 @@ class RainScene : public Scenes::Scene {
         float x = 0, y = 0, vx = 0, vy = 0, life = 0, z = 0;
     };
     struct Bead {  // a drop running down the window glass in front of the scene
-        float x = 0, y = 0, r = 1, speed = 0, pause = 0;
+        float x = 0, y = 0, r = 1, stretch = 1, speed = 0, pause = 0;
     };
     struct Ripple {
         float x = 0, y = 0, age = 0, z = 0;

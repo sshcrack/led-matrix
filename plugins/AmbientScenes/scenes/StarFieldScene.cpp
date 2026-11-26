@@ -128,21 +128,27 @@ namespace AmbientScenes {
                 const float band_d = (static_cast<float>(x) / nebula_w_ + static_cast<float>(y) / nebula_h_ - 1.0f) / 0.30f;
                 const float band = std::exp(-band_d * band_d);
                 const float density = AudioKit::smoothstep(0.38f - 0.12f * core - 0.06f * band, 0.92f, fbm(x * scale, y * scale, seed)) *
-                                      (0.12f + 1.2f * band + 0.6f * core);
+                                      (0.12f + 1.2f * band + 1.0f * core);
                 if (density <= 0.0f)
                     continue;
+                // Thin dark dust lanes cut through the glow (ridges of a second noise).
+                const float ridge = 1.0f - std::abs(2.0f * fbm(x * scale * 1.6f + 40.0f, y * scale * 1.6f, seed ^ 0x51u) - 1.0f);
+                const float dust = AudioKit::smoothstep(0.80f, 0.97f, ridge);
                 const float mix = fbm(x * scale * 0.7f + 17.0f, y * scale * 0.7f, seed ^ 0x9E37u);
                 AudioKit::RGB c;
                 if (palette != Ambiance::Palette::ORIGINAL) {
                     // Palette colours are darker than the original violet and teal; lift them to match.
                     const auto tint = Ambiance::sample(palette, 0.1f + 0.85f * AudioKit::smoothstep(0.1f, 0.9f, mix), 1.0f);
                     c = AudioKit::RGB{static_cast<float>(tint.r), static_cast<float>(tint.g), static_cast<float>(tint.b)} * 3.0f;
+                    // A rose accent in part of the cloud gives it a second hue.
+                    c = AudioKit::lerp(c, AudioKit::RGB{150, 60, 120}, 0.55f * AudioKit::smoothstep(0.6f, 0.85f, mix));
                 }
                 else {
                     c = AudioKit::lerp(AudioKit::RGB{95, 40, 150}, AudioKit::RGB{25, 95, 140}, mix);
                 }
                 nebula_[static_cast<std::size_t>(y * nebula_w_ + x)] =
-                    c * (0.22f * density * std::sqrt(look_brightness_->get()) * std::max(0.3f, 1.0f - speed->get() * 12.0f));
+                    c * (0.28f * density * (1.0f - 0.45f * dust) * std::sqrt(look_brightness_->get()) *
+                         std::max(0.3f, 1.0f - speed->get() * 12.0f));
             }
     }
 
@@ -186,7 +192,8 @@ namespace AmbientScenes {
 
         // Nebula backdrop drifts a little with the vanishing point, far behind the stars.
         {
-            const float ox = NEBULA_PAD + (cx - matrix_width * 0.5f) * 0.25f;
+            // It also drifts on its own, a few pixels over minutes.
+            const float ox = NEBULA_PAD + (cx - matrix_width * 0.5f) * 0.25f + 7.0f * std::sin(time * 0.017f);
             const float oy = NEBULA_PAD + (cy - matrix_height * 0.5f) * 0.25f;
             const int ix = std::clamp(static_cast<int>(std::floor(ox)), 0, 2 * NEBULA_PAD - 1);
             const int iy = std::clamp(static_cast<int>(std::floor(oy)), 0, 2 * NEBULA_PAD - 1);
@@ -210,8 +217,10 @@ namespace AmbientScenes {
             const bool lead = i < 5;
             const float b = (lead ? 1.0f : f.brightness) * (0.85f + 0.15f * std::sin(time * 0.9f + f.phase));
             const AudioKit::RGB c = star_color(f.hue, b);
-            buf_.disc(f.x, f.y, lead ? 0.85f : 0.6f, c);
-            buf_.disc(f.x, f.y, lead ? 3.2f : 2.2f, c * (lead ? 0.11f : 0.07f));
+            // Background stars drift sideways at different rates: slow parallax between their layers.
+            const float fx = std::fmod(f.x + time * (0.12f + 0.25f * f.hue), static_cast<float>(matrix_width));
+            buf_.disc(fx, f.y, lead ? 0.85f : 0.6f, c);
+            buf_.disc(fx, f.y, lead ? 3.2f : 2.2f, c * (lead ? 0.11f : 0.07f));
         }
 
         // Flight speed swells and eases off slowly, so fast flights get quieter intervals.
@@ -219,11 +228,11 @@ namespace AmbientScenes {
         // Long streak settings read as warp flight: longer, brighter trails, a glow ahead and short surges.
         const float warp = std::clamp((streak_length->get() - 0.7f) / 0.3f, 0.0f, 1.0f);
         const float surge = std::pow(swell, 8.0f);
-        const float cruise = 0.45f + 0.65f * swell * swell + 0.9f * warp * surge;
+        const float cruise = 0.45f + 0.65f * swell * swell + 0.5f * warp * surge;
 
         if (warp > 0.0f) {
             const float reach = 0.30f * static_cast<float>(std::min(matrix_width, matrix_height));
-            const AudioKit::RGB glow = star_color(0.2f, 1.0f) * (0.09f * warp * (0.6f + 0.4f * swell));
+            const AudioKit::RGB glow = AudioKit::RGB{45, 70, 190} * (0.14f * warp * (0.6f + 0.4f * swell));
             buf_.add_field(0, matrix_height, AudioKit::field_step(render_quality_scale()), [&](float px, float py) {
                 const float d = AudioKit::len(px - cx, py - cy) / reach;
                 return glow * (1.0f / (1.0f + d * d * 6.0f));
@@ -375,7 +384,7 @@ Scenes::SceneDescriptor AmbientScenes::StarFieldScene::get_descriptor() const {
         {"warp",
          "Warp drive",
          "Dense fast streaks with a strong sense of depth",
-         {{"num_stars", 60}, {"speed", 0.06f}, {"streak_length", 1.0f}, {"enable_twinkle", false}},
+         {{"num_stars", 90}, {"speed", 0.04f}, {"streak_length", 1.0f}, {"enable_twinkle", false}},
          {"energetic", "depth"},
          0.88f,
          0.96f,
@@ -394,9 +403,20 @@ Scenes::SceneDescriptor AmbientScenes::StarFieldScene::get_descriptor() const {
     d.variants.push_back({"evening", "Evening starlight", "Sparse amber stars with almost no flight trails",
         {{"look_palette", "EMBER"}, {"look_brightness", 0.42f}, {"num_stars", 42}, {"speed", 0.006f}, {"streak_length", 0.05f}, {"audio_reactive", false}},
         {"calm", "warm", "amber"}, 0.12f, 0.14f, 0.0f, 0.18f});
-    d.variants.push_back({"deep_space", "Deep space drift", "Cool distant stars and restrained violet trails",
-        {{"look_palette", "SPACE"}, {"look_brightness", 0.55f}, {"num_stars", 72}, {"speed", 0.009f}, {"streak_length", 0.18f}, {"audio_reactive", false}},
-        {"calm", "space", "indigo"}, 0.18f, 0.22f, 0.0f, 0.22f});
+    d.variants.push_back({"deep_space",
+                          "Deep space drift",
+                          "Cool distant stars and restrained violet trails",
+                          {{"look_palette", "SPACE"},
+                           {"look_brightness", 0.55f},
+                           {"num_stars", 56},
+                           {"speed", 0.009f},
+                           {"streak_length", 0.18f},
+                           {"audio_reactive", false}},
+                          {"calm", "space", "indigo"},
+                          0.18f,
+                          0.22f,
+                          0.0f,
+                          0.22f});
     Scenes::set_off_by_default(d, {"warp", "evening", "deep_space"});
     return d;
 }

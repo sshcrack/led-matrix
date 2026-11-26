@@ -29,7 +29,7 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
     const float w = static_cast<float>(matrix_width), h = static_cast<float>(matrix_height);
 
     // Per-frame terms of the field, hoisted out of the per-pixel function.
-    const float zoom = 5.0f + 0.6f * std::sin(t * 0.18f);
+    const float zoom = 6.5f + 0.6f * std::sin(t * 0.18f);
     const float pan_x = std::sin(t * 0.25f) * 3.0f, pan_y = std::cos(t * 0.25f) * 3.0f;
     const float dir_x = std::sin(0.25f * t), dir_y = std::cos(0.29f * t);
     const float c1x = std::sin(t * 0.25f) * 4.0f, c1y = std::cos(t * 0.43f) * 4.0f;
@@ -50,16 +50,18 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
             // One flowing field splits the panel into pink flesh and green rind of about equal share.
             // Each area is lightest along the seam and settles into a deep tone (plum, bottle green)
             // inside; the seam itself is a thin dark line, so the two hues never smear together.
-            static constexpr RGB pink{0.95f, 0.10f, 0.42f}, plum{0.38f, 0.02f, 0.22f};
-            static constexpr RGB green{0.12f, 0.85f, 0.40f}, bottle{0.01f, 0.30f, 0.16f};
-            const float side = std::sin(3.2f * v + 0.35f * (xp - yp) + t) + 0.12f;
+            static constexpr RGB pink{1.0f, 0.30f, 0.45f}, plum{0.62f, 0.04f, 0.26f};
+            static constexpr RGB green{0.40f, 0.95f, 0.32f}, bottle{0.04f, 0.42f, 0.18f};
+            // A finer, weaker layer keeps several areas of each colour on the panel.
+            const float side = std::sin(3.2f * v + 0.35f * (xp - yp) + t) + 0.35f * std::sin(1.7f * xp - 1.3f * yp + 0.7f * t) + 0.12f;
             const float a = std::abs(side);
-            const float seam = AudioKit::smoothstep(0.02f, 0.16f, a);
-            const float near = std::exp(-a * 2.6f);
+            // The seam thickens and thins along its length instead of being an even outline.
+            const float seam = AudioKit::smoothstep(0.02f, 0.10f + 0.10f * (0.5f + 0.5f * std::sin(2.0f * v + 0.6f * xp)), a);
+            const float near = std::exp(-a * 2.0f);
             // A faint second ripple shows the flow inside each area.
             const float ripple = 0.85f + 0.15f * std::cos(5.0f * v - 0.4f * yp + 1.3f * t);
             const RGB hue = side < 0 ? AudioKit::lerp(plum, pink, near) : AudioKit::lerp(bottle, green, near);
-            return hue * ((0.12f + 0.88f * seam) * ripple * 165.0f * brightness);
+            return hue * ((0.12f + 0.88f * seam) * ripple * 175.0f * brightness);
         }
         // Palette looks: the two bands become the palette's dark and light ends.
         const auto c = Ambiance::sample(palette, 0.5f + 0.5f * (g - u), std::min(1.0f, (u + g) * 0.8f) * brightness);

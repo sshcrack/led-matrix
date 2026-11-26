@@ -168,7 +168,7 @@ Scenes::SceneDescriptor AmbientScenes::MetaBlobScene::get_descriptor() const
         {"dense",
          "Liquid field",
          "More blobs merging and splitting slowly",
-         {{"num_blobs", 12}, {"speed", 0.18f}, {"move_range", 0.55f}, {"color_speed", 0.006f}},
+         {{"num_blobs", 15}, {"speed", 0.18f}, {"move_range", 0.75f}, {"color_speed", 0.006f}},
          {"dense", "fluid"},
          0.58f,
          0.58f,

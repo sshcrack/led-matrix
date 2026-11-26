@@ -106,7 +106,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
         const float radius_wave = 0.88f + audio_radius
             + 0.20f * std::sin(time_seconds * speed_scale * 0.9f + phase);
         // Many blobs share the panel: shrink each so the merged mass keeps dark space around it.
-        const float crowd = std::min(1.0f, 10.0f / static_cast<float>(blob_count));
+        const float crowd = std::min(1.0f, std::pow(10.0f / static_cast<float>(blob_count), 0.75f));
         const float radius = std::max(2.0f, crowd * min_dimension * (0.058f + 0.020f * static_cast<float>(i % 4)) * radius_wave);
         // Larger blobs keep further from the edges, so they are not cut off.
         const float margin_x = std::max(0.15f, 1.6f * radius / static_cast<float>(width));
@@ -139,7 +139,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
     const float h_len = std::sqrt(hx * hx + hy * hy + hz * hz);
     const float spec_power = 30.0f + (params.audio_reactive ? audio.treble * params.audio_strength * 20.0f : 0.0f);
     const float spec_boost = 1.0f + (params.audio_reactive ? audio.beat_pulse * params.audio_strength * 0.8f : 0.0f);
-    const float rim_glow = 0.18f + (params.audio_reactive ? audio.beat_pulse * params.audio_strength * 0.35f : 0.0f);
+    const float rim_glow = 0.10f + (params.audio_reactive ? audio.beat_pulse * params.audio_strength * 0.35f : 0.0f);
 
     for (int sy = 0; sy < sample_height; ++sy) {
         const int y = std::min(height - 1, sy * step);
@@ -155,7 +155,7 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
                 field += contribution;
                 // Shading uses a much softer copy of the field: it gives a merged mass one rounded
                 // surface instead of a dimple around every blob it is made of.
-                const float soft_inv = 1.0f / (dx * dx + dy * dy + blob.radius_squared * 2.4f + 1.0f);
+                const float soft_inv = 1.0f / (dx * dx + dy * dy + blob.radius_squared * 4.0f + 1.0f);
                 const float soft = blob.radius_squared * soft_inv;
                 smooth += soft;
                 grad_x -= 2.0f * soft * soft_inv * dx;
@@ -188,16 +188,16 @@ const std::vector<std::uint8_t> &MetaballRenderer::render(
             const float spec = std::pow(std::max(0.0f, (n_x * hx + n_y * hy + n_z * hz) / h_len), spec_power);
 
             // Capped, so the core colour is one smooth fill rather than a ring around every blob centre.
-            const float depth = std::clamp(1.0f - surface / std::clamp(field, 0.0001f, surface * 2.2f), 0.0f, 1.0f);
-            const float light = 0.28f + 0.72f * diffuse;
+            const float depth = std::clamp(1.0f - surface / std::clamp(field, 0.0001f, surface * 1.35f), 0.0f, 1.0f);
+            const float light = 0.36f + 0.64f * diffuse;
             const float pale = 0.25f * depth;  // centres are paler, like thick wax
             const auto shade = [&](float core, float edge) {
                 const float base = edge + (core - edge) * depth;
                 const float lit = (base + (1.0f - base) * pale) * light;
                 // Small, lone blobs never reach a high field and stay dimmer than the main masses.
-                const float mass = 0.72f + 0.28f * smoothstep(surface * 1.2f, surface * 3.5f, field);
+                const float mass = 0.72f + 0.28f * smoothstep(0.3f, 0.7f, smooth);
                 return (lit * body * 0.92f + std::min(spec * spec_boost, 0.75f) * body * 0.5f + rim * rim_glow * edge) * mass +
-                       aura * 0.16f * edge;
+                       aura * 0.08f * edge;
             };
             const std::size_t index = static_cast<std::size_t>((sy * sample_width + sx) * 3);
             samples_[index + 0] = byte_from_unit(shade(core_r, edge_r));

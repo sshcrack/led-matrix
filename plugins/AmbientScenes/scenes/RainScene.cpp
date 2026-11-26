@@ -148,10 +148,12 @@ void RainScene::build_backdrop()
             if (dim) {
                 // A far light on the left, out of focus behind the rain, and its blur on the wet street.
                 const float fx = x + 0.5f - w * 0.17f, fy = py - h * 0.44f;
-                const float far = std::exp(-(fx * fx + fy * fy) / (h * h * 0.0035f));
+                // Out-of-focus lights become discs: a soft edge a little brighter than the middle.
+                const float fd = len(fx, fy) / (h * 0.065f);
+                const float far = smoothstep(1.15f, 0.85f, fd) * (0.65f + 0.35f * smoothstep(0.4f, 0.95f, fd));
                 const float ry = py - top;
                 const float far_reflection = ry > 0 ? std::exp(-fx * fx / (h * h * 0.002f)) * std::exp(-ry / (h * 0.08f)) : 0.0f;
-                c = c + lamp_ * (0.16f * far + 0.07f * far_reflection);
+                c = c + lamp_ * (0.34f * far + 0.08f * far_reflection);
             }
             backdrop_[static_cast<size_t>(y * w + x)] = c;
         }
@@ -166,9 +168,9 @@ void RainScene::draw_lamp_post()
     const int w = matrix_width, h = matrix_height;
     const float lx = w * LAMP_X, ly = h * LAMP_Y;
     const int post = static_cast<int>(lx + w * 0.085f);
-    // Stands at the kerb where the street begins (dim looks), or out in the street.
+    // Seen from the window it runs down out of the frame (dim looks), or stands out in the street.
     const bool dim = look_palette_->get().get() != Ambiance::Palette::ORIGINAL;
-    const int foot = dim ? static_cast<int>(h * PUDDLE_TOP) + 3 : static_cast<int>(h * 0.9f);
+    const int foot = dim ? h : static_cast<int>(h * 0.9f);
     const RGB dark{3, 4, 6};
     // In dim looks the lit side of the post and the arm are brighter, so they read against the haze.
     const float side = dim ? 0.30f : 0.10f, arm = dim ? 0.24f : 0.04f;
@@ -235,6 +237,8 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
     // Dense rain would sparkle all over the puddle; let only the nearest drops splash.
     const float splash_depth = std::clamp(0.3f + (static_cast<float>(drops_.size()) - 120.0f) / 500.0f, 0.3f, 0.78f);
 
+    // Dim looks draw the rain a little longer and brighter, so it shows outside the lamp light too.
+    const float rain_gain = look_palette_->get().get() != Ambiance::Palette::ORIGINAL ? 1.4f : 1.0f;
     int splashes_this_frame = 0;  // staggers impacts so the ground never sparkles all at once
     for (auto& d : drops_) {
         const float v = FALL_SPEED * speed * (0.45f + 0.8f * d.z);
@@ -258,10 +262,10 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
 
         // Streak: bright head, tail fading upwards, drawn with sub-pixel splats.
         // Far rain stays short and faint; only near drops draw long streaks.
-        const float length = (1.5f + 12.0f * d.z * d.z) * smear;
+        const float length = (1.5f + 12.0f * d.z * d.z) * smear * rain_gain;
         const float brightness = 0.12f + 0.68f * d.z * d.z + 0.1f * d.z;
         const float lit = light_at(d.x, d.y);
-        const RGB head = tint(0.55f + 0.45f * d.z, brightness * (0.75f - 0.35f * lit)) + lamp_ * (lit * (0.30f + 0.5f * d.z));
+        const RGB head = tint(0.55f + 0.45f * d.z, brightness * (0.75f - 0.35f * lit) * rain_gain) + lamp_ * (lit * (0.30f + 0.5f * d.z));
         const int samples = std::max(2, static_cast<int>(length * 1.6f));
         for (int i = 0; i < samples; ++i) {
             const float t = static_cast<float>(i) / static_cast<float>(samples - 1);
@@ -275,7 +279,7 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
 
     const float top_of_puddle = matrix_height * PUDDLE_TOP;
     // Dim looks would lose their splashes against the lit puddle; lift them a little.
-    const float splash_gain = look_palette_->get().get() != Ambiance::Palette::ORIGINAL ? 1.7f : 1.0f;
+    const float splash_gain = look_palette_->get().get() != Ambiance::Palette::ORIGINAL ? 1.2f : 1.0f;
     for (auto it = droplets_.begin(); it != droplets_.end();) {
         it->life -= dt;
         if (it->life <= 0) {
@@ -302,7 +306,8 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
         const float rx = 1.0f + k * (5.0f + 7.0f * it->z);
         const float ry = rx * (0.22f + 0.12f * it->z);  // flattened by perspective
         const float lit = light_at(it->x, top_of_puddle - 1.0f);
-        const RGB c = (tint(0.7f, 0.2f + 0.3f * it->z) + lamp_ * (0.6f * lit)) * ((1.0f - k) * (1.0f - k) * splash_gain);
+        const RGB c =
+            (tint(0.7f, 0.2f + 0.3f * it->z) + lamp_ * (0.6f * lit)) * ((1.0f - k) * (1.0f - k) * (splash_gain > 1.0f ? 0.8f : 1.0f));
         const int points = std::max(8, static_cast<int>(rx * 5.0f));
         for (int i = 0; i < points; ++i) {
             const float a = Tau * static_cast<float>(i) / static_cast<float>(points);
@@ -321,7 +326,7 @@ bool RainScene::render(rgb_matrix::FrameCanvas* canvas)
                 (hash(static_cast<uint32_t>(y) * 40503u ^ static_cast<uint32_t>(time_ * 3.0f)) - 0.5f) * (1.0f + 3.0f * near);
             const float half = 0.8f + 2.2f * near * n;
             for (float x = lx + shift - half; x <= lx + shift + half; x += 0.5f)
-                buf_.splat(x - 0.5f, y - 0.5f, lamp_ * (0.10f * (0.4f + 0.6f * n) * (1.0f - 0.4f * near)));
+                buf_.splat(x - 0.5f, y - 0.5f, lamp_ * (0.05f * (0.4f + 0.6f * n) * (1.0f - 0.4f * near)));
         }
     }
 
@@ -337,7 +342,8 @@ void RainScene::spawn_bead(Bead& b, bool anywhere)
 {
     b.x = 3.0f + rnd() * (matrix_width - 6.0f);
     b.y = anywhere ? rnd() * matrix_height : -4.0f - rnd() * 40.0f;
-    b.r = (2.2f + rnd() * 1.4f) * static_cast<float>(matrix_height) / 64.0f;
+    b.r = (1.3f + rnd() * rnd() * 2.6f) * static_cast<float>(matrix_height) / 64.0f;
+    b.stretch = 1.0f + rnd() * 0.3f;  // drops on glass hang slightly taller than wide
     b.speed = (4.0f + rnd() * 6.0f) * static_cast<float>(matrix_height) / 64.0f;
     b.pause = rnd() * 1.0f;
 }
@@ -356,31 +362,41 @@ void RainScene::draw_beads(float dt)
         }
         if (b.y - b.r > matrix_height + 2)
             spawn_bead(b, false);
-        // A faint wet track above the drop, then the drop as a small lens: a soft darker rim,
-        // a body lit from below like a lens focusing the street light, and a glint at the top.
+        // A broken wet track above the drop, then the drop as a small lens: it shows the street
+        // behind it upside down, catches the lamp as a crescent on the lamp side and has a soft
+        // shadow edge only on the far side.
         const int track = static_cast<int>(b.r * 5.0f);
-        for (int i = 1; i < track; ++i)
-            buf_.splat(b.x - 0.5f, b.y - b.r - i - 0.5f, tint(0.8f, 0.10f * (1.0f - static_cast<float>(i) / track)));
-        const RGB body = tint(0.75f, 0.42f) + lamp_ * 0.12f;
-        const int reach = static_cast<int>(std::ceil(b.r + 1.5f));
-        for (int y = static_cast<int>(b.y) - reach; y <= static_cast<int>(b.y) + reach; ++y)
-            for (int x = static_cast<int>(b.x) - reach; x <= static_cast<int>(b.x) + reach; ++x) {
+        for (int i = 1; i < track; ++i) {
+            if (hash(static_cast<uint32_t>(i) * 2246822519u ^ static_cast<uint32_t>(b.x * 131.0f)) < 0.35f)
+                continue;
+            buf_.splat(b.x - 0.5f, b.y - b.r * b.stretch - i - 0.5f,
+                       tint(0.8f, 0.08f * (1.0f - static_cast<float>(i) / static_cast<float>(track))));
+        }
+        float to_lamp_x = matrix_width * LAMP_X - b.x, to_lamp_y = matrix_height * LAMP_Y - b.y;
+        const float to_lamp = std::max(0.001f, len(to_lamp_x, to_lamp_y));
+        to_lamp_x /= to_lamp;
+        to_lamp_y /= to_lamp;
+        const float ry = b.r * b.stretch;
+        const int reach_x = static_cast<int>(std::ceil(b.r + 1.5f)), reach_y = static_cast<int>(std::ceil(ry + 1.5f));
+        for (int y = static_cast<int>(b.y) - reach_y; y <= static_cast<int>(b.y) + reach_y; ++y)
+            for (int x = static_cast<int>(b.x) - reach_x; x <= static_cast<int>(b.x) + reach_x; ++x) {
                 if (x < 0 || y < 0 || x >= matrix_width || y >= matrix_height)
                     continue;
-                const float dx = x + 0.5f - b.x, dy = y + 0.5f - b.y;
-                const float d = len(dx, dy) / b.r;
+                const float ex = (x + 0.5f - b.x) / b.r, ey = (y + 0.5f - b.y) / ry;
+                const float d = len(ex, ey);
+                if (d > 1.6f)
+                    continue;
+                const float facing = (ex * to_lamp_x + ey * to_lamp_y) / std::max(d, 0.001f);  // +1 lamp side
                 auto& p = buf_.at(x, y);
-                const float rim = std::exp(-(d - 1.05f) * (d - 1.05f) * 6.0f);
-                p = p * (1.0f - 0.45f * rim);
-                const float inside = smoothstep(1.15f, 0.55f, d);
-                const float lens = 0.55f + 0.45f * std::clamp(dy / b.r, -1.0f, 1.0f);
-                // The drop shows the street behind it upside down, a little magnified and brighter.
-                const int sx = std::clamp(static_cast<int>(b.x - dx * 2.2f), 0, matrix_width - 1);
-                const int sy = std::clamp(static_cast<int>(b.y - dy * 2.2f), 0, matrix_height - 1);
+                const float edge = std::exp(-(d - 1.0f) * (d - 1.0f) * 8.0f);
+                p = p * (1.0f - 0.4f * edge * std::max(0.0f, -facing));
+                const float inside = smoothstep(1.1f, 0.6f, d);
+                const int sx = std::clamp(static_cast<int>(b.x - ex * b.r * 2.2f), 0, matrix_width - 1);
+                const int sy = std::clamp(static_cast<int>(b.y - ey * ry * 2.2f), 0, matrix_height - 1);
                 const RGB behind = backdrop_[static_cast<size_t>(sy * matrix_width + sx)];
-                p = p + (body * (0.5f * lens) + behind * 1.3f) * inside;
+                const float crescent = smoothstep(0.55f, 0.9f, d) * smoothstep(1.1f, 0.95f, d) * smoothstep(0.2f, 0.8f, facing);
+                p = p + (behind * 1.2f + tint(0.75f, 0.12f)) * inside + (lamp_ * 0.45f + tint(1.0f, 0.25f)) * crescent;
             }
-        buf_.splat(b.x - b.r * 0.35f - 0.5f, b.y - b.r * 0.45f - 0.5f, (lamp_ * 0.8f + tint(1.0f, 0.4f)) * 0.8f);
     }
 }
 
