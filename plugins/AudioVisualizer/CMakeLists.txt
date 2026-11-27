@@ -5,8 +5,6 @@ register_plugin(AudioVisualizer
         matrix/AudioVisualizer.h
         scenes/AudioSpectrumScene.cpp
         scenes/AudioSpectrumScene.h
-        scenes/AudioParticleScene.cpp
-        scenes/AudioParticleScene.h
         scenes/MusicDirectorScene.cpp
         scenes/MusicDirectorScene.h
         scenes/AmbientMusicScenes.h

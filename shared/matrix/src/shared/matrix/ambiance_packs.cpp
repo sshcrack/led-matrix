@@ -11,20 +11,25 @@ json look(const char *type, const char *variant, int duration) {
     return {{"type", type}, {"variant", variant}, {"arguments", {{"duration", duration}, {"weight", 1}}}};
 }
 const json &definitions() {
-    static const json packs = json::array({
-        {{"id", "quiet-evening"}, {"name", "Quiet Evening"},
-         {"description", "Soft amber ribbons and sparse starlight. Long holds and gentle fades."},
-         {"colors", {"#461006", "#d24f18", "#ffb24e"}}, {"transition_duration", 2500},
-         {"scenes", {look("wave_pattern", "evening", 90000), look("starfield", "evening", 75000)}}},
-        {{"id", "rainy-window"}, {"name", "Rainy Window"},
-         {"description", "Slow blue rain, low cyan waves and a quiet, cool glow."},
-         {"colors", {"#081c40", "#1c5d81", "#589eb5"}}, {"transition_duration", 2200},
-         {"scenes", {look("rain", "window", 75000), look("wave_pattern", "rain_window", 90000)}}},
-        {{"id", "deep-space"}, {"name", "Deep Space"},
-         {"description", "Distant stars and indigo ribbons with slow motion and plenty of darkness."},
-         {"colors", {"#160a3d", "#43398b", "#7ca0cd"}}, {"transition_duration", 3000},
-         {"scenes", {look("starfield", "deep_space", 120000), look("wave_pattern", "deep_space", 90000)}}}
-    });
+    static const json packs =
+        json::array({{{"id", "quiet-evening"},
+                      {"name", "Quiet Evening"},
+                      {"description", "Slow amber plasma and sparse starlight. Long holds and gentle fades."},
+                      {"colors", {"#461006", "#d24f18", "#ffb24e"}},
+                      {"transition_duration", 2500},
+                      {"scenes", {look("watermelon_plasma", "ember", 90000), look("starfield", "evening", 75000)}}},
+                     {{"id", "rainy-window"},
+                      {"name", "Rainy Window"},
+                      {"description", "Slow blue rain, deep blue plasma and a quiet, cool glow."},
+                      {"colors", {"#081c40", "#1c5d81", "#589eb5"}},
+                      {"transition_duration", 2200},
+                      {"scenes", {look("rain", "window", 75000), look("watermelon_plasma", "deep_sea", 90000)}}},
+                     {{"id", "deep-space"},
+                      {"name", "Deep Space"},
+                      {"description", "Distant stars and indigo plasma with slow motion and plenty of darkness."},
+                      {"colors", {"#160a3d", "#43398b", "#7ca0cd"}},
+                      {"transition_duration", 3000},
+                      {"scenes", {look("starfield", "deep_space", 120000), look("watermelon_plasma", "deep_space", 90000)}}}});
     return packs;
 }
 std::unordered_set<std::string> scene_names() {

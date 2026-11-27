@@ -33,6 +33,17 @@ dark the carriage windows, headlight and cottage window light up, and the lit
 windows reflect in the river. The first train runs as the scene opens, then one
 crosses every two minutes at default speed.
 
+## Starling murmuration
+
+**Starling murmuration** (`boids`, the id of the flocking demo it replaced, so
+saved presets keep working) shows a flock of starlings over a wetland at dusk.
+The flock is a shape that drifts, stretches, bends and sometimes splits, with
+turning waves running through it; each bird follows its place with its own lag,
+and a short-lived darkness buffer leaves soft trails. A falcon passes now and
+then and the flock opens around it. Time of day stays dusk; weather (clear,
+cloudy, fog) and season follow the real world. The flock shrinks with
+`render_quality_scale()`.
+
 ## Previewing changes
 
 Build the emulator preset, then render the base scenes and their affected looks:

@@ -28,6 +28,8 @@ register_plugin(HobbyScenes
         matrix/scenes/HarbourScene.h
         matrix/scenes/KoiPondScene.cpp
         matrix/scenes/KoiPondScene.h
+        matrix/scenes/MurmurationScene.cpp
+        matrix/scenes/MurmurationScene.h
         matrix/scenes/NewYearScene.cpp
         matrix/scenes/NewYearScene.h
         matrix/scenes/AllotmentScene.cpp

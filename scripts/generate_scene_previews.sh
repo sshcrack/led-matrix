@@ -40,7 +40,7 @@
 #   ./generate_scene_previews.sh --all --fps 20 --frames 120 --output ./custom_previews
 #
 #   # Preview audio-reactive scenes against a bass-heavy 128 BPM fixture
-#   ./generate_scene_previews.sh --scenes "audio_spectrum,audio_particles" --audio-bpm 128 --audio-profile bass
+#   ./generate_scene_previews.sh --scenes "audio_spectrum,audio_ridgeline" --audio-bpm 128 --audio-profile bass
 #
 
 set -euo pipefail

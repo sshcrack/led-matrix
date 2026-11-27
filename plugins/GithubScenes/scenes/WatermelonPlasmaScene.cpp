@@ -64,7 +64,8 @@ bool Scenes::WatermelonPlasmaScene::render(rgb_matrix::FrameCanvas *canvas) {
             return hue * ((0.12f + 0.88f * seam) * ripple * 175.0f * brightness);
         }
         // Palette looks: the two bands become the palette's dark and light ends.
-        const auto c = Ambiance::sample(palette, 0.5f + 0.5f * (g - u), std::min(1.0f, (u + g) * 0.8f) * brightness);
+        // Dark gaps between the bands keep these looks restful.
+        const auto c = Ambiance::sample(palette, 0.5f + 0.5f * (g - u), AudioKit::smoothstep(0.45f, 1.1f, (u + g) * 0.8f) * brightness);
         // Glowing cores where the bands overlap, in the palette's brightest colour.
         const auto hot = Ambiance::sample(palette, 1.0f, brightness);
         const float core = (u * g) * (u * g) * 0.9f;
@@ -95,7 +96,7 @@ Scenes::SceneDescriptor Scenes::WatermelonPlasmaScene::get_descriptor() const {
         {"ember",
          "Ember plasma",
          "Dim amber bands flowing slowly",
-         {{"look_palette", "EMBER"}, {"look_brightness", 0.6f}, {"speed", 0.6f}},
+         {{"look_palette", "EMBER"}, {"look_brightness", 0.5f}, {"speed", 0.6f}},
          {"calm", "warm", "amber"},
          0.32f,
          0.36f,
@@ -104,14 +105,23 @@ Scenes::SceneDescriptor Scenes::WatermelonPlasmaScene::get_descriptor() const {
         {"deep_sea",
          "Deep sea plasma",
          "Cool blue bands flowing slowly",
-         {{"look_palette", "RAIN"}, {"look_brightness", 0.7f}, {"speed", 0.6f}},
+         {{"look_palette", "RAIN"}, {"look_brightness", 0.55f}, {"speed", 0.6f}},
          {"calm", "blue"},
          0.32f,
          0.36f,
          0.12f,
          0.40f},
+        {"deep_space",
+         "Indigo plasma",
+         "Slow violet and indigo bands",
+         {{"look_palette", "SPACE"}, {"look_brightness", 0.45f}, {"speed", 0.45f}},
+         {"calm", "space", "indigo"},
+         0.26f,
+         0.30f,
+         0.10f,
+         0.40f},
     };
-    Scenes::set_off_by_default(d, {"ember", "deep_sea"});
+    Scenes::set_off_by_default(d, {"ember", "deep_sea", "deep_space"});
     return d;
 }
 

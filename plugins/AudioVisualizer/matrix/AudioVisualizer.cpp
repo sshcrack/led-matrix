@@ -6,7 +6,6 @@
 
 #include "AudioPreviewProvider.h"
 #include "scenes/AmbientMusicScenes.h"
-#include "scenes/AudioParticleScene.h"
 #include "scenes/AudioSpectrumScene.h"
 #include "scenes/GenreVistaScenes.h"
 #include "scenes/HipHopScenes.h"
@@ -33,7 +32,6 @@ std::vector<std::unique_ptr<SceneWrapper>> AudioVisualizer::create_scenes()
 {
     std::vector<std::unique_ptr<SceneWrapper>> created;
     created.push_back(std::make_unique<AudioSpectrumSceneWrapper>());
-    created.push_back(std::make_unique<AudioParticleFieldSceneWrapper>());
     created.push_back(std::make_unique<MusicDirectorSceneWrapper>());
     created.push_back(std::make_unique<AudioRidgelineSceneWrapper>());
     created.push_back(std::make_unique<AudioPondSceneWrapper>());

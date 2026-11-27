@@ -15,14 +15,6 @@ register_plugin(AmbientScenes
         scenes/StarFieldScene.h
         scenes/RainScene.cpp
         scenes/RainScene.h
-        scenes/SortingVisualizerScene.cpp
-        scenes/SortingVisualizerScene.h
-        scenes/sorting_simple.cpp
-        scenes/sorting_complex.cpp
-        scenes/BouncingLogoScene.cpp
-        scenes/BouncingLogoScene.h
         scenes/NeonTunnelScene.cpp
         scenes/NeonTunnelScene.h
-        scenes/DigitalRainScene.cpp
-        scenes/DigitalRainScene.h
 )
