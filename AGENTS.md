@@ -179,6 +179,8 @@ The UI always talks to its own origin (the daemon serves it). `pnpm dev` proxies
 
 ## Plugin development
 
+**Creating or changing a scene:** follow [`docs/SCENE_AUTHORING.md`](docs/SCENE_AUTHORING.md): descriptor and tags, variants, real-world environment, music layer, music reactivity, Pi cost, previews and startup checks, review, retiring, and a final checklist. Code mechanics: [`docs/PLUGIN_DEVELOPMENT.md`](docs/PLUGIN_DEVELOPMENT.md).
+
 Plugins auto-register via `register_plugin()` in their `CMakeLists.txt`. The macro is defined in `plugins/CMakeLists.txt`. No changes to the root `CMakeLists.txt` or `vcpkg.json` are needed for plugins with no extra vcpkg dependencies.
 
 Minimal plugin structure:
@@ -186,15 +188,16 @@ Minimal plugin structure:
 plugins/MyPlugin/
   CMakeLists.txt          ← register_plugin(MyPlugin matrix/... DESKTOP desktop/...)
   matrix/
-    MyPlugin.cpp          ← extern "C" createMyPlugin / destroyMyPlugin
+    MyPlugin.cpp          ← REGISTER_PLUGIN(MyPlugin, MyPlugin) → extern "C" createMyPlugin / destroyMyPlugin
     MyPlugin.h
-    scenes/MyScene.cpp
-    scenes/MyScene.h
+  scenes/                 ← portable scene code (HobbyScenes and older plugins use matrix/scenes/)
+    MyScene.cpp
+    MyScene.h
 ```
 
 `extern "C"` factory names **must match the plugin name exactly** — `createMyPlugin` / `destroyMyPlugin`. The `PLUGIN_NAME` macro is injected by CMake via `target_compile_definitions`.
 
-A scene is only considered by Automatic Mode if its `get_descriptor()` sets `d.automatic_eligible = true`. `Scene::get_descriptor()` defaults it to **false**, so a scene that sets family, tags and `fits:*` but forgets the flag is never chosen and its `fits:*` tags never matter. Scenes that must stay manual (readable text, games, interactive) keep the default. `tests/scenery_eligibility_coverage.py` (ctest `scenery_eligibility_coverage`) fails when a scene tagged `scenery` or `fits:*` is not eligible, unless it is on the test's `OPT_OUT` list with a reason.
+A scene is only considered by Automatic Mode if its `get_descriptor()` sets `d.automatic_eligible = true`; `Scene::get_descriptor()` defaults it to **false** (`tests/scenery_eligibility_coverage.py` catches scenery that forgets it).
 
 Key headers:
 - Scene base class: `shared/matrix/include/shared/matrix/Scene.h`
@@ -211,8 +214,10 @@ For plugins with additional vcpkg dependencies, add a feature entry to `vcpkg.js
 The matrix is a passive prop in a room. Every scene must be:
 - **Low compute on the Pi** — scenes run on a single Raspberry Pi 3 Model B (the real device, `ssh ledmat`: Cortex-A53 at 1.2 GHz, 906 MB RAM), no GPU
 - **Non-interactive** — no input from viewers (configuration via the web UI is fine; the running display needs no input)
-- **No readable text** — no tickers, scores, headlines, or anything requiring active reading
-- **Visually interesting** — ambient/aesthetic purpose only
+- **No readable text in Automatic Mode** — scenes it can pick (`automatic_eligible`) show no tickers, scores, headlines or anything requiring active reading. Manual utility scenes (clock, countdown, weather, tetris) may show text; the `clock` is becoming a nixie-tube clock (#307).
+- **Calm and recognisable** — places or objects that reward occasional glances (aquariums, planetary vistas, natural landscapes with sparse events). Standalone crystal/gyroid sculpture shaders were rejected and replaced (2026-09-06).
+- **Complete within ~3 s, alive for hours** — a scene looks finished about 3 s after activation and never freezes, collapses or sits near-black during a long run: simulations pre-warm or seed densely, scenes with arrivals start mid-performance. Check every variant with `preview_gen --metrics-out` at 0–3 s and over 60 s+ (`mean_luma_average`, `lit_fraction_average`, `temporal_change_average`). This was the most common fault in the 2026-11-27 audit (#300); details in `docs/SCENE_AUTHORING.md` §7.
+- Coverage minimums (`tests/music_showcase_coverage.py`, e.g. hiphop exactly at its 10) are floors that keep a style from going empty, not a reason to keep a weak scene: replace a scene you retire.
 
 Rejected ideas (do not implement without asking the owner):
 
@@ -224,21 +229,15 @@ Rejected ideas (do not implement without asking the owner):
 | Web paint / pixel canvas | Too interactive |
 | Emoji signal scene | Implies active triggering from a user |
 
-Scenery guidance (2026-09-06): new scenery should prioritize calm, recognizable environments that reward occasional glances (aquariums, planetary vistas, natural landscapes with sparse events). Standalone crystal/gyroid sculpture shaders were rejected and replaced.
-
 Live preview rule (2026-08-22): `/live_frame` is a WebSocket-only, pull-based transport (no HTTP polling). A connected socket does no capture work; each browser `next` message requests exactly one future composed frame, concurrent viewers coalesce, and hidden/off-screen previews stop requesting.
 
-Music director note (2026-11-05): while live music plays, both directors prefer scenes tagged `music-showcase` (longer dwell) and match `style:<chill|edm|party|rock|hiphop|acoustic>` tags against the current music style (`shared/matrix/music_style.h`). The style fuses genre metadata (`RuntimeInputIds::MusicGenre`, published by SpotifyScenes `genre_lookup.cpp`: Spotify artist genres first, then Deezer, then the optional GetSongBPM key; cached in `cache/genres.json`) with a weak audio estimate. `director_music_sim <song.audr> [--desktop --spotify --genre "a,b"]` replays recorded analysis (from `tests/audio_analysis_dump.cpp`) through the real director to check behaviour. Every `music-showcase` scene needs a `style:` tag; `tests/music_showcase_coverage.py` enforces a minimum scene count per style (higher for hiphop/rock/party, the owner's main genres).
-
-Music layer (2026-11-26): scenery can show the spectrum-bar look behind its landscape while music plays (`shared/matrix/music_layer.h`, `MusicLayer::Layer`: the scene passes an open-sky mask and a horizon; first adopter `harbour_dawn`, hobby scenes opt in with `use_music_layer()`). It is on by default while Spotify plays or live audio is non-silent (without audio capture the bars swell gently); the global switch is `config.json` → `music_layer` (`GET/POST /music_layer`, Integrations page), published as the `music.layer` Runtime Input, and each scene has a `music_layer` property (`OFF` drops its `music-layer` tag). While it is live, Automatic Mode treats tagged scenery as a gentle music look (`with_music_layer()` in the director), still below `music-showcase` scenes.
+Scene systems (music director and `style:` tags, the music layer and its global `config.json` → `music_layer` switch, `render_quality_scale()`, Pi cost, previews): `docs/SCENE_AUTHORING.md`.
 
 SpotifyMV note: standalone plugin that plays YouTube music videos on Spotify track change; audio is intentionally disabled, yt-dlp/ffmpeg decoding happens on the desktop and the Pi only copies UDP pixels. `VideoStreamEngine` lives in `SharedToolsDesktop`; cache is keyed by Spotify track_id.
 
 Desktop frame streams: plugins that stream whole frames from the desktop (Shadertoy, Video, SpotifyMV) use `FrameStream::Sender` on the desktop and `FrameStream::Receiver` on the Pi (chunked, reassembled, legacy single-datagram fallback, counters in `/diagnostics` → `udp.frame_streams`). New desktop-streamed scenes should reuse it instead of their own UDP framing; see `docs/transition-performance.md`.
 
-Pi vs desktop quality: `Scene::render_quality_scale()` (0.5..1) is the one quality knob. It is 1.0 on the desktop worker and in previews; on the Pi it adapts to measured render cost (`set_render_quality_hint()` gives a Pi-only start value). Scenes with optional expensive work map it to cheaper work: particle counts, or smooth layers drawn through `AudioKit::Buffer::add_field()` with `field_step()` (per pixel at full quality, an interpolated lattice below). The Pi offloads a scene to the desktop scene worker when its p95 exceeds 72% of the frame budget or its quality is below 1, and the worker renders full quality. Check the reduced look with `preview_gen --quality 0.6` / `render_scene_video.sh --quality 0.6`. Cache static per-pixel geometry instead of recomputing it each frame, and prefer `AudioKit::len` over `std::hypot` (a libm call on the Pi).
-
-Desktop offload compatibility: the worker advertises `scene_contracts` (scene ID → positive version). Offload requires matching `RemoteRenderProtocol::Version` and the requested scene's `Scene::remote_contract_version()` (default 1), independent of source changes or release identity. Bump the scene contract for incompatible property/variant/runtime-state changes; bump the protocol for shared wire changes. Keep saved payload regression fixtures. `Scene::from_remote_command()` validates contracts before loading data. See `docs/SCENE_EXECUTION.md` for compatibility rules and tests; `/diagnostics` → `remote_render` shows protocol versions and compatible scene counts.
+Desktop offload: the Pi offloads a scene to the desktop scene worker when its p95 exceeds 72% of the frame budget or its quality is below 1. Offload requires matching `RemoteRenderProtocol::Version` and the scene's `Scene::remote_contract_version()` (worker advertises `scene_contracts`; `/diagnostics` → `remote_render`). Bump the scene contract for incompatible property/variant/runtime-state changes, the protocol for shared wire changes, and keep saved payload fixtures; rules and tests: `docs/SCENE_EXECUTION.md`.
 
 Desktop app install and updates: the desktop app installs per user (no root/admin) and updates itself (`shared/desktop/SelfUpdate.{h,cpp}`): `versions/<v>/` plus a `current` symlink (Linux) or junction (Windows) under `~/.local/share/led-matrix-desktop` or `%LOCALAPPDATA%\led-matrix-desktop`, and launchers, autostart and the Windows "Installed apps" entry all point at `current/`. `led-matrix-desktop --install` installs the package it was started from (`scripts/install-desktop.sh`, `.ps1`, and the Windows setup `.exe` built from the ZIP by `packaging/windows/`). CPack's NSIS generator is not used because it always requires admin. `--uninstall` removes it. `UpdateManager` follows the **matrix's** version (GitHub latest when no matrix answers). When a newer release is out and the matrix has auto-update on, it first sends `POST /api/update/install` to the matrix, so both run one release with aligned features and data contracts. Updates install silently and restart while the app is hidden in the tray. Release assets `led-matrix-desktop-<v>-Linux.tar.gz` / `-win64.zip` (with GitHub sha256 digests) are what it downloads, so keep those names.
 
@@ -248,11 +247,8 @@ Release handling: `shared/common/Releases.{h,cpp}` is the one module for GitHub 
 
 Outdoor scenes follow the real world through `shared/matrix/environment/`:
 - `Environment::Service` (daemon thread, started in `daemon.cpp`) locates the Pi (manual setting, else IP), polls Open-Meteo every 15 min and publishes the `environment` Runtime Input (mirrored to the desktop scene worker). Settings live in `config.json` → `environment`; REST: `GET/POST /environment`, `GET /environment/geocode?q=` (`src_matrix/server/environment_routes.cpp`); UI: `react-web/src/components/environment/EnvironmentCard.tsx` on the Integrations page.
-- A scene owns a `SceneEnvironment` (`look.h`), adds its `properties()` (time_of_day / weather / season enums, group "Environment"), calls `update(raw_dt)` every frame and paints with the returned `Look` (smoothed numbers plus a palette: `lit()`, `foliage()`, `grass()`, `ground()`, `lamp()`). Each aspect resolves independently: scene property > global override > real world > scene `Defaults`. `Adapt` switches aspects off for scenes whose identity is fixed (a campfire stays night, skiing stays winter) and `weather_allowed` drops weather a scene cannot show. Call `add_variants(descriptor)` for the fixed-look variants (they default to off in Automatic Mode); it also adds the `environment-adaptive` tag, and Automatic Mode then plays the scene's own real-world-following look (`CanvasCoordinator::ensure_automatic_catalog`, listed as "Follows the real world" in the web UI) in addition to the variants. Scenes with variants but without that tag only play their variants.
-- `paint.h` has the shared painters for any float RGB buffer (`Surface`, unit 1 or 255): sky, stars, sun, moon with phase, clouds, fog, `Precipitation`, `Lightning`, `SeasonalDrift` (leaves, petals, fireflies), `paint_window`, `paint_string_lights`. Hobby scenes get them through `HobbySceneBase::use_environment()`. Hobby scenes that cache a backdrop (harbour, viaduct, New Year's Eve) share `plugins/HobbyScenes/matrix/scenes/Backdrop.h`: design-space drawing (`Artwork`), open-sky/water masks (`unchanged()`), clouds that pass behind the landscape (`paint_clouds_behind()`) and light on masked water (`MaskedLight`: streaks, sub-pixel points, the sun/moon path).
-- Holidays: add an entry to `registry()` in `occasions.cpp`; scenes that know the id decorate via `look.occasion("id")` (example: `season_cottage`), the UI lists it automatically.
-- Director: tag scenes with `fits:<id>` for the moments they suit (`dawn|day|dusk|night`, `clear|cloudy|fog|rain|snow|storm`, `spring|summer|autumn|winter`; ids from `Environment::fit_id`) and holiday-only scenes with `occasion:<id>` (skipped in Automatic Mode unless that occasion is active). `AutomaticDirector::Mode` (`mixed|environment|party|chill`, `config.json` → `automatic_director_mode`, `GET/POST /automatic_director/mode`, picker under the home now-playing bar) weighs the fit, scenery and energy differently and changes dwell; `tests/automatic_director_smoke.cpp` covers it.
-- `preview_gen --scenes name/variant` renders a variant (output `name--variant`); use it to check every look (`night`, `rain`, `snow`, `winter`, …) of a scene you change. `tests/environment_smoke.cpp` covers the astronomy, parsing and layering.
+- Scene side (`SceneEnvironment`/`Look`, `Adapt`, `add_variants()`, `paint.h`, `HobbySceneBase::use_environment()`, `Backdrop.h`, `fits:*`/`occasion:*` tags, holidays in `registry()` of `occasions.cpp`): `docs/SCENE_AUTHORING.md` §4.
+- Director: `AutomaticDirector::Mode` (`mixed|environment|party|chill`, `config.json` → `automatic_director_mode`, `GET/POST /automatic_director/mode`, picker under the home now-playing bar) weighs the fit, scenery and energy differently and changes dwell; `tests/automatic_director_smoke.cpp` covers it.
 
 ## Rear halo light
 
@@ -302,21 +298,9 @@ Usage after building the emulator preset:
 ./emulator_build/install/bin/preview_gen --scenes SceneA,SceneB --frames 60 --fps 10
 ```
 
-Preview eligibility and dependencies are declared by `Scene::get_preview_spec()`. Non-desktop scenes are previewable by default; desktop-dependent scenes default to disabled until they explicitly opt in. A scene can request named fixture inputs and preview-only property overrides:
-
-```cpp
-[[nodiscard]] Previews::SceneSpec get_preview_spec() const override {
-    auto spec = Previews::SceneSpec::with_inputs({Previews::Inputs::Audio});
-    spec.set_property("audio_reactive", true);
-    return spec;
-}
-```
-
-Plugins own fixture implementations by overriding `BasicPlugin::create_preview_data_providers()` and returning `Previews::DataProvider` adapters. Providers should update the same shared/plugin state the production source updates; `preview_gen` is deliberately unaware of the provider's payload. It discovers providers, resolves the scene's input IDs, calls `begin()`, `update(SceneFrameContext)` for every preview frame, then `end()`. Registry validation rejects duplicate/missing provider IDs and invalid preview property overrides.
+Scene-side preview declarations (`get_preview_spec()`, `Previews::DataProvider` fixtures, `--preview-option`), startup/long-run checks and published GIFs: `docs/SCENE_AUTHORING.md` §7 and §9.
 
 Network-dependent scenes (`weather`, `image_scene`) switch to offline fixtures only when `LED_MATRIX_PREVIEW_OFFLINE=1` is set (CI's `sanitizer_scene_sweep` sets it, so a slow network cannot fail `--strict`); normal runs and published previews keep live data.
-
-Current providers include `audio` (owned by AudioVisualizer) and `spotify.playback` (owned by SpotifyScenes). The Spotify provider supplies deterministic playback + local synthetic artwork, so `spotify` previews need no credentials/network. Generic fixture tuning uses repeatable `--preview-option <provider>:<key>=<json>`, e.g. `--preview-option audio:bpm=132 --preview-option spotify.playback:duration_ms=30000`. `--audio-bpm` / `--audio-profile` remain compatibility aliases. Only scenes whose preview spec remains disabled require `scripts/capture_desktop_preview.sh`.
 
 ### Live web matrix capture performance
 
@@ -324,11 +308,7 @@ Live matrix capture is strict pull/on-demand. The React UI normally keeps one `/
 
 ## Scene videos and PR media
 
-Show visual changes in PRs as videos, not descriptions:
-- `scripts/render_scene_video.sh --scenes <a,b> [--replay song.audr] [--audio song.wav]` renders MP4s with an LED-panel look via `preview_gen` (emulator preset).
-- Real-music input: `emulator_build/install/bin/audio_analysis_dump <song.wav> <out.audr>` records the desktop analyzer's output; pass it as `--replay`. Keep copyrighted audio out of anything uploaded: publish silent videos and keep `--audio` versions local.
-- `spotify` previews take custom artwork and track changes: `--preview-option 'spotify.playback:covers=["a.png","b.png"]' --preview-option spotify.playback:track_seconds=6`.
-- `scripts/pr_media.sh [--comment] <files>` uploads images/MP4s to the rolling `pr-media` prerelease and prints markdown (videos get a linked GIF preview, since GitHub only plays inline video uploaded through the browser). Paste the output into the PR body or use `--comment`.
+Show visual changes in PRs as videos, not descriptions: `scripts/render_scene_video.sh` (LED-panel MP4s, `--replay song.audr` for real music) and `scripts/pr_media.sh [--comment] <files>` (uploads to the `pr-media` prerelease, prints markdown). Keep copyrighted audio out of uploads. Details: `docs/SCENE_AUTHORING.md` §9.
 
 ## Keeping the repo small
 

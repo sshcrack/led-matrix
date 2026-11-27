@@ -11,6 +11,7 @@
 ## Current behavior
 
 - [Plugin development](PLUGIN_DEVELOPMENT.md)
+- [Scene authoring: decisions, systems and checks for new or changed scenes](SCENE_AUTHORING.md)
 - [Matrix library ownership and release workflow](MATRIX_LIBRARY.md)
 - [Scene execution, previews and offload contracts](SCENE_EXECUTION.md)
 - [Automatic visual journeys](automatic-journeys.md)

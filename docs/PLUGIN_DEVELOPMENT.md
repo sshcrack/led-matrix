@@ -8,7 +8,7 @@ The most important architectural rule is:
 >
 > The same scene implementation is used on the Raspberry Pi, by `preview_gen`, and by the desktop scene worker for automatic render offload.
 
-See [Scene execution, previews, and desktop offload](SCENE_EXECUTION.md) for the execution model in detail.
+See [Scene execution, previews, and desktop offload](SCENE_EXECUTION.md) for the execution model in detail. For the decisions a new or changed scene needs (descriptor, variants, environment, music layer, startup look, review), follow the [Scene authoring guide](SCENE_AUTHORING.md).
 
 ## Plugin layout
 
@@ -486,7 +486,8 @@ At minimum:
 3. run relevant CTest regressions;
 4. build the desktop worker copy;
 5. check `--list-scenes` contains the scene;
-6. for performance-sensitive changes, inspect Pi Diagnostics rather than relying only on desktop timings.
+6. for performance-sensitive changes, inspect Pi Diagnostics rather than relying only on desktop timings;
+7. go through the [scene authoring checklist](SCENE_AUTHORING.md#checklist).
 
 ## Current examples worth studying
 
