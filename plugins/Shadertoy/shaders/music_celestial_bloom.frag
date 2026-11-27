@@ -1,9 +1,9 @@
 /* led-matrix-shader
 {
   "family": "celestial",
-  "tags": ["music", "ambient", "scenic", "organic", "bloom", "audio-reactive", "soft", "showcase", "style:chill", "style:acoustic"],
-  "intensity": 0.74,
-  "motion": 0.68,
+  "tags": ["music", "ambient", "scenic", "organic", "bloom", "flower", "audio-reactive", "soft", "showcase", "style:chill", "style:acoustic"],
+  "intensity": 0.66,
+  "motion": 0.55,
   "music_affinity": 0.96,
   "performance_cost": 0.36,
   "automatic_eligible": true,
@@ -11,16 +11,13 @@
 }
 */
 
-#define TAU 6.28318530718
-#define PI 3.14159265359
+// A luminous dahlia seen from above, floating in a violet nebula. Four
+// whorls of solid petals turn slowly against each other; bass opens the
+// flower, each outer petal leans out with its own spectrum band, onsets
+// brighten the petal tips and the golden centre breathes with the beat.
+// Pollen drifts out of the centre.
 
-vec3 bloomPalette(float t) {
-    vec3 a = vec3(0.48, 0.48, 0.54);
-    vec3 b = vec3(0.52, 0.48, 0.46);
-    vec3 c = vec3(1.0);
-    vec3 d = vec3(0.00, 0.17, 0.39);
-    return a + b * cos(TAU * (c * t + d));
-}
+#define TAU 6.28318530718
 
 float hash21(vec2 p) {
     p = fract(p * vec2(127.1, 311.7));
@@ -28,117 +25,109 @@ float hash21(vec2 p) {
     return fract(p.x * p.y);
 }
 
-float closedSpectrum(float angle, float live) {
-    float u = 0.5 - 0.5 * cos(angle);
-    return mix(0.13, 0.72 * sampleAudioSpectrum(iChannel0, u)
-                    + 0.28 * sampleAudioSpectrum(iChannel0, 1.0 - u), live);
-}
-
-float lineGlow(float d, float width) {
-    float x = d / max(width, 0.0001);
-    return exp(-x * x * 1.7);
+// One whorl of n petals. Returns (coverage, along-petal 0..1, across -1..1).
+// The petal is a pointed teardrop of length len starting at radius r0.
+vec3 whorl(vec2 uv, float n, float rot, float r0, float len, float width, float bandGain, float live, out float petalId) {
+    float r = length(uv);
+    float a = atan(uv.y, uv.x) + rot;
+    float sector = TAU / n;
+    float k = floor(a / sector + 0.5);
+    float la = a - k * sector;
+    petalId = mod(k, n);
+    // Each petal reaches out with a band of the spectrum (mirrored, seam-safe).
+    float u = 0.5 - 0.5 * cos((petalId + 0.5) / n * TAU);
+    float l = len * (1.0 + bandGain * live * sampleAudioSpectrum(iChannel0, 0.04 + 0.45 * u));
+    vec2 q = vec2(r * cos(la), r * sin(la));
+    float t = (q.x - r0) / l;                       // 0 at base, 1 at tip
+    float halfW = width * l * sin(clamp(t, 0.0, 1.0) * 3.14159) * mix(1.0, 0.65, t);
+    float d = abs(q.y) - halfW;
+    float aa = 1.2 / iResolution.y;
+    float cover = smoothstep(aa, -aa, d) * step(0.0, t) * smoothstep(1.0, 0.97, t);
+    return vec3(cover, clamp(t, 0.0, 1.0), q.y / max(halfW, 1e-4));
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
     float r = length(uv);
-    float a = atan(uv.y, uv.x);
-
     float live = step(0.5, iAudioAvailable) * (1.0 - step(0.5, iAudioSilence));
-    float bass = mix(0.19 + 0.040 * sin(iTime * 0.8), iAudioBass, live);
-    float mid = mix(0.16 + 0.030 * sin(iTime * 0.67 + 1.1), iAudioMid, live);
-    float treble = mix(0.10, iAudioTreble, live);
-    float beat = mix(0.12, iAudioBeatStrength, live);
-    float onset = mix(0.08, iAudioOnset, live);
-    float spectrum = closedSpectrum(a, live);
+    float bass = mix(0.22 + 0.10 * sin(iTime * 0.5), iAudioBass, live);
+    float mid = mix(0.18, iAudioMid, live);
+    float onset = mix(0.0, iAudioOnset, live);
+    float beat = mix(0.15 + 0.10 * sin(iTime * 1.1), iAudioBeatStrength, live);
+    float drop = live * iAudioDrop;
 
-    float t = iTime * (0.12 + 0.045 * mid);
-    float spin = a + t * 1.8;
+    // Background: deep violet nebula, lighter toward the flower.
+    vec3 col = mix(vec3(0.020, 0.010, 0.050), vec3(0.090, 0.030, 0.120), exp(-3.0 * r * r));
+    float neb = 0.5 + 0.5 * sin(uv.x * 5.0 + iTime * 0.07) * sin(uv.y * 4.0 - iTime * 0.05 + 1.3);
+    col += vec3(0.05, 0.02, 0.07) * neb * smoothstep(0.25, 0.7, r);
 
-    // Primary seven-petal bloom: large enough to survive LED downsampling while
-    // retaining a crisp, animated silhouette.
-    float petals = 0.5 + 0.5 * cos(spin * 7.0 + 0.45 * sin(a * 3.0 - t * 2.1));
-    petals = pow(petals, 1.38);
-    float breath = 0.335 + 0.055 * bass + 0.018 * sin(iTime * 0.73) + 0.022 * beat;
-    float boundary = breath * (0.80 + 0.34 * petals + 0.075 * spectrum);
-    float flowerD = abs(r - boundary);
-    float flowerCore = lineGlow(flowerD, 0.010 + 0.0035 * spectrum + 0.0025 * onset);
-    float flowerHalo = exp(-flowerD / 0.052);
+    // Faint stars in the corners.
+    vec2 g = uv * 18.0;
+    vec2 cell = floor(g);
+    float seed = hash21(cell);
+    float star = step(0.93, seed) * smoothstep(0.30, 0.05, length(fract(g) - 0.5));
+    col += vec3(0.7, 0.75, 1.0) * star * smoothstep(0.38, 0.6, r) * (0.25 + 0.25 * sin(iTime * (0.5 + seed) + seed * 20.0));
 
-    // A counter-rotating ghost bloom gives the shape depth and keeps the scene
-    // visually rich between beats without simply increasing global brightness.
-    float ghostPetals = 0.5 + 0.5 * cos((a - t * 1.23) * 5.0 + 0.55 * sin(a * 4.0 + t));
-    float ghostBoundary = 0.275 + 0.054 * ghostPetals + 0.024 * mid + 0.015 * spectrum;
-    float ghostD = abs(r - ghostBoundary);
-    float ghost = lineGlow(ghostD, 0.009);
-    float ghostHalo = exp(-ghostD / 0.042);
+    float open = 0.86 + 0.16 * bass + 0.05 * drop;   // bass opens the flower
+    float spin = iTime * (0.035 + 0.02 * mid);
 
-    float innerPetals = 0.5 + 0.5 * cos((a - t * 1.35) * 5.0 + sin(a * 4.0 + t));
-    float innerBoundary = 0.170 + 0.044 * innerPetals + 0.022 * bass;
-    float innerD = abs(r - innerBoundary);
-    float inner = lineGlow(innerD, 0.0085 + 0.002 * onset);
-    float innerHalo = exp(-innerD / 0.034);
+    // Petal layers, outer first. Colours run from deep magenta outside to
+    // peach and cream inside.
+    vec3 baseCols[4] = vec3[4](vec3(0.55, 0.06, 0.40), vec3(0.80, 0.18, 0.45), vec3(0.95, 0.42, 0.42), vec3(1.00, 0.70, 0.48));
+    vec3 tipCols[4]  = vec3[4](vec3(0.95, 0.45, 1.00), vec3(1.00, 0.55, 0.80), vec3(1.00, 0.78, 0.65), vec3(1.00, 0.92, 0.75));
+    float counts[4] = float[4](11.0, 9.0, 8.0, 7.0);
+    float lens[4]   = float[4](0.30, 0.25, 0.18, 0.12);
+    float r0s[4]    = float[4](0.10, 0.07, 0.05, 0.035);
 
-    vec3 color = vec3(0.0015, 0.003, 0.012);
-    vec3 flowerTint = bloomPalette(0.08 * iTime + a / TAU + 0.12 * spectrum);
-    vec3 ghostTint = bloomPalette(0.34 - a / TAU + iTime * 0.018);
-    vec3 innerTint = bloomPalette(0.58 - a / TAU + iTime * 0.025);
-
-    // Translucent interior light gives the bloom volume without flattening its
-    // distance-field outlines. The swirl is spatial, so beats do not flash the
-    // entire interior uniformly.
-    float flowerInterior = 1.0 - smoothstep(max(0.08, boundary - 0.095), boundary, r);
-    float innerCutout = smoothstep(0.07, 0.18, r);
-    float interiorSwirl = 0.52 + 0.48 * sin(a * 7.0 - t * 2.3 + r * 17.0 + spectrum * 1.2);
-    interiorSwirl *= interiorSwirl;
-    color += mix(innerTint, flowerTint, 0.55 + 0.35 * interiorSwirl)
-           * flowerInterior * innerCutout * (0.018 + 0.032 * interiorSwirl + 0.018 * bass);
-
-    color += flowerTint * flowerCore * (0.48 + 0.50 * spectrum + 0.22 * beat);
-    color += flowerTint * flowerHalo * (0.035 + 0.045 * bass);
-    color += ghostTint * ghost * (0.18 + 0.24 * mid + 0.10 * beat);
-    color += ghostTint * ghostHalo * (0.014 + 0.018 * bass);
-    color += innerTint * inner * (0.32 + 0.38 * mid + 0.20 * onset);
-    color += innerTint * innerHalo * (0.024 + 0.026 * bass);
-
-    // Slow orbital veils frame the bloom and use the wide matrix area.
+    float shadow = 0.0;
     for (int i = 0; i < 4; ++i) {
         float fi = float(i);
-        float phase = t * (0.66 + fi * 0.16) + fi * 1.73;
-        float veilRadius = 0.445 + fi * 0.072
-                         + 0.022 * sin(a * (2.0 + fi) + phase)
-                         + 0.010 * spectrum;
-        float veilD = abs(r - veilRadius);
-        float veil = lineGlow(veilD, 0.0065 + fi * 0.0008);
-        float arc = pow(0.5 + 0.5 * cos(a * (2.0 + fi) + phase), 4.0);
-        vec3 veilTint = bloomPalette(0.20 + fi * 0.17 + iTime * 0.014);
-        color += veilTint * veil * arc * (0.075 + 0.060 * mid + 0.040 * beat);
+        float dir = (i % 2 == 0) ? 1.0 : -1.0;
+        float rot = dir * spin * (1.0 + 0.3 * fi) + fi * 0.37;
+        float id;
+        vec3 w = whorl(uv, counts[i], rot, r0s[i], lens[i] * open, 0.36, i == 0 ? 0.30 : 0.14, live, id);
+        if (w.x <= 0.0) continue;
+        float along = w.y;
+        float across = w.z;
+        // Per-petal variation and a gentle breathing ripple around the whorl.
+        float vary = 0.88 + 0.12 * hash21(vec2(id, fi));
+        vec3 petal = mix(baseCols[i], tipCols[i], smoothstep(0.1, 0.95, along)) * vary;
+        // Cupped shading: darker at the edges, light centre vein.
+        petal *= 0.55 + 0.45 * (1.0 - across * across);
+        petal += tipCols[i] * 0.25 * exp(-across * across * 40.0) * smoothstep(0.1, 0.6, along);
+        // Lit tips on onsets and in the beat.
+        petal += tipCols[i] * smoothstep(0.75, 1.0, along) * (0.15 + 0.6 * onset + 0.25 * beat);
+        // Shadow cast by the layer above (darkens the base of this petal).
+        petal *= 1.0 - 0.45 * shadow;
+        col = mix(col, petal, w.x);
+        shadow = w.x * smoothstep(0.35, 0.0, along);
     }
 
-    float center = exp(-11.0 * r * r);
-    float centerSpark = exp(-40.0 * r * r);
-    color += bloomPalette(0.82 + iTime * 0.018) * center * (0.030 + 0.082 * bass);
-    color += vec3(0.80, 0.92, 1.0) * centerSpark * (0.045 + 0.14 * beat);
+    // Golden centre with seed dots in a phyllotaxis spiral.
+    float cr = 0.055 + 0.012 * beat + 0.006 * bass;
+    float centre = smoothstep(cr + 0.01, cr - 0.005, r);
+    vec3 gold = mix(vec3(0.80, 0.45, 0.06), vec3(1.0, 0.85, 0.35), smoothstep(cr, 0.0, r));
+    float seeds = 0.0;
+    for (int i = 0; i < 24; ++i) {
+        float fi = float(i);
+        float sr = cr * sqrt((fi + 0.5) / 24.0);
+        float sa = fi * 2.39996 + iTime * 0.15;
+        seeds += smoothstep(0.011, 0.004, length(uv - sr * vec2(cos(sa), sin(sa))));
+    }
+    gold = mix(gold * 0.65, vec3(1.0, 0.95, 0.70), clamp(seeds, 0.0, 1.0) * (0.5 + 0.5 * beat));
+    col = mix(col, gold, centre);
+    col += vec3(1.0, 0.75, 0.35) * exp(-r * 22.0) * (0.10 + 0.35 * beat);
 
-    // Sparse stars stay subtle at idle and wake up with high-frequency detail.
-    vec2 drift = vec2(iTime * 0.003, -iTime * 0.0018);
-    vec2 gridUv = (uv + vec2(1.10, 0.56) + drift) * vec2(22.0, 15.0);
-    vec2 cell = floor(gridUv);
-    vec2 local = fract(gridUv) - 0.5;
-    float seed = hash21(cell);
-    float star = step(0.958, seed) * exp(-40.0 * dot(local, local));
-    float twinkle = 0.30 + 0.70 * sin(iTime * (0.36 + seed * 0.35) + seed * TAU);
-    twinkle *= twinkle;
-    float outerMask = smoothstep(0.30, 0.62, r);
-    color += bloomPalette(seed * 0.7 + 0.18) * star * twinkle * outerMask * (0.045 + 0.10 * treble);
+    // Pollen drifting outward from the centre.
+    for (int i = 0; i < 18; ++i) {
+        float fi = float(i);
+        float t = fract(iTime * (0.05 + 0.03 * hash21(vec2(fi, 1.0))) + hash21(vec2(fi, 2.0)));
+        float ang = hash21(vec2(fi, 4.0)) * TAU + t * 0.8;
+        vec2 p = vec2(cos(ang), sin(ang)) * (0.06 + t * 0.55);
+        float m = smoothstep(0.012, 0.003, length(uv - p)) * sin(t * 3.14159);
+        col += vec3(1.0, 0.85, 0.5) * m * (0.45 + 0.6 * onset);
+    }
 
-    // A restrained nebular field prevents empty black corners but cannot become
-    // a full-screen beat flash.
-    float nebula = exp(-2.35 * dot(uv * vec2(0.70, 1.0), uv * vec2(0.70, 1.0)));
-    nebula *= 0.55 + 0.45 * sin(a * 2.0 - t * 1.2 + r * 7.0);
-    color += bloomPalette(0.48 + 0.06 * sin(t)) * nebula * (0.012 + 0.014 * bass);
-
-    color *= 0.95 + 0.065 * beat;
-    color = 1.0 - exp(-color * 1.62);
-    fragColor = vec4(color, 1.0);
+    col = 1.0 - exp(-col * 1.35);
+    fragColor = vec4(col, 1.0);
 }
