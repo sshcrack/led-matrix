@@ -32,6 +32,9 @@ Shape flock_shape(float t)
     s.thickness = 12.0f + 5.0f * std::sin(0.089f * t + 2.1f) + 2.0f * std::sin(0.23f * t + 1.0f);
     s.bend = 0.45f * std::sin(0.058f * t + 0.8f);
     s.split = std::pow(std::max(0.0f, std::sin(0.019f * t - 1.2f)), 12.0f);
+    // Keep the top of the flock a few pixels below the panel edge so high turns stay in view.
+    const float reach = std::fabs(s.sin_t) * s.length * 1.2f + s.cos_t * s.thickness + std::fabs(s.bend) * s.length * 0.5f;
+    s.cy = std::max(s.cy, 6.0f + reach);
     s.t = t;
     return s;
 }
