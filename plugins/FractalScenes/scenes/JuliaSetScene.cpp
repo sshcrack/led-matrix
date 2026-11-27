@@ -1,5 +1,8 @@
 #include "JuliaSetScene.h"
+
 #include <shared/matrix/utils/color.h>
+
+#include <algorithm>
 #include <cmath>
 
 using namespace Scenes;
@@ -12,59 +15,82 @@ void JuliaSetScene::initialize(int width, int height) {
 }
 
 bool JuliaSetScene::render(rgb_matrix::FrameCanvas *canvas) {
-    // Calculate Julia set parameter from the canonical scene clock so previews,
-    // local rendering and desktop offload stay visually in sync.
+    // The parameter c walks along the edge of the Mandelbrot cardioid and
+    // dips slightly inside and outside of it. Inside, the Julia set is one
+    // connected shape; outside, it breaks into glittering dust. Sitting on
+    // that edge keeps fine structure on screen at every moment, where the old
+    // small orbit around (-0.7, 0.27) settled into a solid blob.
     if (animate_params->get()) {
         const float t = static_cast<float>(frame_context().elapsed_seconds) * move_speed->get();
-        c = {-0.7f + 0.2f * std::sin(t * 0.3f), 0.27f + 0.1f * std::cos(t * 0.5f)};
+        const float theta = 0.9f + t * 0.55f;
+        const float edge = 1.0f + 0.03f * std::sin(t * 0.8f + 1.3f);
+        const std::complex<float> boundary = {0.5f * std::cos(theta) - 0.25f * std::cos(2.0f * theta),
+                                              0.5f * std::sin(theta) - 0.25f * std::sin(2.0f * theta)};
+        c = boundary * edge;
     }
-    
-    int width = matrix_width;
-    int height = matrix_height;
-    
-    // Clear the canvas
+
+    const int width = matrix_width;
+    const int height = matrix_height;
+    const float zoom_factor = zoom->get();
+    const int max_iter = max_iterations->get();
+    const float shift = color_shift->get();
+    const float hue_drift = static_cast<float>(frame_context().elapsed_seconds) * 0.004f;
+    const float cr = c.real();
+    const float ci = c.imag();
+    const float aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
+    // Escape radius 16 (squared 256) gives a smooth iteration count.
+    constexpr float bailout = 256.0f;
+    const float glow_span = std::max(8.0f, static_cast<float>(max_iter) * 0.3f);
+
     canvas->Clear();
-    
-    float aspect_ratio = static_cast<float>(width) / height;
-    
-    // For each pixel in the matrix
+
     for (int y = 0; y < height; ++y) {
+        const float imag = (2.0f * static_cast<float>(y) / static_cast<float>(height) - 1.0f) * 1.5f / zoom_factor;
         for (int x = 0; x < width; ++x) {
-            // Map pixel coordinates to the complex plane
-            float zoom_factor = zoom->get();
-            
-            // Scale coordinates to the complex plane with zoom centered at (0, 0)
-            float real = (2.0f * x / width - 1.0f) * 1.5f * aspect_ratio / zoom_factor;
-            float imag = (2.0f * y / height - 1.0f) * 1.5f / zoom_factor;
-            
-            // Create complex number z = real + imag*i
-            std::complex<float> z(real, imag);
-            
-            // Julia set iteration
+            const float real = (2.0f * static_cast<float>(x) / static_cast<float>(width) - 1.0f) * 1.5f * aspect_ratio / zoom_factor;
+            float zr = real;
+            float zi = imag;
+            float trap = 1e9f;
             int iteration = 0;
-            int max_iter = max_iterations->get();
-            while (std::abs(z) < 2.0f && iteration < max_iter) {
-                z = z * z + c;
-                iteration++;
+            float norm = zr * zr + zi * zi;
+            while (norm < bailout && iteration < max_iter) {
+                const float next_r = zr * zr - zi * zi + cr;
+                zi = 2.0f * zr * zi + ci;
+                zr = next_r;
+                norm = zr * zr + zi * zi;
+                trap = std::min(trap, std::fabs(norm - 0.55f));
+                ++iteration;
             }
-            
-            // Smooth coloring
-            float smoothed = iteration + 1 - std::log2(std::log2(std::abs(z)));
-            smoothed = smoothed < 0 ? 0 : smoothed;
-            
-            // Calculate color based on iteration count
+
+            float hue;
+            float sat;
+            float val;
             if (iteration < max_iter) {
-                uint8_t r, g, b;
-                // Map iteration count to color
-                float hue = std::fmod(smoothed * 0.01f + color_shift->get(), 1.0f) * 360.0f;
-                color::hsv_to_rgb(hue, 0.9f, 1.0f, r, g, b);
-                
-                canvas->SetPixel(x, y, r, g, b);
+                // Smooth escape time: slow escapers sit on the set and glow;
+                // quick escapers far away fade into the dark background.
+                const float smoothed = static_cast<float>(iteration) + 1.0f - std::log2(0.5f * std::log2(std::max(norm, 1.0001f)));
+                const float glow = std::clamp((smoothed - 3.0f) / glow_span, 0.0f, 1.0f);
+                const float eased = glow * glow * (3.0f - 2.0f * glow);
+                hue = 0.74f - 0.62f * std::sqrt(glow) + smoothed * 0.004f;
+                sat = 0.95f - 0.25f * eased;
+                val = 0.02f + 0.98f * eased;
             }
-            // Pixels that exceed the max iterations remain black
+            else {
+                // Inside the set: a dim circle-trap pattern rather than black.
+                const float line = std::exp(-trap * 6.0f);
+                hue = 0.80f + 0.1f * line;
+                sat = 0.85f;
+                val = 0.12f + 0.38f * line;
+            }
+            hue = std::fmod(hue + shift + hue_drift, 1.0f);
+            if (hue < 0.0f)
+                hue += 1.0f;
+            uint8_t r, g, b;
+            color::hsv_to_rgb(hue * 360.0f, sat, val, r, g, b);
+            canvas->SetPixel(x, y, r, g, b);
         }
     }
-    
+
     wait_until_next_frame();
     return true;
 }

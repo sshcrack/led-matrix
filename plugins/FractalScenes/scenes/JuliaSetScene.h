@@ -34,10 +34,10 @@ namespace Scenes {
 
     private:
         // Julia set parameters
-        std::complex<float> c = {-0.7, 0.27};
-        
+        std::complex<float> c = {-0.7f, 0.27f};
+
         // Properties
-        PropertyPointer<float> zoom = MAKE_PROPERTY_MINMAX("zoom", float, 0.8f, 0.1f, 3.0f);
+        PropertyPointer<float> zoom = MAKE_PROPERTY_MINMAX("zoom", float, 1.0f, 0.1f, 3.0f);
         PropertyPointer<float> move_speed = MAKE_PROPERTY_MINMAX("move_speed", float, 0.1f, 0.0f, 1.0f);
         PropertyPointer<int> max_iterations = MAKE_PROPERTY_MINMAX("max_iterations", int, 100, 10, 500);
         PropertyPointer<bool> animate_params = MAKE_PROPERTY("animate_params", bool, true);
