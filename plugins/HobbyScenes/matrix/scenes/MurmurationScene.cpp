@@ -100,7 +100,9 @@ void MurmurationScene::build_backdrop()
     // Low far hills, then the near shore with a few stands of trees and one lone tree.
     const Rgb far = from_env(L.lit(to_env({0.30f, 0.34f, 0.36f}), 0.85f));
     bg.fill_below([&](float x) { return (ShoreY - 2.5f - 7.0f * hill(x / sx * 0.8f, 1.7f)) * sy; }, far);
-    const Rgb shore = from_env(L.lit(L.ground(L.grass(to_env({0.20f, 0.27f, 0.14f})), 0.8f), 0.55f));
+    // Winter banks and water lose the sunset's warmth a little.
+    const Rgb chill{0.62f, 0.70f, 0.86f};
+    const Rgb shore = mix(from_env(L.lit(L.ground(L.grass(to_env({0.20f, 0.27f, 0.14f})), 0.8f), 0.55f)), chill, 0.25f * L.winter);
     bg.fill_below([&](float x) { return (ShoreY - 0.8f - 2.0f * hill(x / sx * 2.3f, 4.2f)) * sy; }, shore);
     const Rgb pineShade = from_env(L.lit(L.ground(to_env({0.07f, 0.12f, 0.08f}), 0.3f), 0.6f));
     const Rgb pineLit = from_env(L.lit(L.ground(to_env({0.11f, 0.17f, 0.10f}), 0.3f), 0.6f));
@@ -109,7 +111,7 @@ void MurmurationScene::build_backdrop()
         art.pine(x, ShoreY - 0.5f, 4.0f + 3.5f * hash01(37u + i), pineShade, pineLit);
     }
     for (int i = 0; i < 4; ++i) art.pine(116.0f + 3.2f * i, ShoreY - 0.5f, 3.5f + 2.5f * hash01(53u + i), pineShade, pineLit);
-    Environment::paint_tree(s, L, 99.0f * sx, (ShoreY - 0.6f) * sy, 22.0f * sy, 5u, 0.0f, 0.45f);
+    Environment::paint_tree(s, L, 99.0f * sx, (ShoreY - 0.6f) * sy, 26.0f * sy, 5u, 0.0f, 0.3f);
 
     // Still water mirrors the sky and the shore, darker and bluer with depth.
     const Rgb deep = from_env(L.lit(to_env({0.05f, 0.09f, 0.12f})));
@@ -118,7 +120,8 @@ void MurmurationScene::build_backdrop()
         const float depth = static_cast<float>(y - shoreRow) / std::max(1, bg.h - shoreRow);
         for (int x = 0; x < bg.w; ++x) {
             const float* p = bg.at(x, m);
-            bg.set(x, y, scale(mix(Rgb{p[0], p[1], p[2]}, deep, 0.15f + 0.4f * depth), 0.8f));
+            const Rgb reflected = mix(Rgb{p[0], p[1], p[2]}, deep, 0.15f + 0.4f * depth + 0.25f * L.winter);
+            bg.set(x, y, scale(Rgb{reflected.r * (1.0f - 0.18f * L.winter), reflected.g * (1.0f - 0.08f * L.winter), reflected.b}, 0.8f));
         }
     }
     // A pale line where the water meets the shore.
@@ -242,7 +245,10 @@ void MurmurationScene::draw_birds(float raw_dt)
     const float sx = W / 128.0f, sy = H / 128.0f;
     const float decay = std::exp(-raw_dt / TrailSeconds);
     for (auto& v : ink_) v *= decay;
-    const float deposit = (1.0f - decay) * InkGain;
+    // Fewer birds (reduced quality) each mark a little stronger, a huge flock a little softer,
+    // so the outline stays readable and dense overlaps keep their texture.
+    const float deposit =
+        (1.0f - decay) * InkGain * std::clamp(std::sqrt(480.0f / std::max<float>(1.0f, static_cast<float>(birds_.size()))), 0.8f, 1.35f);
     const Shape s = flock_shape(flockTime_);
     const auto splat = [&](float px, float py, float a) {
         const int x0 = static_cast<int>(std::floor(px)), y0 = static_cast<int>(std::floor(py));
@@ -259,7 +265,7 @@ void MurmurationScene::draw_birds(float raw_dt)
     for (const auto& b : birds_) {
         // Birds in the turning band show their wings and look darker.
         const float turn = 0.5f + 0.5f * std::cos(wave_phase(s, b.u));
-        splat(b.x * sx - 0.5f, b.y * sy - 0.5f, deposit * b.size * (0.45f + 0.55f * turn * turn));
+        splat(b.x * sx - 0.5f, b.y * sy - 0.5f, deposit * b.size * (0.6f + 0.4f * turn * turn));
     }
     if (falcon_.active) {
         // Wing beats: a short flicker between spread and folded wings.
@@ -276,7 +282,7 @@ void MurmurationScene::draw_birds(float raw_dt)
         for (int x = 0; x < W; ++x) {
             const float ink = ink_[static_cast<size_t>(y * W + x)];
             if (ink > 0.004f)
-                cv_.blend(x, y, bird, 0.9f * (1.0f - std::exp(-ink)));
+                cv_.blend(x, y, bird, 0.86f * (1.0f - std::exp(-1.5f * ink)));
         }
     // The flock's reflection where it flies low, rippled by the water.
     for (int y = shoreRow; y < H; ++y) {
@@ -291,7 +297,7 @@ void MurmurationScene::draw_birds(float raw_dt)
             const int src = std::clamp(x + shift, 0, W - 1);
             const float ink = ink_[static_cast<size_t>(m * W + src)];
             if (ink > 0.004f)
-                cv_.blend(x, y, bird, 0.5f * (1.0f - std::exp(-ink)));
+                cv_.blend(x, y, bird, 0.5f * (1.0f - std::exp(-1.5f * ink)));
         }
     }
 }

@@ -114,7 +114,7 @@ Scenes::SceneDescriptor Scenes::WatermelonPlasmaScene::get_descriptor() const {
         {"deep_space",
          "Indigo plasma",
          "Slow violet and indigo bands",
-         {{"look_palette", "SPACE"}, {"look_brightness", 0.45f}, {"speed", 0.45f}},
+         {{"look_palette", "SPACE"}, {"look_brightness", 0.55f}, {"speed", 0.45f}},
          {"calm", "space", "indigo"},
          0.26f,
          0.30f,
