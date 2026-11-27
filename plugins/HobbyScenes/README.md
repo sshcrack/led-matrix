@@ -36,12 +36,18 @@ crosses every two minutes at default speed.
 ## Starling murmuration
 
 **Starling murmuration** (`boids`, the id of the flocking demo it replaced, so
-saved presets keep working) shows a flock of starlings over a wetland at dusk.
-The flock is a shape that drifts, stretches, bends and sometimes splits, with
-turning waves running through it; each bird follows its place with its own lag,
-and a short-lived darkness buffer leaves soft trails. A falcon passes now and
-then and the flock opens around it. Time of day stays dusk; weather (clear,
-cloudy, fog) and season follow the real world. The flock shrinks with
+saved presets keep working) shows starlings over a wetland at dusk. Each bird
+steers by its seven nearest neighbours (found through a grid), keeps a nearly
+constant speed and turns smoothly; turns start at one bird and roll through the
+flock as dark bands, because banking birds show more wing. Far birds are single
+specks and the flock's shape comes from their density; a few nearer birds and
+the occasional falcon show wingbeats.
+
+The scene opens on a flock already wheeling in view. Each flock performs for a
+while, then flies off or gathers over the reeds and drops into them to roost;
+the sky stays empty for a spell (apart from small groups passing) until the
+next flock, of a different size, flies in. Time of day stays dusk; weather
+(clear, cloudy, fog) and season follow the real world. Flock size shrinks with
 `render_quality_scale()`.
 
 ## Previewing changes
