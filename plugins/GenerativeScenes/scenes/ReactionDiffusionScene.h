@@ -56,6 +56,8 @@ private:
     static constexpr int NUM_PRESETS = 5;
     static constexpr int STEPS_PER_PRESET = 4000;
     static constexpr int SIM_STEPS_PER_TICK = 8;
+    static constexpr int WARMUP_TICKS = 90;
+    static constexpr int WARMUP_STEP_FACTOR = 3;
     static constexpr float DU = 0.16f;
     static constexpr float DV = 0.08f;
     static constexpr float DT = 1.0f;
@@ -69,6 +71,7 @@ private:
 
     int current_preset_ = 0;
     int step_count_ = 0;
+    int warmup_ticks_ = 0;
     float global_hue_ = 0.0f;
 
     float audio_bass_ = 0.0f;

@@ -51,7 +51,7 @@ void from_json(const nlohmann::json &j, Overrides &o);
 void to_json(nlohmann::json &j, const Settings &s);
 void from_json(const nlohmann::json &j, Settings &s);
 
-/// Before the shared environment, each weather_ambience scene had its own
+/// Before the shared environment, each weather_ambience scene (since retired) had its own
 /// "location_lat"/"location_lon" (default Berlin). Returns the first preset's
 /// custom coordinates from the raw config "presets" object, or nothing when
 /// every preset kept the default. `conflicts` counts presets with other ones.

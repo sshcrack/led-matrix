@@ -52,6 +52,7 @@ void ReactionDiffusionScene::initialize(int width, int height)
     beat_pulse_ = drop_pulse_ = 0.0f;
     last_beat_counter_ = last_drop_counter_ = 0;
     simulation_.reset();
+    warmup_ticks_ = 0;
     seed_random_patch();
 }
 
@@ -80,12 +81,24 @@ void ReactionDiffusionScene::seed_random_patch()
 {
     if (matrix_width <= 2 || matrix_height <= 2)
         return;
-    std::uniform_int_distribution<int> x_dist(0, matrix_width - 1);
-    std::uniform_int_distribution<int> y_dist(0, matrix_height - 1);
+    // A jittered grid of seeds across the whole panel: a few random seeds took
+    // 30-45 s to grow into a pattern, while an even scatter reads as one from
+    // the first second and the warm-up below develops it further.
     const int min_dimension = std::min(matrix_width, matrix_height);
-    const int radius = std::clamp(min_dimension / 32, 2, 5);
-    const int seed_count = 6 + static_cast<int>(rng_() % 8);
-    for (int i = 0; i < seed_count; ++i) seed_patch(x_dist(rng_), y_dist(rng_), radius);
+    const int radius = std::clamp(min_dimension / 40, 2, 4);
+    const int spacing = std::clamp(min_dimension / 8, 6, 24);
+    const float jitter = static_cast<float>(spacing) * 0.38f;
+    std::uniform_real_distribution<float> jitter_dist(-jitter, jitter);
+    std::uniform_real_distribution<float> offset_dist(0.0f, static_cast<float>(spacing));
+    const float offset_x = offset_dist(rng_);
+    const float offset_y = offset_dist(rng_);
+    for (int gy = 0; gy * spacing < matrix_height; ++gy) {
+        for (int gx = 0; gx * spacing < matrix_width; ++gx) {
+            const int x = static_cast<int>(std::lround(offset_x + static_cast<float>(gx * spacing) + jitter_dist(rng_)));
+            const int y = static_cast<int>(std::lround(offset_y + static_cast<float>(gy * spacing) + jitter_dist(rng_)));
+            seed_patch(((x % matrix_width) + matrix_width) % matrix_width, ((y % matrix_height) + matrix_height) % matrix_height, radius);
+        }
+    }
 }
 
 void ReactionDiffusionScene::reset_pattern(bool advance_preset)
@@ -98,6 +111,7 @@ void ReactionDiffusionScene::reset_pattern(bool advance_preset)
     std::fill(v_next_.begin(), v_next_.end(), 0.0f);
     seed_random_patch();
     step_count_ = 0;
+    warmup_ticks_ = 0;
 }
 
 void ReactionDiffusionScene::simulation_step(float feed, float kill)
@@ -262,9 +276,12 @@ bool ReactionDiffusionScene::render(rgb_matrix::FrameCanvas* canvas)
     const float feed = std::clamp(preset.feed + (audio_mids_ - 0.35f) * strength * 0.0028f, 0.015f, 0.075f);
     const float kill = std::clamp(preset.kill + audio_treble_ * strength * 0.0014f - audio_bass_ * strength * 0.0010f, 0.045f, 0.072f);
 
-    const int quality_steps = std::max(1, static_cast<int>(std::lround(
-        SIM_STEPS_PER_TICK * (0.45f + 0.55f * render_quality_scale()))));
+    const int base_steps = std::max(1, static_cast<int>(std::lround(SIM_STEPS_PER_TICK * (0.45f + 0.55f * render_quality_scale()))));
+    // Spread the warm-up over the first seconds: every tick simulates extra
+    // steps, so the seeded pattern matures without a long first frame.
     simulation_.advance(dt, [&](double) {
+        const int quality_steps = warmup_ticks_ < WARMUP_TICKS ? base_steps * WARMUP_STEP_FACTOR : base_steps;
+        ++warmup_ticks_;
         for (int step = 0; step < quality_steps; ++step) simulation_step(feed, kill);
         step_count_ += quality_steps;
     });
