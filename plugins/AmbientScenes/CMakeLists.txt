@@ -2,11 +2,9 @@ register_plugin(AmbientScenes
         matrix/AmbientScenes.cpp
         matrix/AmbientScenes.h
         scenes/ClockScene.cpp
-        scenes/ClockSceneAnalog.cpp
-        scenes/ClockSceneDigital.cpp
-        scenes/ClockSceneEffects.cpp
-        scenes/ClockSceneInternal.h
         scenes/ClockScene.h
+        scenes/NixieArt.cpp
+        scenes/NixieArt.h
         scenes/MetaBlobScene.cpp
         scenes/MetaBlobScene.h
         scenes/MetaballRenderer.cpp

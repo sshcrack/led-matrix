@@ -1,76 +1,96 @@
 #pragma once
 
+// Nixie-tube clock: the local time as glowing orange numerals in glass tubes
+// on a walnut plinth (the look of the desktop shader music_tube_amp, drawn
+// natively so it runs on the Pi).
+//
+// Cost: everything that does not move (room, plinth, glass, mesh, unlit
+// cathodes) and every numeral's glow are baked once per layout. A frame only
+// recomposes the rectangles of tubes whose digit or glow changed, then blits
+// one cached RGB buffer. See NixieArt.h for the baked layers.
+
+#include <cstdint>
+#include <ctime>
+#include <vector>
+
+#include "NixieArt.h"
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
-#include <vector>
-#include <ctime>
 
 namespace AmbientScenes {
-    enum class ClockStyle {
-        CLASSIC,
-        MINIMAL,
-        ELEGANT
-    };
+
+enum class HourFormat { H24, H12 };
+enum class ColonStyle { BLINK, STEADY, OFF };
+enum class DigitChange { FADE, SLOT, FLICKER, INSTANT };
 
 class ClockScene : public Scenes::Scene {
-private:
-    PropertyPointer<bool> show_digital = MAKE_PROPERTY("show_digital", bool, true);
-    PropertyPointer<bool> show_analog = MAKE_PROPERTY("show_analog", bool, false);
-    PropertyPointer<bool> show_seconds = MAKE_PROPERTY("show_seconds", bool, false);
-    PropertyPointer<bool> show_date = MAKE_PROPERTY("show_date", bool, true);
-    PropertyPointer<rgb_matrix::Color> hour_color = MAKE_PROPERTY("hour_color", rgb_matrix::Color, rgb_matrix::Color(90, 220, 255));
-    PropertyPointer<rgb_matrix::Color> minute_color = MAKE_PROPERTY("minute_color", rgb_matrix::Color, rgb_matrix::Color(235, 245, 255));
-    PropertyPointer<rgb_matrix::Color> second_color = MAKE_PROPERTY("second_color", rgb_matrix::Color, rgb_matrix::Color(255, 120, 170));
-    PropertyPointer<rgb_matrix::Color> bg_color = MAKE_PROPERTY("bg_color", rgb_matrix::Color, rgb_matrix::Color(2, 7, 18));
-    PropertyPointer<bool> smooth_motion = MAKE_PROPERTY("smooth_motion", bool, true);
-    PropertyPointer<Plugins::EnumProperty<ClockStyle>> clock_style = MAKE_ENUM_PROPERTY("clock_style", ClockStyle, ClockStyle::MINIMAL);
-    PropertyPointer<bool> use_glow_effect = MAKE_PROPERTY("use_glow_effect", bool, true);
-    PropertyPointer<bool> use_antialiasing = MAKE_PROPERTY("use_antialiasing", bool, true);
+    PropertyPointer<Plugins::EnumProperty<HourFormat>> hour_format_ = MAKE_ENUM_PROPERTY("hour_format", HourFormat, HourFormat::H24);
+    PropertyPointer<bool> leading_zero_ = MAKE_PROPERTY("leading_zero", bool, true);
+    // Same key and meaning as the old clock's show_seconds, so saved presets keep it.
+    PropertyPointer<bool> show_seconds_ = MAKE_PROPERTY("show_seconds", bool, false);
+    PropertyPointer<Plugins::EnumProperty<ColonStyle>> colon_ = MAKE_ENUM_PROPERTY("colon", ColonStyle, ColonStyle::BLINK);
+    PropertyPointer<Plugins::EnumProperty<DigitChange>> digit_change_ = MAKE_ENUM_PROPERTY("digit_change", DigitChange, DigitChange::FADE);
+    PropertyPointer<bool> cathode_cycle_ = MAKE_PROPERTY("cathode_cycle", bool, true);
+    PropertyPointer<bool> music_glow_ = MAKE_PROPERTY("music_glow", bool, true);
 
-    // For smooth transitions
-    float current_hour;
-    float current_minute;
-    float current_second;
-    int last_digit_update;
+    struct Tube {
+        int target = -2;           // digit the time asks for (-1 blank, -2 not set yet)
+        int from = -1;             // digit shown before the change
+        double changed_at = -1e9;  // scene time of the last change
+        // What was last composed, to skip unchanged tubes.
+        int shown_a = -3, shown_b = -3;
+        float shown_mix = -1.0f, shown_heat = -1.0f;
+        float kick = 0.0f;  // music flare, decays
+    };
 
-    // Clock face helpers
-    void draw_analog_clock(rgb_matrix::FrameCanvas *matrix, int center_x, int center_y, int radius);
-    void draw_digital_clock(rgb_matrix::FrameCanvas *matrix, int y_position);
-    void draw_date(rgb_matrix::FrameCanvas *matrix, int y_position);
-    void draw_clock_hand(rgb_matrix::FrameCanvas *matrix, int center_x, int center_y, 
-                        float angle, int length, uint8_t r, uint8_t g, uint8_t b, int thickness);
-    void draw_antialiased_line(rgb_matrix::FrameCanvas *matrix, int x0, int y0, int x1, int y1, 
-                        uint8_t r, uint8_t g, uint8_t b, bool apply_glow = false);
-    void draw_small_digit(rgb_matrix::FrameCanvas *matrix, int digit, int x, int y, 
-                        uint8_t r, uint8_t g, uint8_t b);
-    void draw_scaled_digit(rgb_matrix::FrameCanvas *matrix, int digit, int x, int y, int scale,
-                           uint8_t r, uint8_t g, uint8_t b);
-    void set_pixel_with_brightness(FrameCanvas* canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b, float brightness);
-    void apply_glow(FrameCanvas* canvas, int x, int y, uint8_t r, uint8_t g, uint8_t b, float intensity);
-    void draw_clock_face(rgb_matrix::FrameCanvas *matrix, int center_x, int center_y, int radius);
+    Nixie::Art art_;
+    std::vector<Tube> tubes_;
+    bool baked_seconds_ = false;
+    int baked_w_ = 0, baked_h_ = 0;
+
+    double scene_time_ = 0.0;
+    double cycle_start_ = -1e9;    // cathode cycle: scene start and the top of each hour
+    bool cycle_from_dark_ = true;  // the start-up cycle begins with dark tubes
+    int last_cycle_hour_ = -1;
+    std::int64_t preview_wall_ms_ = -1;
+
+    std::vector<Nixie::TubeLook> looks_;
+    float shown_colon_ = -1.0f;
+    bool force_full_ = true;
+
+    // Music glow
+    float live_ = 0.0f, bass_ = 0.0f, music_poll_ = 0.0f;
+    std::uint64_t beat_seen_ = 0;
+    std::size_t beat_index_ = 0;
+
+    void rebake();
+    [[nodiscard]] std::int64_t wall_ms();
+    [[nodiscard]] std::vector<int> wanted_digits(const std::tm& t) const;
+    void update_music(float dt);
+    // The numeral pair and mix tube i shows now.
+    void tube_look(int i, const Tube& tube, int& a, int& b, float& mix) const;
 
 public:
-    explicit ClockScene();
+    ClockScene();
     ~ClockScene() override = default;
 
-    bool render(rgb_matrix::FrameCanvas *canvas) override;
+    bool render(rgb_matrix::FrameCanvas* canvas) override;
     void initialize(int width, int height) override;
-    [[nodiscard]] std::string get_name() const override;
+    [[nodiscard]] std::string get_name() const override { return "clock"; }
     [[nodiscard]] std::string get_category() const override { return "Ambient"; }
     void register_properties() override;
+    [[nodiscard]] Scenes::SceneDescriptor get_descriptor() const override;
+    [[nodiscard]] Scenes::SceneCapabilities get_capabilities() const override;
+    [[nodiscard]] bool supports_virtual_time() const override { return true; }
+    // 2: nixie rewrite, new property set.
+    [[nodiscard]] int remote_contract_version() const override { return 2; }
 
-    tmillis_t get_default_duration() override {
-        return 20000;
-    }
-
-    int get_default_weight() override {
-        return 3;
-    }
-
-    using Scene::Scene;
+    tmillis_t get_default_duration() override { return 20000; }
+    int get_default_weight() override { return 3; }
 };
 
 class ClockSceneWrapper : public Plugins::SceneWrapper {
     std::unique_ptr<Scenes::Scene> create() override;
 };
-}
+
+}  // namespace AmbientScenes
