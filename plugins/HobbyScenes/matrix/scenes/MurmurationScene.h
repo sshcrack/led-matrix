@@ -58,6 +58,7 @@ class MurmurationScene final : public HobbySceneBase {
     float clock_ = 0.0f;
     float simCarry_ = 0.0f;
     float roostX_ = 16.0f, exitX_ = -200.0f, exitY_ = 20.0f;
+    bool descending_ = false;  // roosting flock is over the reeds and pouring down
 
     std::vector<float> backdrop_, previous_;  // cached sky, shore, water and reeds
     float fade_ = 0.0f;

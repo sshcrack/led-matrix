@@ -278,6 +278,7 @@ void MurmurationScene::update_phase(float dt)
                 if (rnd() < 0.55f) {
                     // Dusk: the flock pours down into the reeds to roost.
                     phase_ = Phase::Roost;
+                    descending_ = false;
                     roostX_ = rnd() < 0.6f ? 9.0f + 9.0f * rnd() : 110.0f + 9.0f * rnd();
                 }
                 else {
@@ -292,7 +293,16 @@ void MurmurationScene::update_phase(float dt)
             phaseLeft_ += dt;
             az_ = 0.0f;
             ax_ = phase_ == Phase::Roost ? roostX_ : exitX_;
-            ay_ = phase_ == Phase::Roost ? std::min(reed_top(roostX_) + 4.0f, 124.0f) : exitY_;
+            ay_ = exitY_;
+            if (phase_ == Phase::Roost) {
+                // First gather over the reed patch, then pour straight down into it.
+                float cx = 0.0f;
+                for (const auto& b : birds_) cx += b.x;
+                cx /= static_cast<float>(std::max<size_t>(1, birds_.size()));
+                if (std::fabs(cx - roostX_) < 10.0f || phaseLeft_ > 30.0f)
+                    descending_ = true;
+                ay_ = descending_ ? std::min(reed_top(roostX_) + 6.0f, 124.0f) : 58.0f;
+            }
             if (phase_ == Phase::Roost && phaseLeft_ > 70.0f) {
                 phase_ = Phase::Depart;  // the last stragglers fly off instead
                 exitX_ = ax_ < 64.0f ? -160.0f : 290.0f;
@@ -459,7 +469,7 @@ void MurmurationScene::simulate(float h)
             accY += ty * f;
             accZ += tz * f * 0.3f;  // the pull is mostly horizontal, as toward a roost
         }
-        if (phase_ == Phase::Roost && std::fabs(b.x - roostX_) < 12.0f)
+        if (phase_ == Phase::Roost && descending_ && std::fabs(b.x - roostX_) < 12.0f)
             accY += 8.0f;  // the funnel pours down into the reeds
         if (phase_ != Phase::Roost && b.y > 72.0f)
             accY -= (b.y - 72.0f) * 4.0f;
@@ -526,7 +536,7 @@ void MurmurationScene::simulate(float h)
             if (b.x < RemoveLeft || b.x > RemoveRight || b.y < RemoveTop || b.y > 127.0f)
                 return true;
             // Birds that drop below the reed tops settle in and disappear among them.
-            return roosting && b.y > reed_top(b.x) + 1.5f;
+            return roosting && b.y > reed_top(b.x) + 5.0f;
         });
     }
 }
@@ -594,10 +604,11 @@ void MurmurationScene::draw_birds()
     const auto& L = env();
     const Rgb bird = mix(scale(from_env(L.zenith), 0.2f), Rgb{0.015f, 0.012f, 0.02f}, 0.7f);
     const int shoreRow = std::clamp(static_cast<int>(std::lround(ShoreY * sy)), 1, H);
+    // Below the shore, birds only show over open water: the reeds hide birds that drop into them.
     for (int y = 0; y < H; ++y)
         for (int x = 0; x < W; ++x) {
             const float ink = ink_[static_cast<size_t>(y * W + x)];
-            if (ink > 0.004f)
+            if (ink > 0.004f && (y < shoreRow || water_[static_cast<size_t>(y * W + x)]))
                 cv_.blend(x, y, bird, 0.9f * (1.0f - std::exp(-1.2f * ink)));
         }
     // Birds flying low show faintly in the water, rippled (not while they drop into the reeds).
