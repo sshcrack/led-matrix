@@ -4,7 +4,6 @@
 
 #include "Constants.h"
 #include "WeatherPreviewFixture.h"
-#include "scenes/WeatherAmbienceScene.h"
 #include "scenes/WeatherScene.h"
 #include "shared/matrix/server/server_utils.h"
 #include "spdlog/spdlog.h"
@@ -22,7 +21,6 @@ WeatherOverview::create_image_providers() {
 vector<std::unique_ptr<SceneWrapper>> WeatherOverview::create_scenes() {
     vector<std::unique_ptr<SceneWrapper>> created;
     created.push_back(std::make_unique<WeatherSceneWrapper>());
-    created.push_back(std::make_unique<WeatherAmbienceSceneWrapper>());
     return created;
 }
 
