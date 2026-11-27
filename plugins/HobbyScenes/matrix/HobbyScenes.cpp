@@ -9,6 +9,7 @@
 #include "scenes/HolidayScenes.h"
 #include "scenes/HorseScenes.h"
 #include "scenes/KoiPondScene.h"
+#include "scenes/MurmurationScene.h"
 #include "scenes/NewYearScene.h"
 #include "scenes/RailwayViaductScene.h"
 #include "scenes/SeasonScenes.h"
@@ -38,6 +39,7 @@ vector<std::unique_ptr<SceneWrapper>> HobbyPlugin::create_scenes()
     wrappers.push_back(std::make_unique<HobbySceneWrapper<SpaceStationWindowScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<BonsaiTerrariumScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<KoiPondScene>>());
+    wrappers.push_back(std::make_unique<HobbySceneWrapper<MurmurationScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<AllotmentScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<CyclingScene>>());
     wrappers.push_back(std::make_unique<HobbySceneWrapper<SkiingScene>>());

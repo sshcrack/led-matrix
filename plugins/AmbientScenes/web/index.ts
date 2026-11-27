@@ -10,7 +10,7 @@ export default definePluginUi({
   plugin: 'AmbientScenes',
   presetTemplates: [
     { id: 'night-sky', name: 'Night sky', description: 'Slow starfield with a drifting blob', scenes: ['starfield', 'metablob'], variants: { starfield: 'calm' } },
-    { id: 'digital-calm', name: 'Digital calm', description: 'Matrix rain and a neon tunnel', scenes: ['digitalrain', 'neontunnel'] },
+    { id: 'rainy-tunnel', name: 'Rain and neon', description: 'Soft rain and a neon tunnel', scenes: ['rain', 'neontunnel'] },
     { id: 'desk-clock', name: 'Desk clock', description: 'Clock, with a quiet starfield between', scenes: ['clock', 'starfield'] },
   ],
 })

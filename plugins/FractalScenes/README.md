@@ -14,16 +14,6 @@ An animated Julia set fractal visualization. The parameters of the Julia set slo
 - **animate_params**: Enable/disable animation of fractal parameters
 - **color_shift**: Shift the color spectrum (0.0-1.0)
 
-### Wave Pattern
-A colorful animated wave pattern with customizable parameters.
-
-#### Properties:
-- **num_waves**: Number of overlapping waves (1-10)
-- **speed**: Animation speed (0.1-5.0)
-- **color_speed**: Color cycling speed (0.0-2.0)
-- **rainbow_mode**: Toggle between rainbow colors and a blue-cyan theme
-- **wave_height**: Control the amplitude of the waves (0.1-3.0)
-
 ### Game of Life
 Conway's Game of Life cellular automaton running on the LED matrix.
 

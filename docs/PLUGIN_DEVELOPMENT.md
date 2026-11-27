@@ -492,7 +492,7 @@ At minimum:
 
 - `plugins/ExampleScenes/` — minimal scene/plugin patterns.
 - `plugins/AmbientScenes/` — procedural scenes and adaptive MetaBlob rendering.
-- `plugins/GenerativeScenes/` — stateful/heavier simulations such as Boids and Reaction Diffusion.
+- `plugins/GenerativeScenes/` — stateful/heavier simulations such as Reaction Diffusion and Falling Sand.
 - `plugins/AudioVisualizer/` — rich audio Runtime Input/state consumption.
 - `plugins/SpotifyScenes/` — preview fixtures and mirrored network-backed runtime state.
 - `plugins/Countdown/` and `plugins/WeatherOverview/` — plugin-local resources used by both matrix and worker builds.

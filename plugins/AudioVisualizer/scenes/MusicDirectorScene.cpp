@@ -221,12 +221,18 @@ std::vector<std::string> MusicDirectorScene::preferred(MusicalState state) const
             return {"audio_ridgeline", "audio_skyline", "audio_lighthouse", "audio_spectrum", "shader:music_neon_orbit",
                     "shader:music_spectrum_tunnel", "audio_planet"};
         case MusicalState::Peak:
-            return {"audio_spectrum", "audio_ridgeline", "audio_skyline", "audio_particles", "shader:music_spectrum_tunnel",
+            return {"audio_spectrum",          "audio_ridgeline", "audio_skyline", "audio_stage", "shader:music_spectrum_tunnel",
                     "shader:music_neon_orbit", "audio_campfire"};
         case MusicalState::Groove:
         default:
-            return {"audio_skyline", "audio_ridgeline", "audio_reef", "audio_planet", "audio_spectrum", "audio_campfire",
-                    "shader:music_liquid_ribbons", "shader:music_neon_orbit", "audio_particles"};
+            return {"audio_skyline",
+                    "audio_ridgeline",
+                    "audio_reef",
+                    "audio_planet",
+                    "audio_spectrum",
+                    "audio_campfire",
+                    "shader:music_liquid_ribbons",
+                    "shader:music_neon_orbit"};
     }
 }
 

@@ -1,7 +1,7 @@
 #include "GenerativeScenes.h"
-#include "scenes/ReactionDiffusionScene.h"
-#include "scenes/BoidsScene.h"
+
 #include "scenes/FallingSandScene.h"
+#include "scenes/ReactionDiffusionScene.h"
 
 using namespace GenerativeScenes;
 
@@ -11,7 +11,6 @@ vector<std::unique_ptr<SceneWrapper>> GenerativePlugin::create_scenes() {
     vector<std::unique_ptr<SceneWrapper>> created;
 
     created.push_back(std::make_unique<ReactionDiffusionSceneWrapper>());
-    created.push_back(std::make_unique<BoidsSceneWrapper>());
     created.push_back(std::make_unique<FallingSandSceneWrapper>());
 
     return created;

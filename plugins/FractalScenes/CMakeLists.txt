@@ -5,6 +5,4 @@ register_plugin(FractalScenes
         scenes/GameOfLifeScene.h
         scenes/JuliaSetScene.cpp
         scenes/JuliaSetScene.h
-        scenes/WavePatternScene.cpp
-        scenes/WavePatternScene.h
 )

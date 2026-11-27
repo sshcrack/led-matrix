@@ -1,7 +1,6 @@
 # Ambient Scenes
 
-Provides Starfield, Metablob, Clock, Sorting Visualizer, Bouncing Logo, Neon
-Tunnel and Digital Rain. Scene properties and curated looks are listed in the
+Provides Starfield, Metablob, Clock, Neon Tunnel and Rain. Scene properties and curated looks are listed in the
 web UI's **Scenes** page; **Scene Lab** lets you try them before saving a preset.
 
 The plugin also supplies one-tap starting points to the web preset builder

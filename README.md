@@ -420,13 +420,13 @@ Scenes are supplied by plugins. Native scenes render on the Pi or desktop worker
 
 | Category | Highlights |
 |:--|:--|
-| **Audio reactive** | A spectrum analyser, particles, and small scenic worlds that dance to the music: campfire, volcano, lighthouse, reef, skate park, tesla coil, night drive, roller rink… plus `music_director`, an automatic DJ |
+| **Audio reactive** | A spectrum analyser and small scenic worlds that dance to the music: campfire, volcano, lighthouse, reef, skate park, tesla coil, night drive, roller rink… plus `music_director`, an automatic DJ |
 | **Shaders** | GPU scenes rendered on your PC: Aurora, Tidal Aquarium, Planetary Vista, Plasma Garden, and music shaders (Celestial Bloom, Subwoofer, Tube Amp…). Add your own `.frag` files |
 | **Hobbies & activities** | Hiking trails and an alpine lake, horses in the mist, basketball and football, and cycling a coast road or skiing a slope |
-| **Ambient** | A forest path and a cottage that change with the seasons, a Christmas market and a sleigh over a snowy village (December only in Automatic Mode), plus Starfield, Metablob, Clock, Digital Rain, Neon Tunnel, Sorting Visualizer, Bouncing Logo |
+| **Ambient** | A forest path and a cottage that change with the seasons, a Christmas market and a sleigh over a snowy village (December only in Automatic Mode), a starling murmuration over a wetland at dusk, plus Starfield, Metablob, Clock, Neon Tunnel, Rain |
 | **Games** | Self-playing Tetris |
-| **Generative** | Reaction-diffusion, Boids, Falling Sand, Watermelon Plasma, Wave |
-| **Fractals** | Julia set, Game of Life, Wave Pattern |
+| **Generative** | Reaction-diffusion, Falling Sand, Watermelon Plasma |
+| **Fractals** | Julia set, Game of Life |
 | **Particles** | Rain, Sparks |
 | **Media** | YouTube music videos that follow your Spotify track, a video player, and Spotify cover art when connected |
 | **Weather** | Live weather (via Open-Meteo, no API key) |
