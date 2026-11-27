@@ -27,11 +27,9 @@ register_plugin(AudioVisualizer
         scenes/AudioFestivalScene.cpp
         scenes/AudioDiscoScene.cpp
         scenes/AudioSkateparkScene.cpp
-        scenes/AudioMoshPitScene.cpp
         scenes/AudioStormFrontScene.cpp
         scenes/AudioDrumKitScene.cpp
         scenes/AudioTeslaCoilScene.cpp
-        scenes/AudioFireworksScene.cpp
         scenes/AudioRollerRinkScene.cpp
         scenes/AudioMarinaSunsetScene.cpp
         scenes/AudioStringLightsScene.cpp

@@ -1,21 +1,18 @@
 #pragma once
 
-// Ten more music-reactive places, cast from the owner's actual Spotify genre
+// More music-reactive places, cast from the owner's actual Spotify genre
 // cache on ledmat (German indie/pop/hip hop, pop, rock/punk/metal, classic and
 // yacht rock, eurodance/hard techno, drum and bass, NDW):
 //
 //   audio_skatepark     - night halfpipe; the skater airs on kicks, graffiti
 //                         wall lights per band            (rock: punk, pop punk)
-//   audio_mosh_pit      - top-down circle pit; the crowd orbits faster with the
-//                         energy, wall of death on drops   (rock: nu metal, metal)
-//   audio_storm_front   - thunderstorm over a field; bolts on onsets, rain with
-//                         the treble                      (rock: AC/DC, nu metal)
+//   audio_storm_front   - thunderstorm over a fishing village on a headland;
+//                         bolts on onsets strike the sea, windows glow per band,
+//                         waves and spray with the bass   (rock: AC/DC, nu metal)
 //   audio_drum_kit      - spot-lit drum kit; kick/snare/hats/toms/crash hit with
 //                         the matching analysis feature   (rock, hiphop)
 //   audio_tesla_coil    - coils arcing to ground rods; kicks fire bolts, treble
 //                         feeds the corona                 (edm: hard techno, electro)
-//   audio_fireworks     - harbour fireworks; shells on beats, finale on drops
-//                         (party, edm: pop, eurodance)
 //   audio_roller_rink   - roller disco from above; skaters lap the rink, floor
 //                         tiles flash per beat             (party, edm: pop, eurodance)
 //   audio_marina_sunset - sunset marina; sun and water shimmer with the music
@@ -25,6 +22,7 @@
 //   audio_cassette      - mixtape close-up; reels spool, LED bars are the
 //                         spectrum                         (acoustic, party: NDW, britpop)
 
+#include <cstdint>
 #include <vector>
 
 #include "kit/AmbientMusicScene.h"
@@ -52,42 +50,38 @@ public:
 };
 
 // --------------------------------------------------------------------------
-class AudioMoshPitScene final : public AmbientMusicScene {
-    struct Moshers {
-        float ang, rad, speed, phase, hue;
-    };
-    std::vector<Moshers> crowd_;
-    AudioKit::Envelope beat_, kick_, drop_, strobe_, wall_;
-    AudioKit::HueCycle palette_{{0.0f, 215.0f, 35.0f, 290.0f}};
-    float spin_ = 0.0f, split_ = 0.0f;
-    PropertyPointer<int> crowdSize_ = MAKE_PROPERTY_MINMAX("crowd_size", int, 120, 30, 260);
-    PropertyPointer<bool> strobe_on_ = MAKE_PROPERTY("strobe_on_drop", bool, true);
-
-    void init_world();
-
-public:
-    bool render(rgb_matrix::FrameCanvas* canvas) override;
-    void register_properties() override;
-    std::string get_name() const override { return "audio_mosh_pit"; }
-    [[nodiscard]] SceneDescriptor get_descriptor() const override;
-};
-
-// --------------------------------------------------------------------------
 class AudioStormFrontScene final : public AmbientMusicScene {
     struct Bolt {
         std::vector<std::pair<float, float>> pts;
         std::vector<std::pair<float, float>> branch;
         float life = 0.0f;
+        float x = 0.0f;  // where it meets the sea (for the reflection)
     };
     struct Streak {
         float x, y, speed;
     };
-    std::vector<float> cloudA_, cloudB_;  // cached cloud density, tiled horizontally
+    struct CloudFlash {
+        float x, y, r, life;
+    };
+    struct Spray {
+        float x, y, vx, vy, life;
+    };
+    std::vector<float> cloudA_, cloudB_;          // cached cloud density, tiled horizontally
+    std::vector<AudioKit::RGB> landBase_;         // headland, village and pier in the dark (cached)
+    std::vector<float> landLit_;                  // how much lightning lights each land pixel, < 0 = no land
+    std::vector<int8_t> windowBand_;              // spectrum band of a lit window pixel, -1 = none
+    std::vector<float> seaPhase_;                 // per-pixel wave phase, perspective included (cached)
+    std::vector<float> seaFoamSeed_;              // per-pixel foam threshold (cached)
+    std::vector<std::pair<int, int>> cliffFoot_;  // pixels where the sea meets the headland
     std::vector<Streak> rain_;
     std::vector<Bolt> bolts_;
-    AudioKit::Envelope flash_, kick_, drop_;
+    std::vector<CloudFlash> cloudFlashes_;
+    std::vector<Spray> spray_;
+    AudioKit::Envelope flash_, kick_, drop_, swell_;
     AudioKit::HueCycle palette_{{225.0f, 265.0f, 200.0f, 300.0f}};
-    float wind_ = 0.0f;
+    float wind_ = 0.0f, waves_ = 0.0f, sinceStrike_ = 0.0f;
+    int horizon_ = 0;
+    float boatX_ = 0.0f, boatY_ = 0.0f, pierLampX_ = 0.0f, pierLampY_ = 0.0f;
     PropertyPointer<float> rainAmount_ = MAKE_PROPERTY_MINMAX("rain_amount", float, 1.0f, 0.0f, 2.0f);
     PropertyPointer<float> boltRate_ = MAKE_PROPERTY_MINMAX("lightning_rate", float, 1.0f, 0.2f, 2.5f);
 
@@ -135,36 +129,6 @@ public:
     bool render(rgb_matrix::FrameCanvas* canvas) override;
     void register_properties() override;
     std::string get_name() const override { return "audio_tesla_coil"; }
-    [[nodiscard]] SceneDescriptor get_descriptor() const override;
-};
-
-// --------------------------------------------------------------------------
-class AudioFireworksScene final : public AmbientMusicScene {
-    struct Shell {
-        float x, y, vx, vy, apex, hue;
-        int band;
-    };
-    struct Spark {
-        float x, y, vx, vy, life, maxLife, hue, sat;
-    };
-    std::vector<Shell> shells_;
-    std::vector<Spark> sparks_;
-    std::vector<float> skyline_;   // per-column rooftop y (cached)
-    std::vector<uint8_t> windows_; // lit-window mask (cached)
-    AudioKit::Envelope beat_, kick_, drop_, flash_;
-    AudioKit::HueCycle palette_{{10.0f, 200.0f, 320.0f, 50.0f, 275.0f}};
-    float finale_ = 0.0f;
-    PropertyPointer<float> density_ = MAKE_PROPERTY_MINMAX("firework_density", float, 1.0f, 0.3f, 2.0f);
-    PropertyPointer<bool> reflection_ = MAKE_PROPERTY("water_reflection", bool, true);
-
-    void init_world();
-    void launch(float x, int band, float power);
-    void burst(const Shell& s, float power);
-
-public:
-    bool render(rgb_matrix::FrameCanvas* canvas) override;
-    void register_properties() override;
-    std::string get_name() const override { return "audio_fireworks"; }
     [[nodiscard]] SceneDescriptor get_descriptor() const override;
 };
 
@@ -248,11 +212,9 @@ public:
 };
 
 using AudioSkateparkSceneWrapper = AmbientSceneWrapper<AudioSkateparkScene>;
-using AudioMoshPitSceneWrapper = AmbientSceneWrapper<AudioMoshPitScene>;
 using AudioStormFrontSceneWrapper = AmbientSceneWrapper<AudioStormFrontScene>;
 using AudioDrumKitSceneWrapper = AmbientSceneWrapper<AudioDrumKitScene>;
 using AudioTeslaCoilSceneWrapper = AmbientSceneWrapper<AudioTeslaCoilScene>;
-using AudioFireworksSceneWrapper = AmbientSceneWrapper<AudioFireworksScene>;
 using AudioRollerRinkSceneWrapper = AmbientSceneWrapper<AudioRollerRinkScene>;
 using AudioMarinaSunsetSceneWrapper = AmbientSceneWrapper<AudioMarinaSunsetScene>;
 using AudioStringLightsSceneWrapper = AmbientSceneWrapper<AudioStringLightsScene>;
