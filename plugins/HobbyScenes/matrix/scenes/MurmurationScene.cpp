@@ -6,44 +6,33 @@ namespace Hobbies {
 namespace {
 
 // Design rows (128 × 128 design space).
-constexpr float ShoreY = 97.0f;           // far shore; water below
-constexpr float FlockFloor = ShoreY - 7;  // birds stay above the shore
+constexpr float ShoreY = 97.0f;  // far shore; water below
 constexpr float CrossfadeSeconds = 3.0f;
-constexpr float TrailSeconds = 0.16f;  // how long a bird's darkness lingers
-constexpr float InkGain = 1.0f;
-constexpr float FlockPace = 1.7f;  // flock-shape seconds per scene second
-constexpr float FalconRadius = 15.0f;
+constexpr float SimStep = 1.0f / 30.0f;
 
-struct Shape {
-    float cx, cy, cos_t, sin_t, length, thickness, bend, split, t;
-};
+// Flocking (design px, seconds). Every bird steers by its seven nearest
+// neighbours: alignment with their heading, cohesion toward their middle,
+// separation from any that come too close. Speed stays near cruise.
+constexpr int Neighbours = 7;
+constexpr float Cruise = 18.0f;     // px/s
+constexpr float Separation = 2.3f;  // px, closer than this pushes apart
+constexpr float SeparationGain = 70.0f;
+constexpr float AlignGain = 3.6f;     // 1/s
+constexpr float CohesionGain = 0.5f;  // 1/s²
+constexpr float CentreGain = 0.35f;   // 1/s², pulls back birds that stray far from the flock's middle
+constexpr float CentreFree = 18.0f;   // px from the middle where that pull starts
+constexpr float MaxAccel = 42.0f;     // px/s², keeps turns smooth
+constexpr float SpeedRelax = 2.5f;    // 1/s
+constexpr float DepthSpring = 0.03f;  // keeps the flock from drifting far in depth
+constexpr float TurnRate = 3.2f;      // rad/s for a turn passed on by a wave
 
-// The flock's outline at time t: a lens that drifts, turns, stretches, bends
-// into a comma and now and then pulls apart into two lobes.
-Shape flock_shape(float t)
-{
-    Shape s{};
-    s.cx = 64.0f + 18.0f * std::sin(0.029f * t + 1.0f) + 7.0f * std::sin(0.083f * t + 0.4f);
-    s.cy = 44.0f + 10.0f * std::sin(0.041f * t + 2.0f) + 5.0f * std::sin(0.107f * t + 0.7f);
-    const float theta = 0.5f * std::sin(0.047f * t) + 0.3f * std::sin(0.121f * t + 1.3f);
-    s.cos_t = std::cos(theta);
-    s.sin_t = std::sin(theta);
-    s.length = 33.0f + 10.0f * std::sin(0.067f * t + 0.3f) + 4.0f * std::sin(0.19f * t);
-    s.thickness = 12.0f + 5.0f * std::sin(0.089f * t + 2.1f) + 2.0f * std::sin(0.23f * t + 1.0f);
-    s.bend = 0.45f * std::sin(0.058f * t + 0.8f);
-    s.split = std::pow(std::max(0.0f, std::sin(0.019f * t - 1.2f)), 12.0f);
-    // Keep the top of the flock a few pixels below the panel edge so high turns stay in view.
-    const float reach = std::fabs(s.sin_t) * s.length * 1.2f + s.cos_t * s.thickness + std::fabs(s.bend) * s.length * 0.5f;
-    s.cy = std::max(s.cy, 6.0f + reach);
-    s.t = t;
-    return s;
-}
+// Spatial grid for the neighbour search (covers the panel plus a margin).
+constexpr float CellSize = 3.0f;
+constexpr float GridX0 = -110.0f, GridY0 = -90.0f;
+constexpr int GridW = 120, GridH = 95;
 
-// Phase of the turning wave that runs along the flock.
-float wave_phase(const Shape& s, float u)
-{
-    return 2.4f * kPi * u - 1.9f * s.t;
-}
+// Leaving the view.
+constexpr float RemoveLeft = -60.0f, RemoveRight = 188.0f, RemoveTop = -50.0f;
 
 }  // namespace
 
@@ -65,8 +54,10 @@ MurmurationScene::MurmurationScene()
 void MurmurationScene::register_properties()
 {
     HobbySceneBase::register_properties();
-    birdCount_->label("Birds").description("How many starlings fly in the flock.").group("Flock");
-    falconOn_->label("Falcon").description("A falcon passes now and then and the flock opens around it.").group("Flock");
+    birdCount_->label("Birds")
+        .description("Size of the largest flocks. Each flock that arrives is a different size up to this.")
+        .group("Flock");
+    falconOn_->label("Falcon").description("A falcon now and then hunts the flock, which swerves away from it.").group("Flock");
     add_property(birdCount_);
     add_property(falconOn_);
 }
@@ -78,10 +69,18 @@ void MurmurationScene::initialize(int width, int height)
     previous_.clear();
     fade_ = 0.0f;
     ink_.assign(static_cast<size_t>(width * height), 0.0f);
-    falcon_ = {};
-    falcon_.wait = 14.0f + 12.0f * rnd();
-    flockTime_ = 40.0f + 400.0f * rnd();
     birds_.clear();
+    fliers_.clear();
+    cellStart_.assign(static_cast<size_t>(GridW * GridH + 1), 0);
+    // The first flock arrives soon after the scene starts.
+    phase_ = Phase::Empty;
+    phaseLeft_ = 2.0f + 3.0f * rnd();
+    stragglerWait_ = 1.0f + 2.0f * rnd();
+    falconWait_ = 30.0f + 30.0f * rnd();
+    waveWait_ = 3.0f;
+    clock_ = 0.0f;
+    simCarry_ = 0.0f;
+    for (auto& p : pathPhase_) p = rnd() * kTau;
 }
 
 void MurmurationScene::build_backdrop()
@@ -164,130 +163,419 @@ void MurmurationScene::build_backdrop()
     backdrop_ = std::move(bg.px);
 }
 
-void MurmurationScene::reset_flock()
+void MurmurationScene::start_flock()
 {
-    // Fewer birds when the Pi is short on time; the shape stays the same.
+    // Fewer birds when the Pi is short on time; every flock is a different size.
     const float q = std::clamp((render_quality_scale() - 0.5f) / 0.5f, 0.0f, 1.0f);
-    const int wanted = static_cast<int>(std::lround(std::clamp(birdCount_->get(), 120, 800) * (0.55f + 0.45f * q)));
-    if (!birds_.empty() && std::abs(wanted - static_cast<int>(birds_.size())) < 24)
-        return;
-    const Shape s = flock_shape(flockTime_);
-    while (static_cast<int>(birds_.size()) > wanted) birds_.pop_back();
-    while (static_cast<int>(birds_.size()) < wanted) {
-        const float r = std::pow(rnd(), 0.7f), a = rnd() * kTau;
+    const float largest = static_cast<float>(std::clamp(birdCount_->get(), 150, 1200)) * (0.5f + 0.5f * q);
+    const int n = std::max(60, static_cast<int>(largest * (0.4f + 0.6f * rnd())));
+    // The flock streams in from one side, densest at its head.
+    const float side = rnd() < 0.5f ? -1.0f : 1.0f;
+    const float ex = side < 0.0f ? -16.0f : 144.0f, ey = 16.0f + 34.0f * rnd();
+    birds_.clear();
+    birds_.reserve(static_cast<size_t>(n));
+    for (int i = 0; i < n; ++i) {
+        const float along = 55.0f * rnd() * rnd();
         Bird b{};
-        b.u = r * std::cos(a);
-        b.v = r * std::sin(a);
-        b.follow = 0.9f + 1.6f * rnd();
-        b.wobble = rnd() * kTau;
-        b.size = 0.7f + 0.5f * rnd();
-        b.x = s.cx + b.u * s.length * s.cos_t - b.v * s.thickness * s.sin_t;
-        b.y = s.cy + b.u * s.length * s.sin_t + b.v * s.thickness * s.cos_t;
+        b.x = ex + side * along;
+        b.y = ey + (rnd() - 0.5f) * (6.0f + 0.3f * along);
+        b.z = (rnd() - 0.5f) * 12.0f;
+        b.cruise = Cruise * (0.92f + 0.16f * rnd());
+        b.vx = -side * b.cruise;
+        b.vy = (rnd() - 0.5f) * 2.0f;
+        b.wander = rnd() * kTau;
+        b.wave = waveId_;
         birds_.push_back(b);
     }
+    phase_ = Phase::Perform;
+    phaseLeft_ = 45.0f + 65.0f * rnd();
+    waveWait_ = 3.0f + 3.0f * rnd();
 }
 
-void MurmurationScene::update_flock(float dt)
+void MurmurationScene::spawn_stragglers(bool near_only)
 {
-    flockTime_ += dt * FlockPace;
-    const Shape s = flock_shape(flockTime_);
+    // A few birds passing straight across: far specks, or nearer birds whose wingbeats show.
+    const bool near = near_only || rnd() < 0.35f;
+    const int count = near ? 1 + static_cast<int>(rnd() * 3.0f) : 1 + static_cast<int>(rnd() * 6.0f);
+    const float dir = rnd() < 0.5f ? 1.0f : -1.0f;
+    const float y0 = near ? 30.0f + 45.0f * rnd() : 12.0f + 60.0f * rnd();
+    const float speed = near ? 26.0f + 10.0f * rnd() : 15.0f + 6.0f * rnd();
+    const float vy = (rnd() - 0.5f) * 3.0f;
+    for (int i = 0; i < count; ++i) {
+        Flier f{};
+        f.x = (dir > 0.0f ? -8.0f : 136.0f) - dir * (static_cast<float>(i) * (near ? 7.0f : 4.0f) + 3.0f * rnd());
+        f.y = y0 + (rnd() - 0.5f) * (near ? 8.0f : 6.0f);
+        f.vx = dir * speed * (0.95f + 0.1f * rnd());
+        f.vy = vy;
+        f.span = near ? 3.5f + 1.8f * rnd() : 1.0f;
+        f.phase = rnd() * kTau;
+        f.beat = 4.0f + 1.5f * rnd();
+        f.flapping = true;
+        f.mode = 0.4f + 0.8f * rnd();
+        fliers_.push_back(f);
+    }
+}
 
-    // The falcon dives through the flock from one side every minute or so.
-    auto& f = falcon_;
-    if (!f.active && falconOn_->get()) {
-        f.wait -= dt;
-        if (f.wait <= 0.0f) {
-            const bool fromLeft = rnd() < 0.5f;
-            f.x = fromLeft ? -10.0f : 138.0f;
-            f.y = s.cy - 14.0f + 10.0f * rnd();
-            const float dx = s.cx - f.x, dy = s.cy + 4.0f * (rnd() - 0.5f) - f.y;
-            const float len = std::max(1.0f, std::sqrt(dx * dx + dy * dy));
-            f.vx = dx / len * 24.0f;
-            f.vy = dy / len * 24.0f;
-            f.active = true;
+void MurmurationScene::spawn_falcon()
+{
+    // It cuts across the flock from above.
+    float cx = 0.0f, cy = 0.0f;
+    for (const auto& b : birds_) {
+        cx += b.x;
+        cy += b.y;
+    }
+    cx /= static_cast<float>(birds_.size());
+    cy /= static_cast<float>(birds_.size());
+    Flier f{};
+    f.x = cx < 64.0f ? 140.0f : -12.0f;
+    f.y = std::max(-6.0f, cy - 22.0f - 10.0f * rnd());
+    const float dx = cx - f.x, dy = cy - f.y, len = std::max(1.0f, std::sqrt(dx * dx + dy * dy));
+    f.vx = dx / len * 34.0f;
+    f.vy = dy / len * 34.0f;
+    f.span = 6.0f;
+    f.beat = 3.0f;
+    f.flapping = true;
+    f.mode = 1.0f;
+    f.falcon = true;
+    fliers_.push_back(f);
+}
+
+void MurmurationScene::update_phase(float dt)
+{
+    clock_ += dt;
+    switch (phase_) {
+        case Phase::Empty:
+            phaseLeft_ -= dt;
+            if (phaseLeft_ <= 0.0f)
+                start_flock();
+            break;
+        case Phase::Perform:
+            phaseLeft_ -= dt;
+            // The flock wheels around a point that wanders over the water.
+            ax_ = 64.0f + 26.0f * std::sin(0.11f * clock_ + pathPhase_[0]) + 10.0f * std::sin(0.27f * clock_ + pathPhase_[1]);
+            ay_ = 40.0f + 8.0f * std::sin(0.13f * clock_ + pathPhase_[2]) + 5.0f * std::sin(0.31f * clock_ + pathPhase_[3]);
+            // It also moves toward and away from the viewer, so the flock turns in depth and folds.
+            az_ = 22.0f * std::sin(0.09f * clock_ + pathPhase_[1] + 1.0f);
+            if (phaseLeft_ <= 0.0f) {
+                phaseLeft_ = 0.0f;
+                if (rnd() < 0.55f) {
+                    // Dusk: the flock pours down into the reeds to roost.
+                    phase_ = Phase::Roost;
+                    roostX_ = rnd() < 0.6f ? 12.0f + 10.0f * rnd() : 106.0f + 12.0f * rnd();
+                }
+                else {
+                    phase_ = Phase::Depart;
+                    exitX_ = rnd() < 0.5f ? -160.0f : 290.0f;
+                    exitY_ = -30.0f + 50.0f * rnd();
+                }
+            }
+            break;
+        case Phase::Depart:
+        case Phase::Roost:
+            phaseLeft_ += dt;
+            az_ = 0.0f;
+            ax_ = phase_ == Phase::Roost ? roostX_ : exitX_;
+            ay_ = phase_ == Phase::Roost ? 112.0f : exitY_;
+            if (phase_ == Phase::Roost && phaseLeft_ > 70.0f) {
+                phase_ = Phase::Depart;  // the last stragglers fly off instead
+                exitX_ = ax_ < 64.0f ? -160.0f : 290.0f;
+                exitY_ = -20.0f;
+            }
+            if (phaseLeft_ > 140.0f)
+                birds_.clear();
+            if (birds_.empty()) {
+                phase_ = Phase::Empty;
+                phaseLeft_ = 18.0f + 40.0f * rnd();
+            }
+            break;
+    }
+
+    if (phase_ == Phase::Perform && falconOn_->get() && birds_.size() > 40) {
+        falconWait_ -= dt;
+        if (falconWait_ <= 0.0f) {
+            spawn_falcon();
+            falconWait_ = 45.0f + 45.0f * rnd();
         }
     }
-    if (f.active) {
-        f.x += f.vx * dt;
-        f.y += f.vy * dt;
-        f.vy -= 1.5f * dt;  // pulls up after the dive
-        if (f.x < -14.0f || f.x > 142.0f || f.y < -14.0f) {
-            f.active = false;
-            f.wait = 45.0f + 40.0f * rnd();
+    stragglerWait_ -= dt;
+    if (stragglerWait_ <= 0.0f) {
+        spawn_stragglers(phase_ != Phase::Empty);
+        stragglerWait_ = phase_ == Phase::Empty ? 4.0f + 8.0f * rnd() : 16.0f + 24.0f * rnd();
+    }
+}
+
+void MurmurationScene::simulate(float h)
+{
+    const size_t n = birds_.size();
+    if (n == 0)
+        return;
+
+    // Bucket the birds into the grid (counting sort).
+    std::fill(cellStart_.begin(), cellStart_.end(), 0);
+    cellOf_.resize(n);
+    cellBirds_.resize(n);
+    for (size_t i = 0; i < n; ++i) {
+        const int gx = std::clamp(static_cast<int>((birds_[i].x - GridX0) / CellSize), 0, GridW - 1);
+        const int gy = std::clamp(static_cast<int>((birds_[i].y - GridY0) / CellSize), 0, GridH - 1);
+        cellOf_[i] = gy * GridW + gx;
+        ++cellStart_[static_cast<size_t>(cellOf_[i] + 1)];
+    }
+    for (size_t c = 1; c < cellStart_.size(); ++c) cellStart_[c] += cellStart_[c - 1];
+    cellFill_.assign(cellStart_.begin(), cellStart_.end() - 1);
+    for (size_t i = 0; i < n; ++i) cellBirds_[static_cast<size_t>(cellFill_[static_cast<size_t>(cellOf_[i])]++)] = static_cast<int>(i);
+
+    // Now and then one bird starts a turn; its neighbours copy it and the turn runs through the flock.
+    if (phase_ == Phase::Perform) {
+        waveWait_ -= h;
+        if (waveWait_ <= 0.0f && n > 20) {
+            ++waveId_;
+            waveAngle_ = (rnd() < 0.5f ? -1.0f : 1.0f) * (0.35f + 0.4f * rnd());
+            auto& starter = birds_[static_cast<size_t>(rnd() * static_cast<float>(n - 1))];
+            starter.wave = waveId_;
+            starter.turn = waveAngle_;
+            waveWait_ = 2.5f + 4.0f * rnd();
         }
     }
 
-    const float t = s.t;
-    for (auto& b : birds_) {
-        const float u = b.u + 0.09f * std::sin(wave_phase(s, b.u)) + s.split * 0.35f * (b.u < 0.0f ? -1.0f : 1.0f);
-        // A slower fold across the flock makes it thicken and thin like a surface turning over.
-        const float fold = 0.75f + 0.25f * std::sin(1.7f * kPi * b.u + 1.3f * t);
-        const float along = u * s.length;
-        const float across = b.v * s.thickness * fold * (1.0f - 0.45f * u * u) + s.bend * s.length * 0.5f * u * u;
-        float tx = s.cx + along * s.cos_t - across * s.sin_t + 0.9f * std::sin(t * 1.7f + b.wobble * 3.0f);
-        float ty = s.cy + along * s.sin_t + across * s.cos_t + 0.7f * std::cos(t * 1.3f + b.wobble * 5.0f);
-        if (f.active) {
-            const float dx = tx - f.x, dy = ty - f.y, d = std::sqrt(dx * dx + dy * dy);
-            if (d < FalconRadius && d > 0.01f) {
-                const float push = (1.0f - d / FalconRadius) * (1.0f - d / FalconRadius) * 14.0f;
-                tx += dx / d * push;
-                ty += dy / d * push;
+    const Flier* falcon = nullptr;
+    for (const auto& f : fliers_)
+        if (f.falcon)
+            falcon = &f;
+
+    // The flock's middle, for the weak pull that keeps it one flock.
+    float midX = 0.0f, midY = 0.0f, midZ = 0.0f;
+    for (const auto& b : birds_) {
+        midX += b.x;
+        midY += b.y;
+        midZ += b.z;
+    }
+    midX /= static_cast<float>(n);
+    midY /= static_cast<float>(n);
+    midZ /= static_cast<float>(n);
+    const float centre = phase_ == Phase::Perform ? CentreGain : 0.0f;
+
+    const float radius = phase_ == Phase::Perform ? 20.0f : phase_ == Phase::Roost ? 3.0f : 0.0f;
+    const float pull = phase_ == Phase::Perform ? 7.0f : phase_ == Phase::Roost ? 12.0f : 14.0f;
+    next_.resize(n);
+    for (size_t i = 0; i < n; ++i) {
+        const Bird& b = birds_[i];
+        Bird o = b;
+
+        // The seven nearest birds, from the 3×3 cells around it (5×5 if that is not enough).
+        int nearest[Neighbours];
+        float dist2[Neighbours];
+        int k = 0;
+        const int gx = cellOf_[i] % GridW, gy = cellOf_[i] / GridW;
+        for (int ring = 1; ring <= 2 && k < Neighbours; ++ring)
+            for (int yy = gy - ring; yy <= gy + ring; ++yy)
+                for (int xx = gx - ring; xx <= gx + ring; ++xx) {
+                    if (xx < 0 || yy < 0 || xx >= GridW || yy >= GridH)
+                        continue;
+                    if (ring == 2 && std::abs(xx - gx) < 2 && std::abs(yy - gy) < 2)
+                        continue;
+                    const int c = yy * GridW + xx;
+                    for (int s = cellStart_[static_cast<size_t>(c)]; s < cellStart_[static_cast<size_t>(c + 1)]; ++s) {
+                        const int j = cellBirds_[static_cast<size_t>(s)];
+                        if (static_cast<size_t>(j) == i)
+                            continue;
+                        const Bird& o2 = birds_[static_cast<size_t>(j)];
+                        const float dx = o2.x - b.x, dy = o2.y - b.y, dz = o2.z - b.z;
+                        const float d2 = dx * dx + dy * dy + dz * dz;
+                        if (k == Neighbours && d2 >= dist2[Neighbours - 1])
+                            continue;
+                        int at = k < Neighbours ? k++ : Neighbours - 1;
+                        while (at > 0 && dist2[at - 1] > d2) {
+                            dist2[at] = dist2[at - 1];
+                            nearest[at] = nearest[at - 1];
+                            --at;
+                        }
+                        dist2[at] = d2;
+                        nearest[at] = j;
+                    }
+                }
+
+        float accX = 0.0f, accY = 0.0f, accZ = 0.0f;
+        if (k > 0) {
+            float mx = 0, my = 0, mz = 0, mvx = 0, mvy = 0, mvz = 0;
+            for (int m = 0; m < k; ++m) {
+                const Bird& nb = birds_[static_cast<size_t>(nearest[m])];
+                mx += nb.x;
+                my += nb.y;
+                mz += nb.z;
+                mvx += nb.vx;
+                mvy += nb.vy;
+                mvz += nb.vz;
+                const float d = std::sqrt(dist2[m]);
+                if (d < Separation && d > 1e-3f) {
+                    const float push = SeparationGain * (Separation - d) / (Separation * d);
+                    accX += (b.x - nb.x) * push;
+                    accY += (b.y - nb.y) * push;
+                    accZ += (b.z - nb.z) * push;
+                }
+                if (nb.wave == waveId_ && o.wave != waveId_ && nb.bank > 0.35f) {
+                    o.wave = waveId_;
+                    o.turn = waveAngle_;
+                }
+            }
+            const float inv = 1.0f / static_cast<float>(k);
+            accX += (mvx * inv - b.vx) * AlignGain + (mx * inv - b.x) * CohesionGain;
+            accY += (mvy * inv - b.vy) * AlignGain + (my * inv - b.y) * CohesionGain;
+            accZ += (mvz * inv - b.vz) * AlignGain + (mz * inv - b.z) * CohesionGain;
+        }
+
+        {
+            const float mx = midX - b.x, my = midY - b.y, mz = midZ - b.z;
+            const float md = std::sqrt(mx * mx + my * my + mz * mz);
+            if (md > CentreFree) {
+                const float f = centre * (md - CentreFree) / md;
+                accX += mx * f;
+                accY += my * f;
+                accZ += mz * f;
             }
         }
-        ty = std::min(ty, FlockFloor);
-        // Birds further back in the flock react later, so turns sweep through it.
-        const float k = 1.0f - std::exp(-dt * b.follow * (1.0f + 0.3f * b.u));
-        b.x += (tx - b.x) * k;
-        b.y += (ty - b.y) * k;
+
+        // Drawn to the flock's point over the water (or the roost, or away).
+        const float tx = ax_ - b.x, ty = ay_ - b.y, tz = az_ - b.z, td = std::sqrt(tx * tx + ty * ty + tz * tz);
+        if (td > radius && td > 1e-3f) {
+            const float f = pull * std::min(1.0f, (td - radius) / 18.0f) / td;
+            accX += tx * f;
+            accY += ty * f;
+            accZ += tz * f * 0.3f;  // the pull is mostly horizontal, as toward a roost
+        }
+        if (phase_ == Phase::Roost && std::fabs(b.x - roostX_) < 24.0f)
+            accY += 8.0f;  // the funnel pours down into the reeds
+        if (phase_ != Phase::Roost && b.y > 72.0f)
+            accY -= (b.y - 72.0f) * 4.0f;
+        if (phase_ == Phase::Perform && b.y < 14.0f)
+            accY += (14.0f - b.y) * 5.0f;
+        accZ -= b.z * DepthSpring;
+        // A small, slow individual drift.
+        const float sp0 = std::max(1e-3f, std::sqrt(b.vx * b.vx + b.vy * b.vy));
+        const float drift = 2.2f * std::sin(clock_ * 0.7f + b.wander);
+        accX += -b.vy / sp0 * drift;
+        accY += b.vx / sp0 * drift;
+        if (falcon) {
+            const float dx = b.x - falcon->x, dy = b.y - falcon->y, d = std::sqrt(dx * dx + dy * dy);
+            if (d < 13.0f && d > 1e-3f) {
+                const float flee = 90.0f * (1.0f - d / 13.0f) / d;
+                accX += dx * flee;
+                accY += dy * flee;
+                o.bank = 1.0f;
+            }
+        }
+        const float a = std::sqrt(accX * accX + accY * accY + accZ * accZ);
+        if (a > MaxAccel) {
+            const float s = MaxAccel / a;
+            accX *= s;
+            accY *= s;
+            accZ *= s;
+        }
+        o.vx += accX * h;
+        o.vy += accY * h;
+        o.vz += accZ * h;
+        // A turn passed on by a wave is made smoothly over a few steps.
+        if (o.turn != 0.0f) {
+            const float step = std::clamp(o.turn, -TurnRate * h, TurnRate * h);
+            const float c = std::cos(step), s = std::sin(step);
+            const float vx = o.vx * c - o.vy * s;
+            o.vy = o.vx * s + o.vy * c;
+            o.vx = vx;
+            o.turn -= step;
+            if (std::fabs(o.turn) < 1e-3f)
+                o.turn = 0.0f;
+        }
+        // Nearly constant speed.
+        const float sp = std::sqrt(o.vx * o.vx + o.vy * o.vy + o.vz * o.vz);
+        if (sp > 1e-3f) {
+            const float s = 1.0f + (o.cruise - sp) / sp * std::min(1.0f, SpeedRelax * h);
+            o.vx *= s;
+            o.vy *= s;
+            o.vz *= s;
+        }
+        // Banking: how fast the heading turns.
+        const float sp1 = std::max(1e-3f, std::sqrt(o.vx * o.vx + o.vy * o.vy));
+        const float omega = std::fabs(b.vx * o.vy - b.vy * o.vx) / (sp0 * sp1 * h);
+        o.bank = std::max(o.bank - 1.8f * h, std::min(1.0f, omega / 1.6f));
+        o.x += o.vx * h;
+        o.y += o.vy * h;
+        o.z += o.vz * h;
+        next_[i] = o;
+    }
+    birds_.swap(next_);
+
+    if (phase_ == Phase::Depart || phase_ == Phase::Roost) {
+        const float roost = roostX_;
+        const bool roosting = phase_ == Phase::Roost;
+        std::erase_if(birds_, [roost, roosting](const Bird& b) {
+            if (b.x < RemoveLeft || b.x > RemoveRight || b.y < RemoveTop)
+                return true;
+            // Birds that reach the reeds settle in and disappear among them.
+            return roosting && b.y > 104.0f && std::fabs(b.x - roost) < 22.0f;
+        });
     }
 }
 
-void MurmurationScene::draw_birds(float raw_dt)
+void MurmurationScene::update_fliers(float dt)
+{
+    for (auto& f : fliers_) {
+        f.x += f.vx * dt;
+        f.y += f.vy * dt;
+        if (f.falcon)
+            f.vy -= 4.0f * dt;  // pulls up after the stoop
+        // Starlings flap in short bursts and glide in between.
+        f.mode -= dt;
+        if (f.mode <= 0.0f) {
+            f.flapping = !f.flapping;
+            f.mode = f.flapping ? 0.5f + 0.8f * rnd() : 0.4f + 0.7f * rnd();
+        }
+        if (f.flapping)
+            f.phase += dt * f.beat * kTau;
+    }
+    std::erase_if(fliers_, [](const Flier& f) { return f.x < -24.0f || f.x > 152.0f || f.y < -24.0f || f.y > 140.0f; });
+}
+
+void MurmurationScene::draw_flier(const Flier& f, Rgb color)
+{
+    // Body with head and tail, and two wings that beat between a raised "m" and a lowered stroke.
+    const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f;
+    const float S = f.span * sx, cx = f.x * sx, cy = f.y * sy, hx = f.vx >= 0.0f ? 1.0f : -1.0f;
+    const float w = f.flapping ? std::cos(f.phase) : 0.25f;
+    const float r = 0.42f * std::max(1.0f, sx);
+    cv_.capsule(cx - hx * S * 0.24f, cy + 0.06f * S, r, cx + hx * S * 0.2f, cy - 0.04f * S, r * 1.1f, color, 0.95f);
+    for (const float side : {-1.0f, 1.0f}) {
+        const float ex = cx + side * S * 0.26f, ey = cy - w * S * 0.30f;
+        const float tipX = cx + side * S * 0.52f, tipY = cy - w * S * 0.12f + (w > 0.0f ? 0.08f * S : 0.0f);
+        cv_.capsule(cx, cy, r, ex, ey, r * 0.9f, color, 0.95f);
+        cv_.capsule(ex, ey, r * 0.9f, tipX, tipY, r * 0.6f, color, 0.9f);
+    }
+}
+
+void MurmurationScene::draw_birds()
 {
     const int W = cv_.w, H = cv_.h;
     const float sx = W / 128.0f, sy = H / 128.0f;
-    const float decay = std::exp(-raw_dt / TrailSeconds);
-    for (auto& v : ink_) v *= decay;
-    // Fewer birds (reduced quality) each mark a little stronger, a huge flock a little softer,
-    // so the outline stays readable and dense overlaps keep their texture.
-    const float deposit =
-        (1.0f - decay) * InkGain * std::clamp(std::sqrt(480.0f / std::max<float>(1.0f, static_cast<float>(birds_.size()))), 0.8f, 1.35f);
-    const Shape s = flock_shape(flockTime_);
-    const auto splat = [&](float px, float py, float a) {
-        const int x0 = static_cast<int>(std::floor(px)), y0 = static_cast<int>(std::floor(py));
-        const float fx = px - x0, fy = py - y0;
-        const auto put = [&](int x, int y, float w) {
-            if (x >= 0 && y >= 0 && x < W && y < H)
-                ink_[static_cast<size_t>(y * W + x)] += a * w;
-        };
-        put(x0, y0, (1 - fx) * (1 - fy));
-        put(x0 + 1, y0, fx * (1 - fy));
-        put(x0, y0 + 1, (1 - fx) * fy);
-        put(x0 + 1, y0 + 1, fx * fy);
+    std::fill(ink_.begin(), ink_.end(), 0.0f);
+    const auto mark = [&](float x, float y, float a) {
+        const int px = static_cast<int>(std::floor(x * sx)), py = static_cast<int>(std::floor(y * sy));
+        if (px >= 0 && py >= 0 && px < W && py < H)
+            ink_[static_cast<size_t>(py * W + px)] += a;
     };
-    for (const auto& b : birds_) {
-        // Birds in the turning band show their wings and look darker.
-        const float turn = 0.5f + 0.5f * std::cos(wave_phase(s, b.u));
-        splat(b.x * sx - 0.5f, b.y * sy - 0.5f, deposit * b.size * (0.6f + 0.4f * turn * turn));
-    }
-    if (falcon_.active) {
-        // Wing beats: a short flicker between spread and folded wings.
-        const float flap = std::sin(s.t * 9.0f);
-        const float fx = falcon_.x * sx, fy = falcon_.y * sy;
-        const float span = (1.6f + 0.5f * flap) * sx;
-        for (int i = -2; i <= 2; ++i) splat(fx + i * span * 0.5f - 0.5f, fy - std::abs(i) * flap * 0.4f * sy - 0.5f, deposit * 1.6f);
-    }
+    // Each far bird is a single dark speck; banking birds show more wing.
+    for (const auto& b : birds_) mark(b.x, b.y, 0.42f + 0.6f * b.bank);
+    for (const auto& f : fliers_)
+        if (!f.falcon && f.span <= 1.5f)
+            mark(f.x, f.y, 0.9f);
 
     const auto& L = env();
     const Rgb bird = mix(scale(from_env(L.zenith), 0.2f), Rgb{0.015f, 0.012f, 0.02f}, 0.7f);
     const int shoreRow = std::clamp(static_cast<int>(std::lround(ShoreY * sy)), 1, H);
-    for (int y = 0; y < shoreRow; ++y)
+    for (int y = 0; y < H; ++y)
         for (int x = 0; x < W; ++x) {
             const float ink = ink_[static_cast<size_t>(y * W + x)];
             if (ink > 0.004f)
-                cv_.blend(x, y, bird, 0.86f * (1.0f - std::exp(-1.5f * ink)));
+                cv_.blend(x, y, bird, 0.92f * (1.0f - std::exp(-1.4f * ink)));
         }
-    // The flock's reflection where it flies low, rippled by the water.
+    // Birds flying low show in the water, rippled.
     for (int y = shoreRow; y < H; ++y) {
         const int m = 2 * shoreRow - 1 - y;
         if (m < 0)
@@ -300,9 +588,12 @@ void MurmurationScene::draw_birds(float raw_dt)
             const int src = std::clamp(x + shift, 0, W - 1);
             const float ink = ink_[static_cast<size_t>(m * W + src)];
             if (ink > 0.004f)
-                cv_.blend(x, y, bird, 0.5f * (1.0f - std::exp(-1.5f * ink)));
+                cv_.blend(x, y, bird, 0.45f * (1.0f - std::exp(-1.4f * ink)));
         }
     }
+    for (const auto& f : fliers_)
+        if (f.falcon || f.span > 1.5f)
+            draw_flier(f, bird);
 }
 
 bool MurmurationScene::render(rgb_matrix::FrameCanvas* canvas)
@@ -346,9 +637,18 @@ bool MurmurationScene::render(rgb_matrix::FrameCanvas* canvas)
     // Evening mist over the wetland.
     Environment::paint_fog(surface(), L, t_, (ShoreY - 8.0f) * sy, static_cast<float>(cv_.h), 0.08f);
 
-    reset_flock();
-    update_flock(dt);
-    draw_birds(raw);
+    update_phase(dt);
+    simCarry_ += dt;
+    int steps = 0;
+    while (simCarry_ >= SimStep && steps < 4) {
+        simulate(SimStep);
+        simCarry_ -= SimStep;
+        ++steps;
+    }
+    if (steps == 4)
+        simCarry_ = 0.0f;
+    update_fliers(dt);
+    draw_birds();
 
     present(canvas);
     wait_until_next_frame();
@@ -370,7 +670,7 @@ Scenes::SceneDescriptor MurmurationScene::get_descriptor() const
     environment_->add_variants(d, {{"swarm",
                                     "Great murmuration",
                                     "A huge flock of starlings over the wetland",
-                                    {{"birds", 780}},
+                                    {{"birds", 1100}},
                                     {"birds", "dense"},
                                     0.30f,
                                     0.42f,
