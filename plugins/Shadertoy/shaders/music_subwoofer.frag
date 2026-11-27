@@ -32,7 +32,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     // Idle: a slow double heartbeat so the cone still moves without music.
     float hb = fract(iTime * 0.55);
-    float idleKick = exp(-hb * 9.0) + 0.6 * exp(-max(hb - 0.22, 0.0) * 10.0) * step(0.22, hb);
+    // Each beat eases in over a few frames instead of snapping on.
+    float idleKick = smoothstep(0.0, 0.05, hb) * exp(-hb * 9.0)
+                   + 0.6 * smoothstep(0.22, 0.27, hb) * exp(-max(hb - 0.22, 0.0) * 10.0);
     float kick = mix(idleKick * 0.75, clamp(max(iAudioKick, iAudioBass * 0.75), 0.0, 1.0), live);
     float bass = mix(0.20, iAudioBass, live);
     float beat = mix(0.25, iAudioBeatStrength, live);
@@ -62,7 +64,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     col = mix(col, cabCol, smoothstep(px, -px, cab));
     // Neon edge light.
     float edge = smoothstep(2.0 * px, 0.0, abs(cab));
-    col += mix(neonA, neonB, step(0.0, c.x)) * edge * (0.7 + 0.8 * beat);
+    col += mix(neonA, neonB, step(0.0, c.x)) * edge * (0.40 + 0.20 * beat);
 
     float r = length(c);
     vec2 n = c / max(r, 1e-4);
@@ -74,10 +76,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float Rc = 0.300;       // cone outer edge
     // LED ring between basket and cabinet.
     float ledRing = smoothstep(3.0 * px, 0.0, abs(r - (R + 0.020)));
-    float ledAng = 0.5 - 0.5 * cos(atan(c.y, c.x) * 2.0 + iTime * (0.8 + 2.0 * beat));
+    float ledAng = 0.5 - 0.5 * cos(atan(c.y, c.x) * 2.0 + iTime * 0.8 + 1.5 * beat);
     vec3 ledCol = mix(neonA, neonB, ledAng);
-    col += ledCol * ledRing * (0.35 + 0.9 * bass + 0.6 * drop);
-    col += ledCol * exp(-abs(r - (R + 0.02)) * 45.0) * (0.08 + 0.25 * bass + 0.3 * drop);
+    col += ledCol * ledRing * (0.35 + 0.6 * bass + 0.3 * drop);
+    col += ledCol * exp(-abs(r - (R + 0.02)) * 45.0) * (0.08 + 0.18 * bass + 0.15 * drop);
 
     if (r < R + 0.004) {
         // Steel basket rim.
@@ -145,8 +147,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     // Pressure ripple in the air on each kick, travelling outward.
     // As the kick envelope decays the ripple travels outward and fades.
-    float rippleR = R + 0.04 + 0.28 * clamp(1.0 - kick, 0.0, 1.0);
-    float ripple = exp(-pow((r - rippleR) / (2.0 * px), 2.0)) * kick * 0.6 * step(R + 0.03, r);
+    float rippleR = R + 0.04 + 0.12 * clamp(1.0 - kick, 0.0, 1.0);
+    float ripple = exp(-pow((r - rippleR) / (2.0 * px), 2.0)) * kick * 0.45 * step(R + 0.03, r) * smoothstep(0.50, 0.44, rippleR);
     col += mix(neonA, neonB, 0.5 + 0.5 * n.x) * ripple;
 
     // Dust thrown off the cone on drops and hard kicks.

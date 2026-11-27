@@ -62,7 +62,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec3 pcol[5] = vec3[5](vec3(0.20, 0.95, 1.00), vec3(1.00, 0.25, 0.75), vec3(0.65, 1.00, 0.25),
                            vec3(1.00, 0.60, 0.15), vec3(0.55, 0.40, 1.00));
     float radii[5] = float[5](0.16, 0.24, 0.32, 0.40, 0.47);
-    float sizes[5] = float[5](0.022, 0.034, 0.030, 0.044, 0.028);
+    float sizes[5] = float[5](0.028, 0.036, 0.034, 0.044, 0.032);
 
     vec3 behind = vec3(0.0);   // planets/trails on the far side of the star
     vec3 front = vec3(0.0);
@@ -75,7 +75,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float fi = float(i);
         float energy = live * sampleAudioSpectrum(iChannel0, 0.03 + fi * 0.1);
         float speed = 0.55 / pow(radii[i] / 0.17, 1.5);          // Kepler-ish
-        float ang = iTime * speed * (1.0 + 0.6 * energy) + fi * 1.9;
+        // Energy nudges the phase forward (bounded) rather than scaling iTime.
+        float ang = iTime * speed + 0.35 * energy + fi * 1.9;
         float rad = radii[i] * (1.0 + 0.04 * bass);
         vec3 pp = planetPos(rad, ang);
 
@@ -84,13 +85,13 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float ed = abs(length(e) - 1.0) * rad * TILT;
         float pathAng = atan(e.y, e.x);
         float dots = smoothstep(0.55, 0.9, 0.5 + 0.5 * cos(pathAng * (18.0 + fi * 6.0)));
-        vec3 path = pcol[i] * smoothstep(1.4 * px, 0.0, ed) * (0.03 + 0.07 * dots);
+        vec3 path = pcol[i] * smoothstep(1.4 * px, 0.0, ed) * (0.02 + 0.04 * dots);
 
         // Trail: the ellipse behind the planet, fading with angular lag.
         float lag = mod(ang - pathAng, TAU);
         float trailLen = 1.1 + 0.8 * energy;
         float trail = smoothstep(2.2 * px, 0.0, ed) * exp(-lag / trailLen * 3.0) * step(lag, trailLen * 1.5);
-        vec3 trailCol = pcol[i] * trail * (0.45 + 0.6 * energy);
+        vec3 trailCol = pcol[i] * trail * (0.45 + 0.6 * energy + 0.35 * kick);
 
         // Planet sphere: lit from the star (centre).
         float size = sizes[i] * (1.0 + 0.25 * energy) * (1.0 - 0.18 * pp.z);
@@ -135,7 +136,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float core = smoothstep(starR + px, starR - px, r);
     vec3 starCol = mix(vec3(1.0, 0.55, 0.95), vec3(1.0, 0.95, 0.85), smoothstep(starR, 0.0, r));
     float rays = pow(0.5 + 0.5 * cos(a * 6.0 + iTime * 0.6), 18.0) + pow(0.5 + 0.5 * cos(a * 4.0 - iTime * 0.4 + 1.0), 24.0);
-    float corona = exp(-(r - starR) * 16.0) * (0.35 + 0.5 * beat) + rays * exp(-(r - starR) * (9.0 - 5.0 * kick)) * (0.15 + 0.9 * kick);
+    float corona = exp(-(r - starR) * 16.0) * (0.35 + 0.5 * beat) + rays * exp(-(r - starR) * (11.0 - 3.0 * kick)) * (0.12 + 0.45 * kick);
+    corona *= smoothstep(0.46, 0.30, r);   // flares stay inside the outer orbit
     col += vec3(1.0, 0.35, 0.85) * corona * step(starR, r);
     col = mix(col, starCol, core);
 

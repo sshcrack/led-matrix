@@ -55,6 +55,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float onset = mix(0.0, iAudioOnset, live);
     float beat = mix(0.15 + 0.10 * sin(iTime * 1.1), iAudioBeatStrength, live);
     float drop = live * iAudioDrop;
+    float beatPhase = mix(fract(iTime * 0.9), iAudioBeatPhase, live);
 
     // Background: deep violet nebula, lighter toward the flower.
     vec3 col = mix(vec3(0.020, 0.010, 0.050), vec3(0.090, 0.030, 0.120), exp(-3.0 * r * r));
@@ -69,7 +70,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     col += vec3(0.7, 0.75, 1.0) * star * smoothstep(0.38, 0.6, r) * (0.25 + 0.25 * sin(iTime * (0.5 + seed) + seed * 20.0));
 
     float open = 0.86 + 0.16 * bass + 0.05 * drop;   // bass opens the flower
-    float spin = iTime * (0.035 + 0.02 * mid);
+    float spin = iTime * 0.035 + 0.15 * mid;   // audio offsets, never scales, the clock
 
     // Petal layers, outer first. Colours run from deep magenta outside to
     // peach and cream inside.
@@ -85,7 +86,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float dir = (i % 2 == 0) ? 1.0 : -1.0;
         float rot = dir * spin * (1.0 + 0.3 * fi) + fi * 0.37;
         float id;
-        vec3 w = whorl(uv, counts[i], rot, r0s[i], lens[i] * open, 0.36, i == 0 ? 0.30 : 0.14, live, id);
+        // Each beat ripples outward through the layers: inner whorls open first.
+        float stagger = exp(-fract(beatPhase - (3.0 - fi) * 0.12) * 5.0) * beat * 0.06;
+        vec3 w = whorl(uv, counts[i], rot, r0s[i], lens[i] * (open + stagger), 0.36, i == 0 ? 0.30 : 0.14, live, id);
         if (w.x <= 0.0) continue;
         float along = w.y;
         float across = w.z;
@@ -108,9 +111,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float centre = smoothstep(cr + 0.01, cr - 0.005, r);
     vec3 gold = mix(vec3(0.80, 0.45, 0.06), vec3(1.0, 0.85, 0.35), smoothstep(cr, 0.0, r));
     float seeds = 0.0;
-    for (int i = 0; i < 24; ++i) {
+    for (int i = 0; i < 13; ++i) {
         float fi = float(i);
-        float sr = cr * sqrt((fi + 0.5) / 24.0);
+        float sr = cr * 0.85 * sqrt((fi + 0.5) / 13.0);
         float sa = fi * 2.39996 + iTime * 0.15;
         seeds += smoothstep(0.011, 0.004, length(uv - sr * vec2(cos(sa), sin(sa))));
     }
@@ -119,12 +122,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     col += vec3(1.0, 0.75, 0.35) * exp(-r * 22.0) * (0.10 + 0.35 * beat);
 
     // Pollen drifting outward from the centre.
-    for (int i = 0; i < 18; ++i) {
+    for (int i = 0; i < 12; ++i) {
         float fi = float(i);
         float t = fract(iTime * (0.05 + 0.03 * hash21(vec2(fi, 1.0))) + hash21(vec2(fi, 2.0)));
         float ang = hash21(vec2(fi, 4.0)) * TAU + t * 0.8;
         vec2 p = vec2(cos(ang), sin(ang)) * (0.06 + t * 0.55);
-        float m = smoothstep(0.012, 0.003, length(uv - p)) * sin(t * 3.14159);
+        float m = smoothstep(0.012, 0.003, length(uv - p)) * sin(t * 3.14159) * smoothstep(0.12, 0.30, length(p));
         col += vec3(1.0, 0.85, 0.5) * m * (0.45 + 0.6 * onset);
     }
 

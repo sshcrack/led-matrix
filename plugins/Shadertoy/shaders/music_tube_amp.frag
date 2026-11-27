@@ -112,6 +112,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float drop = live * max(iAudioDrop, iAudioSectionChange * 0.7);
     float bpm = mix(72.0, clamp(iAudioBpm, 60.0, 180.0), live);
     float beats = iTime * bpm / 60.0;
+    float beatPhase = mix(fract(beats), iAudioBeatPhase, live);
+    float beatAmt = mix(0.35, iAudioBeatStrength, live);
 
     vec3 orange = vec3(1.0, 0.36, 0.06);
     vec3 hot = vec3(1.0, 0.66, 0.30);
@@ -146,9 +148,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
         // Each tube changes on its own subdivision with its own offset, so the
         // row never reads as a counter. A drop rolls through the cathodes.
-        float rate = (i == 0) ? 0.25 : (i == 1) ? 0.5 : (i == 2) ? 0.333 : 1.0;
+        float rate = (i == 0) ? 0.125 : (i == 1) ? 0.25 : (i == 2) ? 0.167 : 0.5;
         float stepT = beats * rate + hash11(fi * 13.7) * 4.0;
-        stepT = mix(stepT, iTime * 14.0 + fi * 3.3, smoothstep(0.35, 0.7, drop));
+        stepT = mix(stepT, iTime * 8.0 + fi * 3.3, smoothstep(0.6, 0.85, drop));
         float stepI = floor(stepT);
         float since = fract(stepT) / max(rate, 0.05) * 60.0 / bpm;  // seconds since change
         int cur = int(floor(hash11(stepI * 3.17 + fi * 41.0) * 10.0));
@@ -158,7 +160,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         // Band per tube drives brightness on top of the bass breath.
         float band = live * sampleAudioSpectrum(iChannel0, 0.03 + fi * 0.08);
         float flare = kick * step(abs(mod(floor(beats), 4.0) - fi), 0.5);
-        float heat = 0.62 + 0.30 * bass + 0.25 * band + 0.55 * flare + 0.35 * drop;
+        // A heat swell runs along the row on every beat, one tube after another.
+        float swell = exp(-fract(beatPhase - fi * 0.11) * 6.0) * beatAmt;
+        float heat = 0.60 + 0.25 * bass + 0.20 * band + 0.35 * flare + 0.35 * swell + 0.30 * drop;
         heat *= 0.96 + 0.04 * sin(iTime * 37.0 + fi * 5.0);  // neon shimmer
 
         // Glass envelope: round-topped cylinder.

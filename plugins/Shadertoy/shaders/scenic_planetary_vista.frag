@@ -68,6 +68,8 @@ vec3 drawMoon(vec3 color, vec2 p, vec3 orbit, vec3 light, float aa) {
         float shade = smoothstep(-.05, .6, dot(n, light));
         float terrain = .7 + .3 * cloud(n * 7.0 + 3.0);
         vec3 moon = vec3(.20, .34, .43) * (shade * terrain + .025);
+        // Thin cool rim keeps the silhouette readable against the rings.
+        moon += vec3(.16, .26, .34) * smoothstep(.70, 1.0, length(m));
         color = mix(color, moon, 1.0 - smoothstep(moonRadius - aa, moonRadius + aa, dist));
     }
     return color;
