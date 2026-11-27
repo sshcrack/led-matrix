@@ -28,6 +28,12 @@ class AudioSpectrumScene final : public Scene {
     float stereoBalanceResponse_ = 0.0f;
     float stereoWidthResponse_ = 0.0f;
     float rotation_ = 0.0f;
+    float radialGain_ = 0.5f;
+    // Radial layout: per-pixel polar geometry around the panel centre (static, cached).
+    int radialW_ = 0, radialH_ = 0;
+    std::vector<float> radialAngle_, radialDist_;
+    std::vector<float> radialColor_;                  // per bin RGB at full intensity, refreshed each frame
+    std::vector<float> radialBinGain_, radialLevel_;  // per bin slow gain and the normalised level
 
     PropertyPointer<int> barWidth_ = MAKE_PROPERTY_MINMAX("bar_width", int, 2, 1, 10);
     PropertyPointer<int> gapWidth_ = MAKE_PROPERTY_MINMAX("gap_width", int, 1, 0, 5);
@@ -64,6 +70,7 @@ class AudioSpectrumScene final : public Scene {
     void colorFor(float position, float intensity, const AudioState::Snapshot& audio, uint8_t& r, uint8_t& g, uint8_t& b) const;
     void renderBars(rgb_matrix::FrameCanvas* canvas, const AudioState::Snapshot& audio);
     void renderCircle(rgb_matrix::FrameCanvas* canvas, const AudioState::Snapshot& audio, bool spiral);
+    void renderRadial(rgb_matrix::FrameCanvas* canvas, const AudioState::Snapshot& audio, float dt);
     void renderWaveform(rgb_matrix::FrameCanvas* canvas, const AudioState::Snapshot& audio);
     void renderSpectrogram(rgb_matrix::FrameCanvas* canvas, const AudioState::Snapshot& audio);
 
@@ -89,6 +96,8 @@ public:
         return caps;
     }
     [[nodiscard]] bool supports_virtual_time() const override { return true; }
+    // 2: the spectrogram and waveform variants were dropped and the radial layout was redrawn.
+    [[nodiscard]] int remote_contract_version() const override { return 2; }
 };
 
 class AudioSpectrumSceneWrapper final : public Plugins::SceneWrapper {

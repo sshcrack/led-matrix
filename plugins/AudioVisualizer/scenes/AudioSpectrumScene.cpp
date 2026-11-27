@@ -484,6 +484,117 @@ void AudioSpectrumScene::renderCircle(rgb_matrix::FrameCanvas* canvas, const Aud
     }
 }
 
+// Radial layout: a large six-petal bloom. Each petal runs bass -> treble ->
+// bass, filled out to the panel edges, over a tinted backdrop and a core that
+// swells with the kick. Every bin has its own slow gain so treble petals reach
+// as far as bass ones. Polar geometry is cached; colours are per bin.
+void AudioSpectrumScene::renderRadial(rgb_matrix::FrameCanvas* canvas, const AudioState::Snapshot& audio, float dt)
+{
+    const int W = matrix_width, H = matrix_height;
+    const size_t bins = smoothed_.size();
+    if (bins < 2 || W <= 0 || H <= 0)
+        return;
+    if (radialW_ != W || radialH_ != H) {
+        radialW_ = W;
+        radialH_ = H;
+        radialAngle_.resize(static_cast<size_t>(W * H));
+        radialDist_.resize(static_cast<size_t>(W * H));
+        const float cx = W * 0.5f, cy = H * 0.5f;
+        for (int y = 0; y < H; ++y)
+            for (int x = 0; x < W; ++x) {
+                const float dx = x + 0.5f - cx, dy = y + 0.5f - cy;
+                const size_t i = static_cast<size_t>(y * W + x);
+                radialAngle_[i] = (std::atan2(dy, dx) + Pi) / (2.0f * Pi);  // 0..1
+                radialDist_[i] = std::sqrt(dx * dx + dy * dy);
+            }
+    }
+
+    // Slow auto-gain so quiet mixes still bloom and loud ones don't saturate.
+    float frameMax = 0.0f;
+    for (const float v : smoothed_) frameMax = std::max(frameMax, v);
+    radialGain_ = frameMax > radialGain_ ? radialGain_ + (frameMax - radialGain_) * std::min(1.0f, dt * 6.0f)
+                                         : radialGain_ + (frameMax - radialGain_) * std::min(1.0f, dt * 0.25f);
+    const float gain = 1.0f / std::max(0.30f, radialGain_);
+    radialBinGain_.resize(bins, 0.3f);
+    radialLevel_.resize(bins);
+    for (size_t i = 0; i < bins; ++i) {
+        float& g = radialBinGain_[i];
+        const float v = smoothed_[i];
+        g = v > g ? g + (v - g) * std::min(1.0f, dt * 4.0f) : g + (v - g) * std::min(1.0f, dt * 0.15f);
+        const float own = v / std::max(0.12f, g);
+        radialLevel_[i] = std::clamp(0.45f * v * gain + 0.55f * own * 0.9f, 0.0f, 1.0f);
+    }
+
+    radialColor_.resize(bins * 3);
+    for (size_t i = 0; i < bins; ++i) {
+        uint8_t r, g, b;
+        colorFor(static_cast<float>(i) / static_cast<float>(bins - 1), 1.0f, audio, r, g, b);
+        radialColor_[i * 3] = r;
+        radialColor_[i * 3 + 1] = g;
+        radialColor_[i * 3 + 2] = b;
+    }
+
+    const float size = static_cast<float>(std::min(W, H));
+    const float inner = size * 0.15f * (circleRadius_->get() / 0.70f) * (1.0f + radialKick_ * 0.10f + beatPulse_ * 0.05f);
+    const float maxLength = std::max(4.0f, size * 0.5f - inner - 4.0f);
+    const float turn = rotation_ / (2.0f * Pi);
+    const float core = 0.10f + 0.40f * radialKick_ + 0.15f * beatPulse_;
+    const float last = static_cast<float>(bins - 1);
+    // Bass colour for the core and the backdrop.
+    const float baseR = radialColor_[0], baseG = radialColor_[1], baseB = radialColor_[2];
+
+    for (int y = 0; y < H; ++y)
+        for (int x = 0; x < W; ++x) {
+            const size_t p = static_cast<size_t>(y * W + x);
+            const float d = radialDist_[p];
+            float a = radialAngle_[p] - turn;
+            a -= std::floor(a);
+            const float sweep = std::floor(a * 3.0f);
+            const float a3 = a * 3.0f - sweep;
+            const float t = a3 < 0.5f ? a3 * 2.0f : (1.0f - a3) * 2.0f;  // three mirrored sweeps: 0 = bass, 1 = treble
+            const float fi = t * last;
+            const size_t i0 = std::min(bins - 1, static_cast<size_t>(fi));
+            const size_t i1 = std::min(bins - 1, i0 + 1);
+            const float f = fi - static_cast<float>(i0);
+            // Each petal leans its own way over time (zero at the seams so the petals still join).
+            const float lean = 1.0f + 0.35f * std::sin(t * Pi) * std::sin(sweep * 2.09f + rotation_ * 1.7f + t * 3.0f);
+            const float level = std::min(1.0f, (radialLevel_[i0] + (radialLevel_[i1] - radialLevel_[i0]) * f) * lean);
+            const float cr = radialColor_[i0 * 3] + (radialColor_[i1 * 3] - radialColor_[i0 * 3]) * f;
+            const float cg = radialColor_[i0 * 3 + 1] + (radialColor_[i1 * 3 + 1] - radialColor_[i0 * 3 + 1]) * f;
+            const float cb = radialColor_[i0 * 3 + 2] + (radialColor_[i1 * 3 + 2] - radialColor_[i0 * 3 + 2]) * f;
+
+            float k = 0.0f;      // petal colour weight
+            float white = 0.0f;  // white highlight
+            float coreK = 0.0f;  // bass-tinted core/backdrop weight
+            if (d < inner - 1.0f) {
+                const float u = d / inner;
+                // Dark lens with a glowing inner edge; a white bloom on kicks.
+                const float u4 = u * u * u * u;
+                k = 0.50f * u4;
+                coreK = 0.03f + 0.30f * core * u * u;
+                white = 0.35f * radialKick_ * (1.0f - u) * (1.0f - u);
+            }
+            else {
+                const float reach = inner + level * maxLength;
+                if (d < inner + 1.0f)
+                    k = 0.75f + 0.25f * beatPulse_;  // rim of the core
+                else if (d <= reach) {
+                    const float along = (d - inner) / std::max(1.0f, reach - inner);
+                    k = 0.30f + 0.70f * along;
+                    white = std::max(0.0f, along - 0.80f) * 1.2f * level;
+                }
+                else
+                    k = 0.22f * std::exp(-(d - reach) * 0.35f);             // soft halo past the tips
+                coreK = 0.05f * std::max(0.0f, 1.0f - d / (size * 0.75f));  // tinted backdrop
+            }
+            const float r = cr * k + baseR * coreK + 255.0f * white;
+            const float g = cg * k + baseG * coreK + 255.0f * white;
+            const float b = cb * k + baseB * coreK + 255.0f * white;
+            canvas->SetPixel(x, y, static_cast<uint8_t>(std::min(255.0f, r)), static_cast<uint8_t>(std::min(255.0f, g)),
+                             static_cast<uint8_t>(std::min(255.0f, b)));
+        }
+}
+
 void AudioSpectrumScene::renderWaveform(rgb_matrix::FrameCanvas* canvas, const AudioState::Snapshot& audio)
 {
     if (waveformSmoothed_.empty())
@@ -625,7 +736,7 @@ bool AudioSpectrumScene::render(rgb_matrix::FrameCanvas* canvas)
 
     switch (displayMode_->get().get()) {
         case DisplayMode::CIRCLE:
-            renderCircle(canvas, audio, false);
+            renderRadial(canvas, audio, dt);
             break;
         case DisplayMode::SPIRAL:
             renderCircle(canvas, audio, true);
@@ -671,43 +782,19 @@ Scenes::SceneDescriptor Scenes::AudioSpectrumScene::get_descriptor() const
          0.68f,
          1.0f,
          0.52f},
-        {"waveform",
-         "Smooth waveform",
-         "A clean stabilized trace instead of individual spectrum bars",
-         {{"display_mode", "WAVEFORM"},
-          {"waveform_style", "TRACE"},
-          {"waveform_stabilization", true},
-          {"waveform_smoothing", 0.90f},
-          {"waveform_thickness", 1},
-          {"stereo_motion", true}},
-         {"music", "waveform", "minimal"},
-         0.52f,
-         0.56f,
-         1.0f,
-         0.42f},
         {"radial",
          "Radial spectrum",
-         "Circular spectrum with slow rotation and beat pulse",
+         "A large spectrum bloom that fills the panel, with a core that swells on the kick",
          {{"display_mode", "CIRCLE"},
           {"circle_radius", 0.70f},
           {"rotate_visualization", true},
-          {"rotation_speed", 0.45f},
+          {"rotation_speed", 0.25f},
           {"beat_pulse", true}},
          {"music", "radial"},
          0.80f,
          0.78f,
          1.0f,
          0.64f},
-        {"spectrogram",
-         "Spectrogram",
-         "Scrolling frequency history for a denser analytical texture",
-         {{"display_mode", "SPECTROGRAM"}, {"mirror_display", false}, {"falling_dots", false}, {"musical_color", true}},
-         {"music", "texture", "dense"},
-         0.68f,
-         0.60f,
-         1.0f,
-         0.72f},
     };
-    Scenes::set_off_by_default(d, {"spectrogram", "waveform"});
     return d;
 }

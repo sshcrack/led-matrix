@@ -5,8 +5,8 @@
 //
 //   audio_rain_window - moody night window: city bokeh is the spectrum,
 //                       raindrops run down the glass on beats    (hiphop, chill)
-//   audio_boombox     - street corner at night; speaker cones pump with the
-//                       bass, the wall mural lights up per band  (hiphop, party)
+//   audio_boombox     - big chrome boombox on a sunny brownstone stoop; the
+//                       cones pump with the bass, EQ and tape deck run (hiphop, party)
 //   audio_volcano     - island volcano at dusk; lava glows with the bass,
 //                       fountains on kicks, eruption on drops    (rock, edm)
 //   audio_festival    - open-air festival at sunset; the LED wall is the
@@ -138,17 +138,19 @@ class AudioBoomboxScene final : public AmbientMusicScene {
     struct Leaf {
         float x, y, vx, vy, spin, hue;
     };
+    struct Mote {
+        float x, y, phase, speed;
+    };
     std::vector<Ring> rings_;
     std::vector<Leaf> litter_;
-    std::vector<float> bricks_;   // per-pixel brick texture (cached)
-    std::vector<float> mural_;    // per-pixel mural shape id + shade (cached)
-    std::vector<float> lamp_;     // per-pixel street-lamp falloff (cached; the lamp never moves)
-    std::vector<float> eq_;
+    std::vector<Mote> motes_;
+    std::vector<AudioKit::RGB> backdrop_;  // stoop, facade and the boombox body (cached; the moving parts are drawn on top)
+    std::vector<float> sun_;               // sunlit fraction of each pixel (cached)
+    std::vector<float> eq_, eqPeak_;
     AudioKit::Envelope beat_, kick_, snare_, drop_;
     AudioKit::HueCycle palette_{{285.0f, 25.0f, 190.0f, 330.0f, 140.0f}};
-    float cone_ = 0.0f, coneV_ = 0.0f, netSwing_ = 0.0f;
+    float cone_ = 0.0f, coneV_ = 0.0f, reel_ = 0.0f;
     PropertyPointer<float> pump_ = MAKE_PROPERTY_MINMAX("speaker_pump", float, 1.0f, 0.0f, 2.0f);
-    PropertyPointer<bool> mural_on_ = MAKE_PROPERTY("show_mural", bool, true);
 
     void init_world();
 
@@ -157,6 +159,8 @@ public:
     void register_properties() override;
     std::string get_name() const override { return "audio_boombox"; }
     [[nodiscard]] SceneDescriptor get_descriptor() const override;
+    // 2: redrawn as a daytime stoop; the mural and its show_mural property are gone.
+    [[nodiscard]] int remote_contract_version() const override { return 2; }
 };
 
 using AudioRainWindowSceneWrapper = AmbientSceneWrapper<AudioRainWindowScene>;

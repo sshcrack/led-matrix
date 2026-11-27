@@ -50,11 +50,9 @@ std::vector<std::unique_ptr<SceneWrapper>> AudioVisualizer::create_scenes()
     created.push_back(std::make_unique<AudioFestivalSceneWrapper>());
     created.push_back(std::make_unique<AudioDiscoSceneWrapper>());
     created.push_back(std::make_unique<AudioSkateparkSceneWrapper>());
-    created.push_back(std::make_unique<AudioMoshPitSceneWrapper>());
     created.push_back(std::make_unique<AudioStormFrontSceneWrapper>());
     created.push_back(std::make_unique<AudioDrumKitSceneWrapper>());
     created.push_back(std::make_unique<AudioTeslaCoilSceneWrapper>());
-    created.push_back(std::make_unique<AudioFireworksSceneWrapper>());
     created.push_back(std::make_unique<AudioRollerRinkSceneWrapper>());
     created.push_back(std::make_unique<AudioMarinaSunsetSceneWrapper>());
     created.push_back(std::make_unique<AudioStringLightsSceneWrapper>());
