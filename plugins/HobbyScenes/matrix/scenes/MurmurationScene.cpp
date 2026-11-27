@@ -161,6 +161,23 @@ void MurmurationScene::build_backdrop()
         fade_ = 1.0f;
     }
     backdrop_ = std::move(bg.px);
+    // Where the reeds stand, so roosting birds settle into them and not onto open water.
+    reedTop_.assign(static_cast<size_t>(cv_.w), static_cast<float>(cv_.h));
+    for (int x = 0; x < cv_.w; ++x)
+        for (int y = shoreRow + 1; y < cv_.h; ++y)
+            if (!water_[static_cast<size_t>(y * cv_.w + x)]) {
+                reedTop_[static_cast<size_t>(x)] = static_cast<float>(y);
+                break;
+            }
+}
+
+float MurmurationScene::reed_top(float x) const
+{
+    const float sx = cv_.w / 128.0f, sy = cv_.h / 128.0f;
+    const int col = static_cast<int>(std::floor(x * sx));
+    if (col < 0 || col >= static_cast<int>(reedTop_.size()))
+        return 128.0f;
+    return reedTop_[static_cast<size_t>(col)] / sy;
 }
 
 void MurmurationScene::start_flock()
@@ -261,7 +278,7 @@ void MurmurationScene::update_phase(float dt)
                 if (rnd() < 0.55f) {
                     // Dusk: the flock pours down into the reeds to roost.
                     phase_ = Phase::Roost;
-                    roostX_ = rnd() < 0.6f ? 12.0f + 10.0f * rnd() : 106.0f + 12.0f * rnd();
+                    roostX_ = rnd() < 0.6f ? 9.0f + 9.0f * rnd() : 110.0f + 9.0f * rnd();
                 }
                 else {
                     phase_ = Phase::Depart;
@@ -275,7 +292,7 @@ void MurmurationScene::update_phase(float dt)
             phaseLeft_ += dt;
             az_ = 0.0f;
             ax_ = phase_ == Phase::Roost ? roostX_ : exitX_;
-            ay_ = phase_ == Phase::Roost ? 112.0f : exitY_;
+            ay_ = phase_ == Phase::Roost ? std::min(reed_top(roostX_) + 4.0f, 124.0f) : exitY_;
             if (phase_ == Phase::Roost && phaseLeft_ > 70.0f) {
                 phase_ = Phase::Depart;  // the last stragglers fly off instead
                 exitX_ = ax_ < 64.0f ? -160.0f : 290.0f;
@@ -442,7 +459,7 @@ void MurmurationScene::simulate(float h)
             accY += ty * f;
             accZ += tz * f * 0.3f;  // the pull is mostly horizontal, as toward a roost
         }
-        if (phase_ == Phase::Roost && std::fabs(b.x - roostX_) < 24.0f)
+        if (phase_ == Phase::Roost && std::fabs(b.x - roostX_) < 12.0f)
             accY += 8.0f;  // the funnel pours down into the reeds
         if (phase_ != Phase::Roost && b.y > 72.0f)
             accY -= (b.y - 72.0f) * 4.0f;
@@ -504,13 +521,12 @@ void MurmurationScene::simulate(float h)
     birds_.swap(next_);
 
     if (phase_ == Phase::Depart || phase_ == Phase::Roost) {
-        const float roost = roostX_;
         const bool roosting = phase_ == Phase::Roost;
-        std::erase_if(birds_, [roost, roosting](const Bird& b) {
-            if (b.x < RemoveLeft || b.x > RemoveRight || b.y < RemoveTop)
+        std::erase_if(birds_, [this, roosting](const Bird& b) {
+            if (b.x < RemoveLeft || b.x > RemoveRight || b.y < RemoveTop || b.y > 127.0f)
                 return true;
-            // Birds that reach the reeds settle in and disappear among them.
-            return roosting && b.y > 104.0f && std::fabs(b.x - roost) < 22.0f;
+            // Birds that drop below the reed tops settle in and disappear among them.
+            return roosting && b.y > reed_top(b.x) + 1.5f;
         });
     }
 }
@@ -555,13 +571,22 @@ void MurmurationScene::draw_birds()
     const int W = cv_.w, H = cv_.h;
     const float sx = W / 128.0f, sy = H / 128.0f;
     std::fill(ink_.begin(), ink_.end(), 0.0f);
+    // A speck is shared between the two pixels it straddles horizontally, so slow drifts do not shimmer.
     const auto mark = [&](float x, float y, float a) {
-        const int px = static_cast<int>(std::floor(x * sx)), py = static_cast<int>(std::floor(y * sy));
-        if (px >= 0 && py >= 0 && px < W && py < H)
-            ink_[static_cast<size_t>(py * W + px)] += a;
+        const float fx = x * sx - 0.5f;
+        const int px = static_cast<int>(std::floor(fx)), py = static_cast<int>(std::floor(y * sy));
+        if (py < 0 || py >= H)
+            return;
+        const float right = fx - static_cast<float>(px);
+        if (px >= 0 && px < W)
+            ink_[static_cast<size_t>(py * W + px)] += a * (1.0f - right);
+        if (px + 1 >= 0 && px + 1 < W)
+            ink_[static_cast<size_t>(py * W + px + 1)] += a * right;
     };
     // Each far bird is a single dark speck; banking birds show more wing.
-    for (const auto& b : birds_) mark(b.x, b.y, 0.42f + 0.6f * b.bank);
+    // Fog veils the sky, so each bird marks a little stronger to stay visible.
+    const float strength = 1.0f + 0.4f * env().fog;
+    for (const auto& b : birds_) mark(b.x, b.y, (0.5f + 0.6f * b.bank) * strength);
     for (const auto& f : fliers_)
         if (!f.falcon && f.span <= 1.5f)
             mark(f.x, f.y, 0.9f);
@@ -573,10 +598,10 @@ void MurmurationScene::draw_birds()
         for (int x = 0; x < W; ++x) {
             const float ink = ink_[static_cast<size_t>(y * W + x)];
             if (ink > 0.004f)
-                cv_.blend(x, y, bird, 0.92f * (1.0f - std::exp(-1.4f * ink)));
+                cv_.blend(x, y, bird, 0.9f * (1.0f - std::exp(-1.2f * ink)));
         }
-    // Birds flying low show in the water, rippled.
-    for (int y = shoreRow; y < H; ++y) {
+    // Birds flying low show faintly in the water, rippled (not while they drop into the reeds).
+    for (int y = shoreRow; y < H && phase_ != Phase::Roost; ++y) {
         const int m = 2 * shoreRow - 1 - y;
         if (m < 0)
             break;
@@ -588,7 +613,7 @@ void MurmurationScene::draw_birds()
             const int src = std::clamp(x + shift, 0, W - 1);
             const float ink = ink_[static_cast<size_t>(m * W + src)];
             if (ink > 0.004f)
-                cv_.blend(x, y, bird, 0.45f * (1.0f - std::exp(-1.4f * ink)));
+                cv_.blend(x, y, bird, 0.3f * (1.0f - std::exp(-1.2f * ink)));
         }
     }
     for (const auto& f : fliers_)

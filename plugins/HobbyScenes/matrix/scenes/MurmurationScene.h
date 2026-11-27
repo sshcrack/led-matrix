@@ -62,6 +62,7 @@ class MurmurationScene final : public HobbySceneBase {
     std::vector<float> backdrop_, previous_;  // cached sky, shore, water and reeds
     float fade_ = 0.0f;
     std::vector<uint8_t> sky_, water_;  // open sky / open water masks
+    std::vector<float> reedTop_;        // per pixel column: top row of the reeds, or the canvas height
     std::vector<float> ink_;            // bird darkness per pixel this frame
     std::array<float, 12> backdropKey_{};
 
@@ -77,6 +78,7 @@ class MurmurationScene final : public HobbySceneBase {
     void update_fliers(float dt);
     void draw_birds();
     void draw_flier(const Flier& f, Rgb color);
+    [[nodiscard]] float reed_top(float x) const;  // design row of the reed tops at design x (128 = none)
 
 public:
     MurmurationScene();
