@@ -72,15 +72,19 @@ void MurmurationScene::initialize(int width, int height)
     birds_.clear();
     fliers_.clear();
     cellStart_.assign(static_cast<size_t>(GridW * GridH + 1), 0);
-    // The first flock arrives soon after the scene starts.
-    phase_ = Phase::Empty;
-    phaseLeft_ = 2.0f + 3.0f * rnd();
-    stragglerWait_ = 1.0f + 2.0f * rnd();
-    falconWait_ = 30.0f + 30.0f * rnd();
-    waveWait_ = 3.0f;
     clock_ = 0.0f;
     simCarry_ = 0.0f;
+    opening_ = 0.0f;
     for (auto& p : pathPhase_) p = rnd() * kTau;
+    // The scene opens on a flock already wheeling over the water; empty sky only comes between flocks.
+    start_flock(true);
+    stragglerWait_ = 8.0f + 12.0f * rnd();
+    falconWait_ = 15.0f + 25.0f * rnd();
+    // A short run-in gives the flock its natural ribbons and folds before the first frame.
+    for (int i = 0; i < 45; ++i) {
+        update_phase(SimStep);
+        simulate(SimStep);
+    }
 }
 
 void MurmurationScene::build_backdrop()
@@ -180,7 +184,7 @@ float MurmurationScene::reed_top(float x) const
     return reedTop_[static_cast<size_t>(col)] / sy;
 }
 
-void MurmurationScene::start_flock()
+void MurmurationScene::start_flock(bool in_view)
 {
     // Fewer birds when the Pi is short on time; every flock is a different size.
     const float q = std::clamp((render_quality_scale() - 0.5f) / 0.5f, 0.0f, 1.0f);
@@ -191,6 +195,36 @@ void MurmurationScene::start_flock()
     const float ex = side < 0.0f ? -16.0f : 144.0f, ey = 16.0f + 34.0f * rnd();
     birds_.clear();
     birds_.reserve(static_cast<size_t>(n));
+    if (in_view) {
+        // Mid-performance: a stretched ribbon around the point the flock wheels about, all heading one way.
+        // The point it wheels about starts near the middle, so the flock stays in view for a good while.
+        pathPhase_[0] = (rnd() < 0.5f ? 0.0f : kPi) + (rnd() - 0.5f) * 0.6f;
+        pathPhase_[1] = (rnd() < 0.5f ? 0.0f : kPi) + (rnd() - 0.5f) * 0.6f;
+        const float cx = 64.0f + 26.0f * std::sin(pathPhase_[0]) + 10.0f * std::sin(pathPhase_[1]);
+        const float cy = 40.0f + 8.0f * std::sin(pathPhase_[2]) + 5.0f * std::sin(pathPhase_[3]);
+        // Heading the way that point drifts, give or take.
+        const float drift = 26.0f * 0.11f * std::cos(pathPhase_[0]) + 10.0f * 0.27f * std::cos(pathPhase_[1]);
+        const float heading = (drift >= 0.0f ? 0.0f : kPi) + (rnd() - 0.5f) * 0.8f;
+        opening_ = 14.0f;
+        const float ux = std::cos(heading), uy = std::sin(heading);
+        for (int i = 0; i < n; ++i) {
+            const float along = (rnd() - 0.5f) * 36.0f, across = (rnd() + rnd() - 1.0f) * 7.0f;
+            Bird b{};
+            b.x = cx + ux * along - uy * across;
+            b.y = cy + uy * along + ux * across;
+            b.z = (rnd() - 0.5f) * 12.0f;
+            b.cruise = Cruise * (0.92f + 0.16f * rnd());
+            b.vx = ux * b.cruise;
+            b.vy = uy * b.cruise;
+            b.wander = rnd() * kTau;
+            b.wave = waveId_;
+            birds_.push_back(b);
+        }
+        phase_ = Phase::Perform;
+        phaseLeft_ = 35.0f + 55.0f * rnd();  // already partway through its performance
+        waveWait_ = 1.5f + 2.0f * rnd();
+        return;
+    }
     for (int i = 0; i < n; ++i) {
         const float along = 55.0f * rnd() * rnd();
         Bird b{};
@@ -382,7 +416,10 @@ void MurmurationScene::simulate(float h)
     const float centre = phase_ == Phase::Perform ? CentreGain : 0.0f;
 
     const float radius = phase_ == Phase::Perform ? 20.0f : phase_ == Phase::Roost ? 3.0f : 0.0f;
-    const float pull = phase_ == Phase::Perform ? 7.0f : phase_ == Phase::Roost ? 12.0f : 14.0f;
+    // The opening flock wheels tighter for its first seconds, so it stays in view while the scene starts.
+    const float opening = phase_ == Phase::Perform ? 1.0f + 2.0f * std::clamp(opening_ / 8.0f, 0.0f, 1.0f) : 1.0f;
+    opening_ = std::max(0.0f, opening_ - h);
+    const float pull = phase_ == Phase::Perform ? 7.0f * opening : phase_ == Phase::Roost ? 12.0f : 14.0f;
     next_.resize(n);
     for (size_t i = 0; i < n; ++i) {
         const Bird& b = birds_[i];

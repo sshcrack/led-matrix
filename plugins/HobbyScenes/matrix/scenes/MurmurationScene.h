@@ -58,6 +58,7 @@ class MurmurationScene final : public HobbySceneBase {
     float clock_ = 0.0f;
     float simCarry_ = 0.0f;
     float roostX_ = 16.0f, exitX_ = -200.0f, exitY_ = 20.0f;
+    float opening_ = 0.0f;     // seconds left of the opening flock's tighter wheeling
     bool descending_ = false;  // roosting flock is over the reeds and pouring down
 
     std::vector<float> backdrop_, previous_;  // cached sky, shore, water and reeds
@@ -71,7 +72,7 @@ class MurmurationScene final : public HobbySceneBase {
     PropertyPointer<bool> falconOn_ = MAKE_PROPERTY("falcon", bool, true);
 
     void build_backdrop();
-    void start_flock();
+    void start_flock(bool in_view = false);
     void spawn_stragglers(bool near_only);
     void spawn_falcon();
     void update_phase(float dt);
