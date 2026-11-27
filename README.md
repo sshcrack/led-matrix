@@ -429,7 +429,7 @@ Scenes are supplied by plugins. Native scenes render on the Pi or desktop worker
 | **Fractals** | Julia set, Game of Life, Wave Pattern |
 | **Particles** | Rain, Sparks |
 | **Media** | YouTube music videos that follow your Spotify track, a video player, and Spotify cover art when connected |
-| **Weather** | Live weather and a weather landscape that shows the real sky outside (via Open-Meteo, no API key) |
+| **Weather** | Live weather (via Open-Meteo, no API key) |
 | **Utility / Images** | Countdown with fireworks, and a pixel-art and image provider |
 
 Plus **7 post-processing effects** (flash, rotate, glow, RGB split, glitch, pixelate, shockwave; they can fire on beats) and **11 transitions** (blend, swipe, morph, radial reveal, dissolves, CRT collapse, …).
@@ -506,7 +506,7 @@ A [getsongbpm.com](https://getsongbpm.com/api) key is optional. Set it as `song_
 
 ### Real-world scenery (optional)
 
-Outdoor scenes (hiking, horses, sports, the seasonal landscapes, the campfire, the weather landscape) follow the real time of day, weather and season. It is on by default and needs no key: the location comes from the Pi's IP address (ipwho.is, then ipapi.co) and the weather from Open-Meteo every 15 minutes. Sun, moon and season are computed on the Pi.
+Outdoor scenes (hiking, horses, sports, the seasonal landscapes, the campfire) follow the real time of day, weather and season. It is on by default and needs no key: the location comes from the Pi's IP address (ipwho.is, then ipapi.co) and the weather from Open-Meteo every 15 minutes. Sun, moon and season are computed on the Pi.
 
 Open **Integrations → Real-world scenery** in the web UI to:
 
