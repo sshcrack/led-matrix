@@ -101,8 +101,8 @@ void MurmurationScene::build_backdrop()
     const std::vector<float> skyStage = bg.px;
 
     // Low far hills, then the near shore with a few stands of trees and one lone tree.
-    const Rgb far = from_env(L.lit(to_env({0.30f, 0.34f, 0.36f}), 0.85f));
-    bg.fill_below([&](float x) { return (ShoreY - 2.5f - 7.0f * hill(x / sx * 0.8f, 1.7f)) * sy; }, far);
+    const Rgb farHills = from_env(L.lit(to_env({0.30f, 0.34f, 0.36f}), 0.85f));
+    bg.fill_below([&](float x) { return (ShoreY - 2.5f - 7.0f * hill(x / sx * 0.8f, 1.7f)) * sy; }, farHills);
     // Winter banks and water lose the sunset's warmth a little.
     const Rgb chill{0.62f, 0.70f, 0.86f};
     const Rgb shore = mix(from_env(L.lit(L.ground(L.grass(to_env({0.20f, 0.27f, 0.14f})), 0.8f), 0.55f)), chill, 0.25f * L.winter);
