@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Viewing assembly: 2x2 panels, trial carriers, both electronics plates and part envelopes.
+
+For looking at the depth stack, not for printing. World frame, seen from the wall side
+(behind the display): X right, Y up, Z from the LED tips (Z=0) toward the wall. Panels and
+component boxes are envelopes (outer size only); the panel is drawn as its frame (0..15 mm).
+White strips on the rear cover are the halo LED strip segments. Red boxes are the panels' rear
+connectors with plugs (positions from the owner's photo,
+heights from owner measurements: PLUG_TOP in electronics_plates.py).
+
+Writes electronics-assembly.step (coloured parts, opens in FreeCAD and most CAD viewers) and
+electronics-assembly.glb (opens in browser viewers such as https://3dviewer.net).
+"""
+
+import argparse
+from pathlib import Path
+
+import cadquery as cq
+from electronics_plates import (
+    HALO_STRIP_MM,
+    COMPONENTS,
+    PANEL_CONNECTORS,
+    PCB_REAR,
+    PLATE_T,
+    PLATE_Z0,
+    PLUG_TOP,
+    build_controller_plate,
+    build_power_plate,
+    placements,
+)
+from trial_carrier import SPACER_MM, WEB_MM, build_trial_carrier
+
+ROOT = Path(__file__).resolve().parent
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--output", type=Path, default=ROOT / "exports" / "electronics-plates")
+parser.add_argument("--body-depth", type=float, default=60.0, help="rear cover position (mm from LED tips)")
+args = parser.parse_args()
+out = args.output.resolve()
+out.mkdir(parents=True, exist_ok=True)
+
+PANEL = 192.0
+PANEL_DEPTH = 15.0  # LED tips to the frame top / insert face
+CARRIER_REAR = PANEL_DEPTH + SPACER_MM + WEB_MM  # 31 mm
+TILES = {  # tile centre seen from behind; bottom row carries the plates
+    "top-left": (-PANEL / 2, PANEL / 2),
+    "top-right": (PANEL / 2, PANEL / 2),
+    "bottom-left": (-PANEL / 2, -PANEL / 2),
+    "bottom-right": (PANEL / 2, -PANEL / 2),
+}
+PLATES = {"bottom-left": ("power-plate", build_power_plate), "bottom-right": ("controller-plate", build_controller_plate)}
+
+C = {
+    "panel": cq.Color(0.08, 0.08, 0.08, 1.0),
+    "carrier": cq.Color(0.55, 0.55, 0.58, 1.0),
+    "plate": cq.Color(0.21, 0.34, 0.42, 1.0),
+    "big": cq.Color(0.85, 0.51, 0.17, 1.0),
+    "pi": cq.Color(0.10, 0.55, 0.25, 1.0),
+    "small": cq.Color(0.95, 0.80, 0.20, 1.0),
+    "cover": cq.Color(0.6, 0.8, 1.0, 0.25),
+    "plug": cq.Color(0.85, 0.15, 0.15, 1.0),
+    "halo": cq.Color(0.95, 0.95, 0.95, 1.0),
+}
+
+
+def box(x, y, z0, w, d, h):
+    return cq.Workplane("XY").box(w, d, h, centered=(True, True, False)).translate((x, y, z0))
+
+
+asm = cq.Assembly(name="electronics-assembly")
+carrier = build_trial_carrier().rotate((0, 0, 0), (0, 1, 0), 180).translate((0, 0, CARRIER_REAR))
+for name, (tx, ty) in TILES.items():
+    # Panel envelope: LEDs + PCB (0..PCB_REAR) and the frame, shown as a thin ring to the frame top.
+    asm.add(box(tx, ty, 0, PANEL - 0.4, PANEL - 0.4, PCB_REAR), name=f"panel-{name}", color=C["panel"])
+    ring = box(tx, ty, PCB_REAR, PANEL - 0.4, PANEL - 0.4, PANEL_DEPTH - PCB_REAR).cut(
+        box(tx, ty, PCB_REAR, PANEL - 30, PANEL - 30, PANEL_DEPTH - PCB_REAR)
+    )
+    asm.add(ring, name=f"panel-frame-{name}", color=C["panel"])
+    asm.add(carrier.translate((tx, ty, 0)), name=f"carrier-{name}", color=C["carrier"])
+    for plug, (x0, x1, y0, y1) in PANEL_CONNECTORS.items():
+        asm.add(box(tx + (x0 + x1) / 2, ty + (y0 + y1) / 2, PCB_REAR, x1 - x0, y1 - y0, PLUG_TOP[plug] - PCB_REAR),
+                name=f"{plug}-{name}", color=C["plug"])
+    if name not in PLATES:
+        continue
+    plate_name, build = PLATES[name]
+    asm.add(build().translate((tx, ty, PLATE_Z0)), name=plate_name, color=C["plate"])
+    for part, comp, x, y, z0 in placements(plate_name):
+        w, d, h = COMPONENTS[comp][:3]
+        color = C["pi"] if comp == "pi_stack" else C["big"] if comp == "buck_20a" else C["small"]
+        asm.add(box(tx + x, ty + y, PLATE_Z0 + PLATE_T + z0, w, d, h), name=part, color=color)
+
+# Halo: eight strip segments on the rear cover's back face, LEDs toward the wall. Owner's
+# WS2812B 5 V, 30 LEDs/m, IP65, measured 10 x 2.63 mm; cut every LED (33.3 mm), so 5 LEDs =
+# 167 mm per segment, 40 LEDs in all. Offset from the v0.6 frame.
+HALO_SEGMENT = (167.0, HALO_STRIP_MM[0], HALO_STRIP_MM[1])  # length, width, thickness
+HALO_OFFSET = 179.0
+hl, hw, ht = HALO_SEGMENT
+for side in (-1, 1):
+    for seg in (-1, 1):
+        along = seg * (hl / 2 + 4.0)
+        asm.add(box(along, side * HALO_OFFSET, args.body_depth, hl, hw, ht), name=f"halo-strip-h{side:+d}{seg:+d}", color=C["halo"])
+        asm.add(box(side * HALO_OFFSET, along, args.body_depth, hw, hl, ht), name=f"halo-strip-v{side:+d}{seg:+d}", color=C["halo"])
+
+# Rear cover at the chosen body depth (translucent), to see the margin.
+asm.add(box(0, 0, args.body_depth - 2.0, 2 * PANEL, 2 * PANEL, 2.0), name=f"rear-cover-{args.body_depth:.0f}mm", color=C["cover"])
+
+step, glb = out / "electronics-assembly.step", out / "electronics-assembly.glb"
+asm.export(str(step))
+asm.export(str(glb))
+print(step)
+print(glb)
+tops = {p: max(PLATE_Z0 + PLATE_T + z0 + COMPONENTS[c][2] for _, c, _, _, z0 in placements(p)) for p in ("power-plate", "controller-plate")}
+print(f"plate underside {PLATE_Z0} mm, tallest part tops {tops}, rear cover inner face {args.body_depth - 2.0} mm")
