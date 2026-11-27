@@ -19,8 +19,7 @@ void GameOfLifeScene::initialize(int w, int h)
     next_grid.resize(width * height);
     cell_ages.resize(width * height);
     afterglow.resize(width * height);
-    
-    last_update = std::chrono::steady_clock::now();
+
     accumulated_time = 0.0f;
     steps_since_reset = 0;
     steps_since_change = 0;
@@ -31,11 +30,9 @@ void GameOfLifeScene::initialize(int w, int h)
 }
 
 bool GameOfLifeScene::render(rgb_matrix::FrameCanvas *canvas) {
-    auto current_time = std::chrono::steady_clock::now();
-    float delta_time = std::chrono::duration<float>(current_time - last_update).count();
-    last_update = current_time;
-    
-    delta_time = std::min(delta_time, 0.25f);
+    // The canonical scene clock keeps previews, local rendering and desktop
+    // offload in step with each other.
+    const float delta_time = std::clamp(static_cast<float>(frame_context().delta_seconds), 0.0f, 0.25f);
     accumulated_time += delta_time;
     update_interval = 1.0f / update_rate->get();
     
@@ -171,21 +168,15 @@ void GameOfLifeScene::reset_simulation(bool randomize) {
     std::fill(next_grid.begin(), next_grid.end(), false);
     std::fill(cell_ages.begin(), cell_ages.end(), 0);
     std::fill(afterglow.begin(), afterglow.end(), 0.0f);
-    
-    if (randomize && seeded_resets->get() && (rng() % 3u == 0u)) {
-        // Structured seeds create recognizable expanding organisms among the
-        // fully random resets.
-        if (width > 16 && height > 16) {
-            inject_r_pentomino(width / 3, height / 2);
-            inject_acorn(2 * width / 3, height / 2);
-            inject_glider(width / 2, height / 4, static_cast<int>(rng() % 4));
-        }
-    } else if (randomize) {
-        // Randomly seed the grid
+
+    if (randomize) {
+        // Always start from a random soup so the whole panel is alive within
+        // the first few generations; a handful of seed cells took ~40 s to
+        // grow into anything visible.
         std::uniform_real_distribution<float> dis(0.0f, 1.0f);
-        
+
         float fill_probability = random_fill->get();
-        
+
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 int idx = y * width + x;
@@ -194,7 +185,15 @@ void GameOfLifeScene::reset_simulation(bool randomize) {
                 }
             }
         }
-    } else {
+
+        // Structured seeds add recognizable organisms on top of the soup.
+        if (seeded_resets->get() && (rng() % 3u == 0u) && width > 16 && height > 16) {
+            inject_r_pentomino(width / 3, height / 2);
+            inject_acorn(2 * width / 3, height / 2);
+            inject_glider(width / 2, height / 4, static_cast<int>(rng() % 4));
+        }
+    }
+    else {
         // Add a few interesting patterns
         
         // Add a glider
@@ -221,7 +220,7 @@ void GameOfLifeScene::reset_simulation(bool randomize) {
             current_grid[(center_y + 1) * width + center_x + 1] = true;
         }
     }
-    
+
     steps_since_reset = 0;
     steps_since_change = 0;
     has_changed = true;
@@ -298,15 +297,48 @@ Scenes::SceneDescriptor GameOfLifeScene::get_descriptor() const {
     d.music_affinity = 0.12f;
     d.performance_cost = 0.50f;
     d.variants = {
-        {"embers", "Slow colony", "Sparse slowly evolving cells with long afterglow",
-         {{"update_rate", 3}, {"random_fill", 0.16f}, {"afterglow", true}, {"afterglow_decay", 0.92f}, {"inject_patterns", true}, {"pattern_injection_rate", 120}},
-         {"calm", "texture", "minimal"}, 0.24f, 0.24f, 0.06f, 0.42f},
-        {"colony", "Living colony", "Balanced cellular motion with recognizable injected patterns",
-         {{"update_rate", 6}, {"random_fill", 0.25f}, {"afterglow", true}, {"afterglow_decay", 0.84f}, {"inject_patterns", true}, {"pattern_injection_rate", 73}},
-         {"organic", "generative"}, 0.46f, 0.44f, 0.10f, 0.50f},
-        {"chaos", "Cellular bloom", "Faster denser evolution for vivid ambient sections",
-         {{"update_rate", 11}, {"random_fill", 0.34f}, {"afterglow", true}, {"afterglow_decay", 0.72f}, {"inject_patterns", true}, {"pattern_injection_rate", 40}},
-         {"dense", "energetic", "texture"}, 0.72f, 0.68f, 0.16f, 0.62f},
+        {"embers",
+         "Slow colony",
+         "Sparse slowly evolving cells with long afterglow",
+         {{"update_rate", 3},
+          {"random_fill", 0.22f},
+          {"afterglow", true},
+          {"afterglow_decay", 0.95f},
+          {"inject_patterns", true},
+          {"pattern_injection_rate", 120}},
+         {"calm", "texture", "minimal"},
+         0.24f,
+         0.24f,
+         0.06f,
+         0.42f},
+        {"colony",
+         "Living colony",
+         "Balanced cellular motion with recognizable injected patterns",
+         {{"update_rate", 6},
+          {"random_fill", 0.25f},
+          {"afterglow", true},
+          {"afterglow_decay", 0.84f},
+          {"inject_patterns", true},
+          {"pattern_injection_rate", 73}},
+         {"organic", "generative"},
+         0.46f,
+         0.44f,
+         0.10f,
+         0.50f},
+        {"chaos",
+         "Cellular bloom",
+         "Faster denser evolution for vivid ambient sections",
+         {{"update_rate", 11},
+          {"random_fill", 0.34f},
+          {"afterglow", true},
+          {"afterglow_decay", 0.72f},
+          {"inject_patterns", true},
+          {"pattern_injection_rate", 40}},
+         {"dense", "energetic", "texture"},
+         0.72f,
+         0.68f,
+         0.16f,
+         0.62f},
     };
     Scenes::set_off_by_default(d, {"chaos"});
     return d;

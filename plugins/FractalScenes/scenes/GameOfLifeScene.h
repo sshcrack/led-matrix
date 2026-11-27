@@ -1,10 +1,10 @@
 #pragma once
 
+#include <random>
+#include <vector>
+
 #include "shared/matrix/Scene.h"
 #include "shared/matrix/plugin/main.h"
-#include <chrono>
-#include <vector>
-#include <random>
 
 namespace Scenes {
     class GameOfLifeSceneWrapper final : public Plugins::SceneWrapper {
@@ -24,6 +24,7 @@ namespace Scenes {
 
         string get_name() const override;
         std::string get_category() const override { return "Fractals"; }
+        [[nodiscard]] bool supports_virtual_time() const override { return true; }
         [[nodiscard]] SceneDescriptor get_descriptor() const override;
 
         tmillis_t get_default_duration() override {
@@ -39,7 +40,6 @@ namespace Scenes {
         void load_properties(const json &j) override;
 
     private:
-        std::chrono::steady_clock::time_point last_update;
         std::vector<bool> current_grid;
         std::vector<bool> next_grid;
         std::vector<int> cell_ages;
