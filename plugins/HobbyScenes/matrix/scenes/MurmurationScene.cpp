@@ -212,19 +212,19 @@ void MurmurationScene::start_flock()
 void MurmurationScene::spawn_stragglers(bool near_only)
 {
     // A few birds passing straight across: far specks, or nearer birds whose wingbeats show.
-    const bool near = near_only || rnd() < 0.35f;
-    const int count = near ? 1 + static_cast<int>(rnd() * 3.0f) : 1 + static_cast<int>(rnd() * 6.0f);
+    const bool closeBy = near_only || rnd() < 0.35f;
+    const int count = closeBy ? 1 + static_cast<int>(rnd() * 3.0f) : 1 + static_cast<int>(rnd() * 6.0f);
     const float dir = rnd() < 0.5f ? 1.0f : -1.0f;
-    const float y0 = near ? 30.0f + 45.0f * rnd() : 12.0f + 60.0f * rnd();
-    const float speed = near ? 26.0f + 10.0f * rnd() : 15.0f + 6.0f * rnd();
+    const float y0 = closeBy ? 30.0f + 45.0f * rnd() : 12.0f + 60.0f * rnd();
+    const float speed = closeBy ? 26.0f + 10.0f * rnd() : 15.0f + 6.0f * rnd();
     const float vy = (rnd() - 0.5f) * 3.0f;
     for (int i = 0; i < count; ++i) {
         Flier f{};
-        f.x = (dir > 0.0f ? -8.0f : 136.0f) - dir * (static_cast<float>(i) * (near ? 7.0f : 4.0f) + 3.0f * rnd());
-        f.y = y0 + (rnd() - 0.5f) * (near ? 8.0f : 6.0f);
+        f.x = (dir > 0.0f ? -8.0f : 136.0f) - dir * (static_cast<float>(i) * (closeBy ? 7.0f : 4.0f) + 3.0f * rnd());
+        f.y = y0 + (rnd() - 0.5f) * (closeBy ? 8.0f : 6.0f);
         f.vx = dir * speed * (0.95f + 0.1f * rnd());
         f.vy = vy;
-        f.span = near ? 3.5f + 1.8f * rnd() : 1.0f;
+        f.span = closeBy ? 3.5f + 1.8f * rnd() : 1.0f;
         f.phase = rnd() * kTau;
         f.beat = 4.0f + 1.5f * rnd();
         f.flapping = true;
