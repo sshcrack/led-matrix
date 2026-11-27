@@ -46,9 +46,9 @@ float ridgeAt(float x, float layer) {
          + .007 * noise(vec3(x * 44.0, layer, 2.0));
 }
 
-// The small moon orbits roughly every 5 minutes on an ellipse tilted with the
+// The small moon orbits roughly every 2.5 minutes on an ellipse tilted with the
 // rings: it passes behind the planet, then transits in front of it.
-const float MOON_PERIOD = 300.0;
+const float MOON_PERIOD = 150.0;
 vec3 moonOrbit() {
     float a = iTime * 6.28318530718 / MOON_PERIOD + 2.3;
     vec2 local = vec2(cos(a) * .44, sin(a) * .29);
@@ -68,6 +68,8 @@ vec3 drawMoon(vec3 color, vec2 p, vec3 orbit, vec3 light, float aa) {
         float shade = smoothstep(-.05, .6, dot(n, light));
         float terrain = .7 + .3 * cloud(n * 7.0 + 3.0);
         vec3 moon = vec3(.20, .34, .43) * (shade * terrain + .025);
+        // Thin cool rim keeps the silhouette readable against the rings.
+        moon += vec3(.16, .26, .34) * smoothstep(.70, 1.0, length(m));
         color = mix(color, moon, 1.0 - smoothstep(moonRadius - aa, moonRadius + aa, dist));
     }
     return color;
@@ -134,10 +136,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     if (planet < 100.0) {
         vec3 n = normalize(camera + ray * planet - center);
-        float rotation = iTime * .015;
+        float rotation = iTime * .045;
         vec3 q = vec3(n.x * cos(rotation) + n.z * sin(rotation), n.y,
                       -n.x * sin(rotation) + n.z * cos(rotation));
-        float turbulence = cloud(q * 6.0 + vec3(iTime * .008, 0.0, 0.0));
+        float turbulence = cloud(q * 6.0 + vec3(iTime * .02, 0.0, 0.0));
         float stripes = .5 + .5 * sin(q.y * 34.0 + turbulence * 3.5);
         float broadBands = .5 + .5 * sin(q.y * 13.0 + turbulence);
         vec3 surface = mix(vec3(.40, .24, .13), vec3(.76, .62, .40), stripes * .55 + broadBands * .45);
@@ -158,7 +160,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         color = mix(color, ringColor, ringOpacity);
     if (orbit.z <= 0.0) color = drawMoon(color, p, orbit, light, aa);
 
-    float event = mod(iTime + 9.0, 53.0);
+    float event = mod(iTime + 9.0, 23.0);
     float fade = smoothstep(0.0, .7, event) * (1.0 - smoothstep(2.0, 3.0, event));
     vec2 meteor = vec2(-.47 + event * .24, .45 - event * .10);
     float trail = exp(-segment(p, meteor, meteor + vec2(-.095, .04)) * 600.0);

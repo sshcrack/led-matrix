@@ -151,9 +151,10 @@ if(ENABLE_DESKTOP)
                         endif()
                 endforeach()
 
-                # The tunnel previously had both an atan/FFT discontinuity and a
-                # depth-wrap pop. A long no-audio run crosses multiple ring wraps;
-                # fail if any adjacent frame changes enough to indicate a seam.
+                # The tunnel is a flight down an equalizer corridor. A long
+                # no-audio run passes many frame arches and wall columns; fail
+                # if any adjacent frame changes more than steady flight does
+                # (about 0.021 at 60 fps), which would indicate a pop or seam.
                 set(TUNNEL_SHADER "${CMAKE_CURRENT_SOURCE_DIR}/shaders/music_spectrum_tunnel.frag")
                 if(EXISTS "${TUNNEL_SHADER}")
                         add_test(NAME shadertoy_shader_music_spectrum_tunnel_temporal_smoke
@@ -161,7 +162,7 @@ if(ENABLE_DESKTOP)
                                         $<TARGET_FILE:shadertoy_shader_preview>
                                         "${TUNNEL_SHADER}"
                                         "${CMAKE_BINARY_DIR}/shader-previews/temporal/music_spectrum_tunnel.png"
-                                        ${SHADERTOY_MATRIX_PREVIEW_WIDTH} ${SHADERTOY_MATRIX_PREVIEW_HEIGHT} 180 none 0.012)
+                                        ${SHADERTOY_MATRIX_PREVIEW_WIDTH} ${SHADERTOY_MATRIX_PREVIEW_HEIGHT} 180 none 0.03)
                 endif()
         endif()
 endif()
