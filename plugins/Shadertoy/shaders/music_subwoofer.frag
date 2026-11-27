@@ -64,7 +64,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     col = mix(col, cabCol, smoothstep(px, -px, cab));
     // Neon edge light.
     float edge = smoothstep(2.0 * px, 0.0, abs(cab));
-    col += mix(neonA, neonB, step(0.0, c.x)) * edge * (0.40 + 0.20 * beat);
+    col += mix(neonA, neonB, step(0.0, c.x)) * edge * (0.22 + 0.10 * beat);
 
     float r = length(c);
     vec2 n = c / max(r, 1e-4);
@@ -103,7 +103,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float spec = exp(-pow((conePos - specR) / 0.10, 2.0)) * pow(max(-facing * 0.5 + 0.5, 0.0), 2.0);
         float grooves = 0.92 + 0.08 * sin(r * 260.0);
         vec3 coneCol = vec3(0.16, 0.16, 0.18) * (0.35 + lambert) * grooves;
-        coneCol += vec3(0.85, 0.88, 1.0) * spec * (0.45 + 0.8 * exc);
+        coneCol += vec3(0.85, 0.88, 1.0) * spec * (0.40 + 0.45 * exc);
         // Neon reflections on the cone from the side lights.
         coneCol += neonA * 0.20 * smoothstep(0.0, -0.9, n.x) * conePos;
         coneCol += neonB * 0.20 * smoothstep(0.0, 0.9, n.x) * conePos;
@@ -151,15 +151,15 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float ripple = exp(-pow((r - rippleR) / (2.0 * px), 2.0)) * kick * 0.45 * step(R + 0.03, r) * smoothstep(0.50, 0.44, rippleR);
     col += mix(neonA, neonB, 0.5 + 0.5 * n.x) * ripple;
 
-    // Dust thrown off the cone on drops and hard kicks.
+    // Dust thrown off the cone on drops.
     float motes = 0.0;
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < 8; ++i) {
         float fi = float(i);
         float t = fract(iTime * 0.45 + hash21(vec2(fi, 3.1)));
         float ang = hash21(vec2(fi, 7.7)) * TAU;
         float dist = 0.10 + t * (0.18 + 0.30 * drop + 0.12 * kick);
         vec2 p = vec2(cos(ang), sin(ang)) * dist;
-        motes += smoothstep(2.0 * px, 0.5 * px, length(c - p)) * (1.0 - t) * max(kick, drop) * step(0.3, max(kick, drop));
+        motes += smoothstep(2.0 * px, 0.5 * px, length(c - p)) * (1.0 - t) * drop * step(0.3, drop);
     }
     col += vec3(0.9, 0.95, 1.0) * motes * 0.7;
 

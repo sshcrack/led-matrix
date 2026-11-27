@@ -136,7 +136,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float core = smoothstep(starR + px, starR - px, r);
     vec3 starCol = mix(vec3(1.0, 0.55, 0.95), vec3(1.0, 0.95, 0.85), smoothstep(starR, 0.0, r));
     float rays = pow(0.5 + 0.5 * cos(a * 6.0 + iTime * 0.6), 18.0) + pow(0.5 + 0.5 * cos(a * 4.0 - iTime * 0.4 + 1.0), 24.0);
-    float corona = exp(-(r - starR) * 16.0) * (0.35 + 0.5 * beat) + rays * exp(-(r - starR) * (11.0 - 3.0 * kick)) * (0.12 + 0.45 * kick);
+    float corona = exp(-(r - starR) * 16.0) * (0.35 + 0.5 * beat) + rays * exp(-(r - starR) * 15.0) * (0.10 + 0.25 * kick);
+    corona += exp(-(r - starR) * 26.0) * 0.6 * kick;   // kick swells the near corona
     corona *= smoothstep(0.46, 0.30, r);   // flares stay inside the outer orbit
     col += vec3(1.0, 0.35, 0.85) * corona * step(starR, r);
     col = mix(col, starCol, core);

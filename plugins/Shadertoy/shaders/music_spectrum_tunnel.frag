@@ -102,7 +102,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         col += ec * cell * on * (0.80 + 0.35 * kick + 0.3 * drop);
         col += vec3(1.0, 0.85, 0.95) * cell * on * peak * 0.6;
         col += ec * cell * (1.0 - on) * 0.035;                         // unlit cells
-        col += vec3(0.9, 0.3, 1.0) * arch * (0.5 + 0.6 * kick);
+        col += vec3(0.9, 0.3, 1.0) * arch * (0.5 + 0.3 * kick);
     } else {
         float x = d.x * t / F / W;           // -1..1 across
         bool floorHit = d.y < 0.0;
@@ -115,7 +115,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             float k = floor(v) + (x > 0.0 ? 100.0 : 0.0);
             float lv = columnLevel(k, live);
             col += eqColour(0.2) * edge * lv * 0.30;
-            col += vec3(0.9, 0.3, 1.0) * arch * (0.5 + 0.6 * kick);
+            col += vec3(0.9, 0.3, 1.0) * arch * (0.5 + 0.3 * kick);
         } else {
             // Ceiling: two strip lights running down the corridor.
             // Ceiling: a row of light panels down the middle.
@@ -123,8 +123,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             float panelV = smoothstep(0.30 + fwidth(v), 0.30, abs(fract(v * 0.5) - 0.5));
             float pulse = 0.40 + 0.25 * beat + 0.15 * kick;
             col = vec3(0.012, 0.010, 0.026);
-            col += vec3(0.75, 0.80, 1.0) * panelX * panelV * pulse * 0.45;
-            col += vec3(0.9, 0.3, 1.0) * arch * (0.5 + 0.6 * kick);
+            col += vec3(0.75, 0.80, 1.0) * panelX * panelV * pulse * 0.25;
+            col += vec3(0.9, 0.3, 1.0) * arch * (0.5 + 0.3 * kick);
         }
     }
 

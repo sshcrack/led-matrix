@@ -15,8 +15,8 @@
 // behind a hex mesh; one numeral glows orange. Numerals are decoration only:
 // every tube picks a random one on its own beat subdivision, so they never
 // form a time, a count or any other readable value. Bass feeds the neon glow,
-// kicks flare a tube, the snare blinks the indicator bulbs and a drop sends
-// all tubes rolling through their cathodes.
+// kicks flare a tube, the snare blinks the indicator bulbs and a drop heats
+// the whole row.
 
 #define TAU 6.28318530718
 
@@ -147,10 +147,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec2 p = uv - vec2(x, 0.02);
 
         // Each tube changes on its own subdivision with its own offset, so the
-        // row never reads as a counter. A drop rolls through the cathodes.
+        // row never reads as a counter.
         float rate = (i == 0) ? 0.125 : (i == 1) ? 0.25 : (i == 2) ? 0.167 : 0.5;
         float stepT = beats * rate + hash11(fi * 13.7) * 4.0;
-        stepT = mix(stepT, iTime * 8.0 + fi * 3.3, smoothstep(0.6, 0.85, drop));
         float stepI = floor(stepT);
         float since = fract(stepT) / max(rate, 0.05) * 60.0 / bpm;  // seconds since change
         int cur = int(floor(hash11(stepI * 3.17 + fi * 41.0) * 10.0));
